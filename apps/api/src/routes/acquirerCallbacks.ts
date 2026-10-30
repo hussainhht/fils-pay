@@ -9,7 +9,7 @@ declare module "fastify" { interface FastifyRequest { rawCallbackBody?: string }
 
 /**
  * Body of a fraud_review.completed callback. `outcome` is validated against
- * the AcquirerCallbackInput union ("approved" | "rejected") before it is
+ * the AcquirerCallbackInput union ("cleared" | "confirmed_fraud") before it is
  * applied; any other value is a 400.
  */
 interface AcquirerCallbackBody {
@@ -49,12 +49,14 @@ export async function acquirerCallbackRoutes(app: FastifyInstance): Promise<void
   app.post<{ Body: AcquirerCallbackBody }>("/callbacks", async (request, reply) => {
     const body = request.body ?? {};
     if (
-      !body.callbackId ||
+      typeof body.callbackId !== "string" || !body.callbackId.trim() ||
       body.type !== "fraud_review.completed" ||
-      !body.transactionId ||
-      !body.occurredAt ||
+      typeof body.transactionId !== "string" || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(body.transactionId) ||
+      typeof body.occurredAt !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(body.occurredAt) ||
+      !Number.isFinite(Date.parse(body.occurredAt)) ||
       (body.outcome !== "cleared" && body.outcome !== "confirmed_fraud") ||
-      !body.note
+      typeof body.note !== "string" || !body.note.trim()
     ) {
       throw new BadRequestError(
         "invalid_request",

@@ -23,6 +23,23 @@
 
 ## 2. P0 Blocker Defects
 
+### Scoped webhook audit delta (2026-10-30)
+
+See `Evidence/webhook_audit_and_implementation.md`; this scoped delta does not
+recount unrelated historical rows. Seven confirmed findings are `fix-verified`:
+missing definitive-decline events, missing link-expiry events, unbounded delivery
+preparation errors, malformed callback fields, development DNS SSRF checks,
+jitter exceeding retry cap, and the capture prepare/apply lock-order deadlock.
+Ten original webhook-related findings (BUG-045–051 and BUG-068–070) are
+`already-fixed` at audit baseline for their original mechanisms. New events are
+additive public webhook behavior; consumers must tolerate unknown types.
+
+Remaining deployment acceptance: PostgreSQL 16 parity, production TLS/egress,
+secret-manager continuity, backlog load/retention and operational alerts, and
+merchant receiver idempotency. These are unverified deployment conditions, not
+assertions of confirmed-current defects. Expiry excludes reserved ambiguous
+checkouts; notification scanning does not change payment-link financial state.
+
 | ID | Title & Summary | Status | Root Cause & Code Reference |
 |---|---|---|---|
 | **BUG-001** | Merchant login grants full access without entering OTP | `fix-verified` | Pre-handler accepted session with `pending_otp = true`. Resolved in `apps/api/src/auth/requireMerchantAuth.ts`. |
@@ -64,7 +81,7 @@
 | **BUG-030** | Split payouts drop fractional fils due to independent banker's rounding | `confirmed-current` | `apps/settlement/internal/splits/`: Independent rounding of child splits leaves undistributed fils. |
 | **BUG-031** | Platform volume counter uses 32-bit integer overflowing at 2.1M BD | `confirmed-current` | `db/migrations/0049_platform_stats.sql`: `total_processed_fils` is `INTEGER`, overflows at 2,147,483,647 fils. |
 | **BUG-032** | TypeScript API and Go settlement fee formulas diverge | `confirmed-current` | Divergence between `calculateMerchantFee.ts` and `batch.go` on tiered fee schedule handling. |
-| **BUG-033** | March residue sweep script non-idempotent and uses UTC month | `confirmed-current` | `scripts/reconcile_march.ts`: Generates a new `entryGroupId` on every run with no deduplication check. |
+| **BUG-033** | Retired March residue sweep could post repeatedly | `fix-verified` | PMA-08 removed database/posting code; direct CLI exits 1 and imports preserve pure helpers only. Historical ledger impact remains unverified; see `Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md`. |
 | **BUG-034** | Scheme export rounds amounts while ledger truncates creating surplus | `confirmed-current` | `apps/settlement/internal/settlement/scheme_export.go`: Quantizes to 2 decimals using rounding rather than truncation. |
 | **BUG-035** | MDR recalculation rewrites batches that are already paid out | `confirmed-current` | `apps/settlement/internal/settlement/recalculate_mdr.go`: Mutates paid batch records directly. |
 | **BUG-036** | Daily settlement close runs at 03:15 Bahrain time instead of midnight | `confirmed-current` | `apps/settlement/internal/scheduler/`: Cron trigger set to 03:15. |
@@ -148,8 +165,24 @@ This extends FEAT-003 from baseline `850504a`; the earlier amount-phase live-bro
 |---|---|---|---|
 | EXPIRY-01: missing duration choices/bounds; only a future timestamp required | P2 | `fix-verified` | Baseline service accepts a 899-second instant; baseline browser has no expiration radios. Inclusive 900..10368000 seconds, exactly-one-of, server-relative calculation and labeled Bahrain estimate now verified by units, real API/DB and browser checks. Existing historical links and expired bound-attempt recovery preserved. |
 | AMOUNT-02: direct creation accepts zero fils | P2 | `fix-verified` | Baseline service only called nonnegative `toFils`; new positive guard tested before INSERT and by real route 400/no-row assertions. Working BHD editing unchanged. |
-| VERIFY-EXPIRY-01: dispatcher test asserts a fixed delay from a randomly jittered function | P3 | `confirmed-current` | Final fresh full API run: 508/509 pass; unchanged test expected 1000, got 959. Source intentionally adds ±10% jitter. Outside feature scope; no tests weakened. |
+| VERIFY-EXPIRY-01: dispatcher test asserted a fixed delay from a randomly jittered function | P3 | `fix-verified` | The feature-branch run saw 508/509 pass. On merged main, the existing test injects deterministic jitter when asserting the exact delay; see the merge verification entry in `context/TESTING.md`. |
 | VERIFY-EXPIRY-02: settlement fake-server fetch failure in one full run | Unclassified | `unverified` | Did not recur in final fresh standalone run. No settlement code touched. |
 | VERIFY-EXPIRY-03: concurrent capture returned internal error in one full run | Unclassified | `unverified` | Did not recur in final fresh standalone run. No capture code touched. |
 
-Implementation findings: before `confirmed-current`: 2; after `fix-verified`: 2, other statuses 0. Separate verification findings: `confirmed-current`: 1 (P3), `unverified`: 2, other statuses 0. No remaining confirmed P0–P2 defect in the scoped implementation; historical registry counts are unchanged, not re-audited. Full API suite is not green. See FEAT-003 for exact commands, test counts, compatibility tightening and runtime limits.
+Implementation findings: before `confirmed-current`: 2; after `fix-verified`: 2, other statuses 0. Separate verification findings after merge: `fix-verified`: 1 (P3), `unverified`: 2, other statuses 0. No remaining confirmed P0–P2 defect in the scoped implementation; historical registry counts are unchanged, not re-audited. See FEAT-003 for the original branch's commands and verification limits; `context/TESTING.md` records merged results.
+
+## PMA-01 production OTP delivery (2026-10-30 update)
+
+Status: `unverified` (implementation + mocked unit/HTTP verification complete; DB/external verification blocked). Baseline was confirmed-current P0: merchant/admin production notifiers logged metadata without delivering. Shared Resend adapter now submits after commit, fails securely on provider failure/missing configuration, and prohibits production code exposure. Development/test sends nothing and logs no codes. Do not label fully fix-verified until both planes deliver using authorized production-equivalent provider settings and complete authentication. Evidence: Evidence/PMA-01_OTP_DELIVERY_FIX.md. Historical registry aggregate counts above were not recomputed by this scoped fix.
+
+## Authenticator integration verification gate (2026-10-30)
+
+TOTP implementation is unit/mocked-HTTP verified; deployment remains unverified until migration 0085, dedicated key provisioning, database concurrency tests and a real Microsoft Authenticator scan/login for both planes. PMA-01 email adapter remains implemented but externally unverified. TOTP avoids email for enrolled users; it intentionally cannot bootstrap an unenrolled user from password alone when email is disabled. No operator identity-proof recovery bypass is shipped. Historical bug totals above were not recomputed for this scoped authentication work.
+
+## Checkout UI scope and existing limitations (2026-10-30)
+
+The original redesign left ambiguous-payment retry unresolved; the subsequently merged feature branch fixes that behavior, as recorded under CHECKOUT-02 above. Insufficient-funds responses share generic declined text; simulator outcomes remain distinct. The test instructions say any other PAN approves, while the simulator can also randomly fail according to its configured failure rate. No new guarantee is added. No financial ADR conflicts were acted on. See Evidence/ui_checkout_redesign.md for the original redesign verification and `context/TESTING.md` for merged browser checks.
+
+### Checkout missing styles/oversized SVG follow-up (2026-10-30)
+
+P2 screenshot defect: confirmed-current -> fix-verified at served-module/regression level. The running Vite CSS module was empty; rewriting the file restored layout CSS, and intrinsic SVG dimensions prevent icon enlargement without styles. Exact stale-transform cause undetermined. The merged checkout has since been checked in desktop and mobile Chromium viewports; see `context/TESTING.md`.

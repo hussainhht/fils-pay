@@ -34,7 +34,7 @@
   - `paymentLinks.ts`: `/v1/merchants/:merchantId/payment-links` and public `/v1/payment-links/:token`.
     - Creation calls `paymentLinks/create.ts` and `expiration.ts`: positive safe-integer fils, optional string metadata, exactly one of whole `expiresInSeconds` (900..10368000 inclusive) or absolute ISO `expiresAt` in the same server-relative window. One server-time reference resolves seconds into the existing persisted deadline. Invalid input returns 400. Bounds affect new creation only; historical links, reads, payment admission and durable key/request recovery are unchanged. No partner-tree or schema changes.
   - `admin*.ts`: `/v1/admin/*` (admin auth, merchants, KYC reviews, bulk approvals, credits, balance adjustments, batch re-runs, balance rebuilds).
-  - `acquirerCallbacks.ts`: `/v1/acquirer/callback` (inbound HMAC verified webhook receiver).
+  - `acquirerCallbacks.ts`: `/v1/acquirer/callbacks` (inbound HMAC verified informational fraud-review receiver).
   - `webhooks.ts`: `/v1/merchants/:merchantId/webhook-endpoints` (merchant webhook registrations and deliveries).
   - `settlement.ts`: `/v1/settlement` (batch queries).
   - `reporting.ts`: `/v1/reporting` (daily volume, payout trends, saved filters).
@@ -96,13 +96,26 @@
 
 ## 7. Webhook Delivery Engine (`src/webhooks/`)
 
-- **`dispatcher.ts`:**
-  - Connects dedicated client to PostgreSQL: `LISTEN outbox_event_created`.
-  - On notification (or fallback poll every 5s), queries pending `outbox_events`.
-  - Matches event types to `webhook_endpoints`.
-  - Encrypts/decrypts endpoint secrets using AES-256-GCM (`secretCrypto.ts`).
-  - Computes HMAC-SHA256 signature over raw payload bytes (`signature.ts`, `BUG-045`).
-  - Dispatches HTTP POST with exponential backoff (up to 8 attempts).
+- `dispatcher.ts` listens on `outbox_events_channel` and polls every 5 seconds
+  by default. It creates unique event/endpoint deliveries, leases one due row at
+  a time with `SKIP LOCKED`, and retries with capped exponential backoff/jitter.
+  Preparation and transport exceptions count toward the attempt limit without
+  logging raw exceptions. Database outcome failures retain the recovery lease.
+- `sign.ts` signs timestamp plus the canonical JSON bytes actually transmitted.
+  AES-256-GCM secrets are decrypted only for sends. Replays preserve identity.
+- Eligible types: `transaction.captured`, `transaction.voided`,
+  `refund.succeeded`, `settlement.paid`, `payment.failed`, `payment_link.expired`.
+  Authorize/capture definitive declines publish atomically with their completed
+  idempotency claim; ambiguous errors publish no failure event.
+- `paymentLinks/expire.ts` scans active expired links under an advisory scanner
+  lock and link row locks, atomically recording one expiry event. Reserved links
+  are excluded; derived link state is unchanged. No expiry backfill to endpoints
+  registered after the expiry instant.
+- Native HTTP(S) transport pins checked DNS, rejects private targets outside test,
+  follows no redirects, and bounds DNS/request/body time and response memory.
+- Incoming `/v1/acquirer/callbacks` validates field types, UUID and timestamp,
+  authenticates raw bytes with a 300-second freshness window, and only appends
+  a deduplicated fraud-review note. See `docs/WEBHOOKS.md` for contracts/limits.
 
 ---
 
@@ -119,5 +132,13 @@
 
 1. **Row Lock Across Acquirer (BUG-061):** Capture retains DB row lock during external acquirer network I/O.
 2. **CSV Import Precision (BUG-009):** Admin balance adjustment CSV parser assumes 2 decimals.
-3. **Webhook Replay Identity (BUG-068):** Admin replay generates fresh delivery IDs.
+3. **Webhook Replay Identity (BUG-068):** Already fixed: replay retains the original delivery identity.
 4. **Acquirer Callback Signature (BUG-047):** Acquirer callbacks accepted unsigned by default in dev.
+
+## PMA-01 notification adapter (2026-10-30)
+
+`auth/otpDelivery.ts` is shared by merchant/admin notifier wrappers. Merchant login/resend and admin login await one Resend HTTPS submission after committing challenge/session writes. Provider errors/timeouts return 503 otp_delivery_unavailable, without session promotion; provider details never enter responses/logs. Production delivery settings are validated by config.ts before boot. Development/test transport is a no-send metadata-only implementation. No new dependency, schema, outbox consumer or partner contract is introduced. See ops/README.md for configuration and Evidence/PMA-01_OTP_DELIVERY_FIX.md for mock-vs-real verification limits.
+
+## TOTP integration (2026-10-30)
+
+New auth/totpCrypto.ts uses otplib 13.5 and qrcode; auth/totp.ts locks and updates plane-specific factor state. routes/authenticator.ts registers under each auth plane, requiring full session + password and old-factor proof for replacement; admin audit actions authenticator_enrollment_started/authenticator_activated are typed and stored atomically. Login retains pending OTP-challenge rows for expiry/attempt/session lifecycle but verifies TOTP/recovery against encrypted authenticator state once enrolled. Provider delivery is skipped for enrolled users. FEATURE_TOTP defaults off, dedicated key validation is fail-closed, and explicit disabled email transport supports existing enrolled production accounts without a mail provider. Apply approved migration 0085 before enabling. No partner API or financial code changed.

@@ -1,6 +1,8 @@
 import type { Pool, PoolClient } from "pg";
 
 export type AdminAuditAction =
+  | "authenticator_enrollment_started"
+  | "authenticator_activated"
   | "kyc_review"
   | "kyc_bulk_approve"
   | "api_key_rotate"
@@ -22,6 +24,7 @@ export type AdminAuditAction =
   | "adjustment_import_applied";
 
 export type AdminAuditTargetType =
+  | "admin_user"
   | "merchant"
   | "api_key"
   | "webhook_endpoint"

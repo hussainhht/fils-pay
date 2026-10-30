@@ -100,7 +100,7 @@ try {
     fixture = { token: "sandbox-fixture", status: "active", amountFils: 4750, currency: "BHD", merchantDisplayName: "Sandbox Merchant", description: "Order payment", reference: "TEST-1042", expiresAt: new Date(Date.now() + 3600000).toISOString(), ...overrides };
     requests = [];
     await send("Page.navigate", { url: `${base}/pay/sandbox-fixture?case=${Date.now()}` });
-    await waitFor('document.querySelector(".checkout-page") && !document.querySelector(".fp-loading-state")');
+    await waitFor('document.querySelector(".checkout-page") && !document.body.textContent.includes("Preparing your checkout")');
   };
   const fill = async (selector, value) => {
     await js(`document.querySelector(${JSON.stringify(selector)}).focus(); document.querySelector(${JSON.stringify(selector)}).select()`);

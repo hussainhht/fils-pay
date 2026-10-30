@@ -100,18 +100,43 @@ When support or admin operators need to troubleshoot a merchant's dashboard:
 - The IV, ciphertext, and GCM auth tag are stored in `webhook_endpoints.secret_ciphertext`.
 
 ### 2. Outbound Webhook Signing (HMAC-SHA256)
-- Outbound deliveries include the header `X-FilsPay-Signature: t=<timestamp>,v1=<hmac>`.
+- Outbound deliveries include the header `Webhook-Signature: t=<timestamp>,v1=<hmac>` plus stable `Webhook-Delivery-Id`.
 - The signature is calculated as:
   $$\text{HMAC-SHA256}(\text{signing\_secret}, t + "." + \text{raw\_body})$$
 - The signature must be computed over the **exact raw wire bytes**, not a re-serialized JSON string (`BUG-045`).
 
 ### 3. Inbound Acquirer Callbacks
-- Inbound callbacks to `/v1/acquirer/callback` provide `X-Acquirer-Signature`.
+- Inbound callbacks to `/v1/acquirer/callbacks` provide `Acquirer-Callback-Signature`.
 - The signature is computed over the raw request payload using `ACQUIRER_CALLBACK_SIGNING_SECRET`.
 - Verified using `crypto.timingSafeEqual` to prevent timing attacks (`BUG-046`).
+  - The route enforces a 300-second freshness window and mandatory signatures in
+    production/test. Development retains its explicit optional mode. Nonempty
+    strings, UUID, timezone-bearing ISO time and allowed outcomes are checked
+    before DB access; callback IDs deduplicate informational notes.
+  - Outgoing native HTTP(S) checks/pins DNS outside test, rejects internal targets
+    and redirects, and bounds DNS/request/body time and response memory. Receiver
+    deduplication must accompany freshness checks. See `docs/WEBHOOKS.md`.
 
 ### 4. API Key Mechanics
 - API keys format: `fp_live_<random_bytes>` or `fp_test_<random_bytes>`.
 - Only the SHA-256 hash (`key_hash`) and a 4-character prefix (`key_prefix`) are persisted in `api_keys`.
 - The cleartext key is revealed to the merchant exactly once at generation time.
 - Key rotation assigns a successor key and revokes the predecessor key (`BUG-039`).
+
+## PMA-01 OTP delivery update (2026-10-30)
+
+`auth/notifier.ts` and `adminAuth/notifier.ts` now await shared `auth/otpDelivery.ts`. The stored password-verified user email is the only destination; there is no phone/SMS path or existing verified-email flag. Provider acceptance is not proof of inbox ownership/delivery. Resend HTTPS uses a fixed TLS endpoint, one bounded attempt, and a plane/challenge idempotency key. No message content, code, address, API key, provider body or authentication token is logged by the adapter.
+
+Challenge/session creation commits before provider I/O. A successful submission returns a pending cookie; failure returns sanitized 503 without authenticating or issuing a new login cookie. Failure retains hashed challenges and pending sessions until expiry; challenge-rate limits still count them. Merchant resend replaces the challenge, carries attempts, and retains cooldown on failure. Admin has no resend route. Verification logic/locking is unchanged. Current columns are `authenticated`, `consumed_at`, `attempt_count`, `code_salt`/`code_hash` (salted SHA-256); older `pending_otp`/`attempts` shorthand above is not the physical schema.
+
+Production requires Resend sender/key and rejects development transport or OTP_DEV_EXPOSE=true/1. Responses independently guard production exposure. Development/test transport sends nothing and logs no codes; nonproduction devOtpCode compatibility remains. See ops/README.md and Evidence/PMA-01_OTP_DELIVERY_FIX.md. Unit/mocked HTTP verification passed; real Postgres and authorized external delivery remain BLOCKED. PMA-01 is not fully resolved until both production-equivalent deliveries succeed.
+
+## Microsoft Authenticator TOTP (2026-10-30)
+
+With FEATURE_TOTP=true, a dedicated base64 32-byte TOTP_SECRET_ENCRYPTION_KEY is mandatory. Standard otplib 13.5 RFC 6238 (SHA-1, six digits, 30 seconds, at most +/- one step) replaces email challenges for enrolled identities. The existing pending-session/challenge TTL, failed-attempt budget, login quotas, status checks and token rotation remain in force. Login returns verificationMethod=email|totp; no TOTP code is generated for display or sent by email. A successful code's time step is updated under the plane-specific authenticator row lock in the same transaction as session promotion. Recovery codes use 128-bit random values, SHA-256 identity/plane-scoped hashes, and atomic one-use removal.
+
+Enrollment uses a full, live, already-MFA-authenticated session plus fresh password verification. Pending/password-only sessions, API keys, and impersonation cannot enroll. Initial accounts without a trusted session must first complete authorized email OTP; there is no password-only bootstrap or implemented support bypass. In explicit TOTP-only production mode (OTP_DELIVERY_TRANSPORT=disabled), email delivery fails closed with 503; enrolled TOTP logins still work, but unenrolled accounts cannot newly sign in. This qualifies the unconditional production-email statements in the earlier PMA-01 update.
+
+GET /totp, POST /totp/enroll and POST /totp/confirm exist under both auth prefixes. QR/manual secrets are returned only during authenticated setup, never via URL/logs/storage. Pending enrollment is session-bound, expires in ten minutes and has five guesses. Activation requires a valid new-device code, consumes that step, issues ten recovery codes once, and revokes other sessions. Replacement additionally requires existing authenticator/recovery proof; the old factor remains until confirmation. Session-before-factor lock ordering protects replacement/revocation against concurrent login. Admin enrollment/activation audit writes are atomic and contain no secrets.
+
+AES-256-GCM ciphertext is randomized and authenticated with plane/user AAD. The separate merchant_authenticators/admin_authenticators tables are introduced only by approved migration 0085. No encrypted secret key fallback is embedded. Production recovery/rotation requires secret-manager and operational policy; lost all factors means controlled identity verification outside this code, never a bypass. Details and verification limits: Evidence/MICROSOFT_AUTHENTICATOR_INTEGRATION.md.

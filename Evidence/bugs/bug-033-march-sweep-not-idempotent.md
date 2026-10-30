@@ -1,6 +1,6 @@
 # BUG-033 — March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window
 
-**Fixed (2026-10-30):** scripts/reconcile_march.ts — do-not-run header; amounts, accounts, and posting are unchanged.
+**Status (2026-10-30): `fix-verified` / `VERIFIED_FIXED` for future execution prevention.** PMA-08 removed database/posting code; direct execution exits 1 and import is side-effect free. The previous do-not-run header alone was insufficient. Historical financial data remains unverified and uncorrected. See [validation report](../PMA-08_RECONCILIATION_SAFETY_FIX.md). Sections below preserve the original defect analysis; their posting references describe the baseline implementation, not the retired current entrypoint.
 
 ## 1. Summary
 

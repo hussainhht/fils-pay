@@ -1,3 +1,5 @@
+import { authenticatorRoutes } from "./authenticator.js";
+import { readAuthenticator, verifyAuthenticatorFactor } from "../auth/totp.js";
 import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, merchantAccountKey } from "../auth/loginLimits.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { verifyPassword } from "../auth/passwords.js";
@@ -50,6 +52,7 @@ interface MerchantUserRow {
  * promoted.
  */
 export async function authRoutes(app: FastifyInstance): Promise<void> {
+  await app.register(authenticatorRoutes, { plane: "merchant" });
   /** POST /v1/auth/login — step 1. */
   app.post<{ Body: LoginBody }>("/login", async (request, reply) => {
     const { merchantId, email, password } = request.body ?? {};
@@ -77,7 +80,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
 
     await clearLoginAttempt(app.db, attemptId);
-    const { code, expiresAt, rawToken } = await withTransaction(app.db, async (client) => {
+    const { code, expiresAt, rawToken, challengeId, verificationMethod } = await withTransaction(app.db, async (client) => {
       await assertChallengeAllowed(client, reply, app.config, { plane: "merchant", userId: user.id });
       const challenge = await issueChallenge(client, {
         merchantUserId: user.id,
@@ -92,10 +95,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         ipAddress: request.ip,
         userAgent: (request.headers["user-agent"] as string | undefined) ?? null,
       });
-      return { code: challenge.code, expiresAt: challenge.expiresAt, rawToken: session.rawToken };
+      const factor = await readAuthenticator(client, app.config, "merchant", user.id);
+      return { code: challenge.code, expiresAt: challenge.expiresAt, rawToken: session.rawToken, challengeId: challenge.id,
+        verificationMethod: factor?.enabled_at ? "totp" as const : "email" as const };
     });
 
-    sendOtpCode(request.log, app.config, { merchantUserId: user.id, email: user.email }, code);
+    if (verificationMethod === "email") {
+      await sendOtpCode(request.log, app.config, { merchantUserId: user.id, email: user.email }, { id: challengeId, code, expiresAt });
+    }
 
     reply.setCookie(app.config.cookieName, rawToken, {
       httpOnly: true,
@@ -107,10 +114,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     const responseBody: Record<string, unknown> = {
       otpRequired: true,
+      verificationMethod,
       otpExpiresAt: expiresAt.toISOString(),
     };
-    // dev only — stripped in production builds
-    if (app.config.otpDevExpose) {
+    // Development exposure is guarded at both configuration and response boundaries.
+    if (verificationMethod === "email" && app.config.nodeEnv !== "production" && app.config.otpDevExpose) {
       responseBody.devOtpCode = code;
     }
     reply.code(200).send(responseBody);
@@ -120,7 +128,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     "/otp/verify",
     async (request, reply) => {
       const code = request.body?.code;
-      if (!code) {
+      if (typeof code !== "string" || !code || code.length > 64) {
         throw new BadRequestError("invalid_request", "code is required");
       }
 
@@ -154,7 +162,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           await revokeSession(client, pending.sessionId);
           return { error: new TooManyRequestsError("too_many_attempts") } as const;
         }
-        if (!verifyOtpCode(code, challenge.code_salt, challenge.code_hash)) {
+        const factorValid = await verifyAuthenticatorFactor(client, app.config, "merchant", pending.merchantUserId, code);
+        if (!(factorValid ?? verifyOtpCode(code, challenge.code_salt, challenge.code_hash))) {
           await client.query(`UPDATE otp_challenges SET attempt_count = attempt_count + 1 WHERE id = $1`, [challenge.id]);
           // Return the failure so the attempt increment commits before the
           // HTTP error is thrown outside the transaction.
@@ -201,6 +210,9 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const resend = await withTransaction(app.db, async (client) => {
       const pending = await lookupPendingSession(client, rawToken, true);
       if (!pending || !pending.otpChallengeId) throw new UnauthorizedError("no_pending_session");
+      if ((await readAuthenticator(client, app.config, "merchant", pending.merchantUserId))?.enabled_at) {
+        throw new BadRequestError("authenticator_code_required", "Use your authenticator or an unused recovery code.");
+      }
       const existing = await client.query<{
         id: string; created_at: Date; attempt_count: number; max_attempts: number;
         consumed_at: Date | null; expires_at: Date;
@@ -242,15 +254,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
     if ("error" in resend) throw resend.error;
     const { code, expiresAt } = resend.challenge;
-    sendOtpCode(
+    await sendOtpCode(
       request.log,
       app.config,
       { merchantUserId: resend.pending.merchantUserId, email: resend.email },
-      code,
+      resend.challenge,
     );
 
     const responseBody: Record<string, unknown> = { otpRequired: true, otpExpiresAt: expiresAt.toISOString() };
-    if (app.config.otpDevExpose) {
+    if (app.config.nodeEnv !== "production" && app.config.otpDevExpose) {
       responseBody.devOtpCode = code;
     }
     reply.code(200).send(responseBody);

@@ -174,7 +174,7 @@ fils-pay/
 - `db/migrations/`: 72 migration scripts defining all platform tables, triggers, and indices.
 - `db/seed/`: Fixture tables and test merchants; guarded by `ALLOW_DESTRUCTIVE_SEED=1`.
 - `scripts/expire_holds.ts`: Sweeps expired authorization holds.
-- `scripts/reconcile_march.ts`: Manual finance reconciliation script for March scheme residue.
+- `scripts/reconcile_march.ts`: Retired CLI (exits 1); pure historical test helpers only, no database or posting capability (PMA-08).
 - `ops/docker-compose.yml`: Local orchestrator for PostgreSQL 16, migrate, api, settlement, and reporting.
 - `ops/preview.mjs`: Node.js Vite server orchestrator proxying web (:5173) and admin (:5174) to API (:3000).
 - `ops/setup-env.mjs`: Generates local keys and tokens into `ops/.env.docker`.

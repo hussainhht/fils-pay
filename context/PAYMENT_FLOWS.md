@@ -60,7 +60,7 @@ The transaction lifecycle enforces strict, irreversible state transitions:
      - `amount_fils`: Matches authorized amount.
      - `status`: `'active'`.
      - `expires_at`: `now() + INTERVAL '7 days'`.
-  3. Enqueues outbox event: `transaction.authorized`.
+  3. Records an `authorized` transaction timeline event; there is no current `transaction.authorized` outbox event. Definitive authorize/capture declines enqueue `payment.failed` atomically with their completed idempotency claim; authorization declines have no transaction row. Ambiguous provider errors emit no failure event.
 - **Acquirer Simulator:** Calls `acquirer.authorize(...)` with mock latency (100–400 ms) and simulated failure rate (2%).
 
 ---
@@ -78,7 +78,10 @@ The transaction lifecycle enforces strict, irreversible state transitions:
   6. **Amount Headroom:** Capture amount must not exceed `transaction.amount_fils - transaction.captured_fils`.
 - **Acquirer Execution:**
   - Invokes acquirer client `acquirer.capture(...)`.
-  - *Note on BUG-061:* The external acquirer call currently occurs while holding the DB transaction open. Work is in progress to implement durable pending state and decouple the network I/O from the row lock.
+  - Capture prepares a durable idempotency claim, commits, calls the acquirer,
+    then applies the outcome in a short transaction. Prepare and apply both
+    lock the idempotency claim before the transaction row; this ordering was
+    verified by concurrent same-key decline regression in the webhook audit.
 - **Financial Finalization:**
   1. Updates `transactions`:
      - Increments `captured_fils`.
@@ -149,3 +152,7 @@ The transaction lifecycle enforces strict, irreversible state transitions:
        - `customer_settlement`: CREDIT `refundAmount`
      - Deletes reservation from `pending_refund_reservations`.
      - Enqueues outbox event: `refund.created`.
+
+## Current reservation clarification (2026-10-30 source review)
+
+The SQL example above describes the historical timeout-based claim. Current paymentLinks/pay.ts binds a durable reservation to payment_key_hash and payment_request_hash; only the identical key/request may resume a reserved link, regardless of timeout. derivePublicStatus keeps timed-out reservations processing. Definite authorization declines release the reservation; ambiguous transport/capture outcomes retain it. This documentation correction accompanies a UI-only redesign; no payment implementation changed. Checkout UI still makes a new key for each explicit retry; see KNOWN_ISSUES for the resulting recovery limitation.

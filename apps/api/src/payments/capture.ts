@@ -225,13 +225,8 @@ async function applyCapture(
   acquirerResult: AcquirerCaptureResult,
 ): Promise<CaptureResult> {
   return withTransaction(pool, async (client) => {
-    const lockResult = await client.query<LockedTransactionRow>(
-      `SELECT id, merchant_id, status, amount_fils, captured_fils, refunded_fils, acquirer_reference
-         FROM transactions
-        WHERE id = $1 AND merchant_id = $2
-        FOR UPDATE`,
-      [prepared.transactionId, input.merchantId],
-    );
+    // Match prepareCapture's claim -> transaction lock order. Reversing it
+    // deadlocks an apply against a same-key retry still preparing.
     const stateResult = await client.query<IdempotencyStateRow>(
       `SELECT status, response_status_code, response_body FROM idempotency_keys WHERE id = $1 FOR UPDATE`,
       [prepared.claimId],
@@ -247,6 +242,13 @@ async function applyCapture(
       return { statusCode: state.response_status_code ?? 502, body: state.response_body };
     }
 
+    const lockResult = await client.query<LockedTransactionRow>(
+      `SELECT id, merchant_id, status, amount_fils, captured_fils, refunded_fils, acquirer_reference
+         FROM transactions
+        WHERE id = $1 AND merchant_id = $2
+        FOR UPDATE`,
+      [prepared.transactionId, input.merchantId],
+    );
     const txn = lockResult.rows[0];
     if (!txn) {
       throw new Error("captureTransaction: transaction disappeared before apply");
@@ -255,6 +257,11 @@ async function applyCapture(
     if (acquirerResult.outcome === "declined") {
       const body = { error: "card_captured_declined" };
       await completeIdempotencyKey(client, prepared.claimId, { statusCode: 402, body, resourceId: txn.id });
+      await enqueueEvent(client, {
+        eventType: "payment.failed", aggregateType: "payment_attempt", aggregateId: prepared.claimId,
+        payload: { merchantId: input.merchantId, paymentAttemptId: prepared.claimId, transactionId: txn.id,
+          stage: "capture", amountFils: prepared.requestedAmount, reason: "card_declined" },
+      });
       return { statusCode: 402, body };
     }
     if (acquirerResult.outcome === "error") {

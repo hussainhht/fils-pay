@@ -63,12 +63,12 @@ Every major subsystem across the repository was inspected directly against curre
 
 The following contradictions between historical documentation and current code are formally tracked:
 
-1. **ADR 0002 Residue Automation:** Documented as "Accepted, implemented"; code inspection verifies that no automated residue journal posting exists in `apps/settlement`.
+1. **ADR 0002 Residue Automation (PMA-08 source review, 2026-10-30):** Current `CloseBatch` posts scheme-line gross-minus-truncated residue to the ADR accounts for new closes. Earlier context claiming no implementation existed is stale. Historical March data remains unverified.
 2. **ADR 0003 Date Windows:** Monthly reporting scripts use UTC calendar month boundaries, diverging by 3 hours from the Asia/Bahrain business day window mandated in `docs/ARCHITECTURE.md`.
 3. **ADR 0004 Balance Rebuild Source:** The console rebuild queries `merchant_payable_position` (gross scheme export lines), omitting fees, refunds, and payouts, causing extreme balance drift compared to the authoritative CLI ledger walk (`BUG-011`).
 4. **ADR 0006 Display Adjustments:** Administrative balance adjustments mutate `merchant_balances.cached_payable_fils` without posting to `ledger_entries`, causing adjustments to be wiped on any ledger rebuild (`BUG-038`).
 5. **Hold Janitor Truncation:** `docs/HANDOVER.md` claims holds are never deleted and flipped with an UPDATE. Source code in `scripts/expire_holds.ts` executes `DELETE`, and when 0 expired holds exist, deletes the entire `holds` table (`BUG-013`).
-6. **Reconciliation Idempotency:** `docs/RUNBOOK.md` claims `scripts/reconcile_march.ts` checks for existing postings and is safe to re-run. Code generates a new random UUID `entryGroupId` on every run with no deduplication check (`BUG-033`).
+6. **Retired Reconciliation (PMA-08, 2026-10-30):** `scripts/reconcile_march.ts` now refuses direct execution and contains no database/posting implementation. Runbook rerun guidance was removed; pure historical helpers remain for tests. Future execution prevention is verified; historical ledger impact is unverified.
 7. **Webhook Signing Serialization:** Runbook instructs merchants to re-serialize JSON before HMAC verification; the real defect is that FilsPay computes HMAC over serialized JSON rather than raw wire bytes (`BUG-045`).
 
 ---

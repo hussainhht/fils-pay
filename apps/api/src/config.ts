@@ -29,6 +29,14 @@ export interface Config {
   otpCodeLength: number;
   otpMaxAttempts: number;
   otpDevExpose: boolean;
+  featureTotp: boolean;
+  totpSecretEncryptionKey: string;
+  otpDelivery: {
+    transport: "development" | "resend" | "disabled";
+    from: string;
+    apiKey: string;
+    timeoutMs: number;
+  };
 
   argon2MemoryKib: number;
   argon2TimeCost: number;
@@ -190,6 +198,32 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
 
   const nodeEnv = parseNodeEnv(env.NODE_ENV);
+  const featureTotp = parseBoolEnv(env.FEATURE_TOTP, false);
+  const totpSecretEncryptionKey = env.TOTP_SECRET_ENCRYPTION_KEY ?? "";
+  if (featureTotp && (!BASE64_RE.test(totpSecretEncryptionKey) || Buffer.from(totpSecretEncryptionKey, "base64").length !== 32)) {
+    throw new Error("loadConfig: FEATURE_TOTP requires TOTP_SECRET_ENCRYPTION_KEY (base64, exactly 32 bytes)");
+  }
+
+  const otpTransport = env.OTP_DELIVERY_TRANSPORT ?? (nodeEnv === "production" ? "resend" : "development");
+  if (otpTransport !== "development" && otpTransport !== "resend" && otpTransport !== "disabled") {
+    throw new Error("loadConfig: OTP_DELIVERY_TRANSPORT must be development, resend or disabled");
+  }
+  if (nodeEnv === "production" && otpTransport !== "resend" && !(featureTotp && otpTransport === "disabled")) {
+    throw new Error("loadConfig: production requires OTP_DELIVERY_TRANSPORT=resend, or disabled with FEATURE_TOTP");
+  }
+  if (nodeEnv === "production" && parseBoolEnv(env.OTP_DEV_EXPOSE, false)) {
+    throw new Error("loadConfig: OTP_DEV_EXPOSE cannot be enabled in production");
+  }
+  const otpFrom = env.OTP_EMAIL_FROM ?? "";
+  const otpApiKey = env.OTP_RESEND_API_KEY ?? "";
+  const otpTimeoutMs = Number(env.OTP_DELIVERY_TIMEOUT_MS ?? "5000");
+  if (!Number.isSafeInteger(otpTimeoutMs) || otpTimeoutMs < 100 || otpTimeoutMs > 30_000) {
+    throw new Error("loadConfig: OTP_DELIVERY_TIMEOUT_MS must be an integer from 100 to 30000");
+  }
+  if (otpTransport === "resend" && (!/^[^\s@<>,;:"\\]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(otpFrom) ||
+      !otpApiKey.trim() || /\s/.test(otpApiKey))) {
+    throw new Error("loadConfig: resend requires OTP_EMAIL_FROM (single email address) and OTP_RESEND_API_KEY");
+  }
 
   const settlementInternalToken = env.SETTLEMENT_INTERNAL_TOKEN ?? "";
   if (nodeEnv === "production" && settlementInternalToken === "") {
@@ -203,6 +237,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
   return {
     nodeEnv,
+    featureTotp,
+    totpSecretEncryptionKey,
     port: parseIntEnv(env.PORT, 3000),
     databaseUrl,
 
@@ -216,7 +252,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     otpTtlMinutes: parseIntEnv(env.OTP_TTL_MINUTES, 5),
     otpCodeLength: parseIntEnv(env.OTP_CODE_LENGTH, 6),
     otpMaxAttempts: parseIntEnv(env.OTP_MAX_ATTEMPTS, 5),
-    otpDevExpose: parseBoolEnv(env.OTP_DEV_EXPOSE, nodeEnv !== "production"),
+    otpDevExpose: nodeEnv !== "production" && parseBoolEnv(env.OTP_DEV_EXPOSE, true),
+    otpDelivery: { transport: otpTransport, from: otpFrom, apiKey: otpApiKey, timeoutMs: otpTimeoutMs },
 
     argon2MemoryKib: parseIntEnv(env.ARGON2_MEMORY_KIB, 19_456),
     argon2TimeCost: parseIntEnv(env.ARGON2_TIME_COST, 2),

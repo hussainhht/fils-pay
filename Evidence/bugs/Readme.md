@@ -1,6 +1,6 @@
 # FilsPay — Master Bug Registry
 
-One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential and unique (`BUG-001` through `BUG-090`).
+One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential and unique (`BUG-001` through `BUG-091`).
 
 **Ground truth is always the code.** Tickets, ADRs, and comments are leads. They are not proof.
 
@@ -84,7 +84,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-030](bug-030-split-payout-missing-fils.md) |
 | **BUG-031** | Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-031](bug-031-platform-volume-int32-overflow.md) |
 | **BUG-032** | TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-032](bug-032-ts-and-go-fee-formulas-diverge.md) |
-| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-033](bug-033-march-sweep-not-idempotent.md) |
+| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | RETIREMENT VERIFIED; HISTORICAL DATA UNVERIFIED | `fix-verified` | Ledger and financial calculations | [BUG-033](bug-033-march-sweep-not-idempotent.md) |
 | **BUG-034** | Scheme Export Rounds Amounts While Ledger Truncates Creating Persistent Surplus | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-034](bug-034-scheme-export-rounding-always-over.md) |
 | **BUG-035** | MDR Recalculation Rewrites Batches That Are Already Paid Out | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-035](bug-035-mdr-recalc-rewrites-paid-batches.md) |
 | **BUG-036** | Daily Settlement Close Runs at 03:15 Bahrain Time Instead of Midnight | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-036](bug-036-daily-close-runs-at-3am.md) |
@@ -142,6 +142,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-088** | Promotional Discount Parser Multiplies BD by 100 | `High` | RUNTIME REPRODUCED | Fixed | Ledger and financial calculations | [BUG-088](bug-088-promotional-discount-times-100.md) |
 | **BUG-089** | Admin Invite Codes Are Drawn from Math.random | `Medium` | RUNTIME REPRODUCED | Fixed | Admin console and controls | [BUG-089](bug-089-admin-invite-math-random.md) |
 | **BUG-090** | Hex Compare Treats a Trailing Nibble as Equal | `Medium` | RUNTIME REPRODUCED | Fixed | Webhooks | [BUG-090](bug-090-hex-compare-drops-trailing-nibble.md) |
+| **BUG-091** | Expired Payment Links Are Still Displayed as Active | `Medium (P2)` | SOURCE-FUNCTION REPRODUCED; UI STATICALLY CONFIRMED | confirmed-current | Frontend / merchant API | [BUG-091](bug-091-expired-payment-links-displayed-active.md) |
 
 ---
 
@@ -202,7 +203,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Fixed | [bug-030-split-payout-missing-fils.md](bug-030-split-payout-missing-fils.md) |
 | **BUG-031** | Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD | `High` | STATICALLY CONFIRMED | Fixed | [bug-031-platform-volume-int32-overflow.md](bug-031-platform-volume-int32-overflow.md) |
 | **BUG-032** | TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge | `High` | STATICALLY CONFIRMED | Fixed | [bug-032-ts-and-go-fee-formulas-diverge.md](bug-032-ts-and-go-fee-formulas-diverge.md) |
-| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | STATICALLY CONFIRMED | Fixed | [bug-033-march-sweep-not-idempotent.md](bug-033-march-sweep-not-idempotent.md) |
+| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | RETIREMENT VERIFIED; HISTORICAL DATA UNVERIFIED | `fix-verified` | [bug-033-march-sweep-not-idempotent.md](bug-033-march-sweep-not-idempotent.md) |
 | **BUG-062** | Transaction CSV Export Retains Formula Prefixes Enabling Spreadsheet Injection | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-062-transaction-csv-retains-formula-cells.md](bug-062-transaction-csv-retains-formula-cells.md) |
 | **BUG-088** | Promotional Discount Parser Multiplies BD by 100 | `High` | RUNTIME REPRODUCED | Fixed | [bug-088-promotional-discount-times-100.md](bug-088-promotional-discount-times-100.md) |
 
@@ -274,7 +275,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-055** | Double-Entry Ledger and Audit Tables Lack Immutability Database Triggers | `High` | STATICALLY CONFIRMED | Fixed | [bug-055-ledger-and-audit-not-immutable.md](bug-055-ledger-and-audit-not-immutable.md) |
 | **BUG-081** | Migration Runner Lacks Checksum Verification Allowing Retroactive File Edits | `Low` | STATICALLY CONFIRMED | Open | [bug-081-migration-runner-has-no-checksum.md](bug-081-migration-runner-has-no-checksum.md) |
 
-### Frontend (9)
+### Frontend (10)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
@@ -287,6 +288,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-083** | View as Merchant Action Opens Unregistered Web Root Route | `Low` | STATICALLY CONFIRMED | Fixed | [bug-083-impersonation-opens-unregistered-web-root.md](bug-083-impersonation-opens-unregistered-web-root.md) |
 | **BUG-085** | Merchant Dashboard Document Title Says Checkout | `Low` | RUNTIME REPRODUCED | Fixed | [bug-085-dashboard-document-title-says-checkout.md](bug-085-dashboard-document-title-says-checkout.md) |
 | **BUG-087** | Checkout Brand Hint Misses Mastercard BIN 2720 | `Low` | RUNTIME REPRODUCED | Fixed | [bug-087-mastercard-2720-brand-hint-unknown.md](bug-087-mastercard-2720-brand-hint-unknown.md) |
+| **BUG-091** | Expired Payment Links Are Still Displayed as Active | `Medium (P2)` | SOURCE-FUNCTION REPRODUCED; UI STATICALLY CONFIRMED | confirmed-current | [bug-091-expired-payment-links-displayed-active.md](bug-091-expired-payment-links-displayed-active.md) |
 
 ### Infrastructure and configuration (4)
 
@@ -420,7 +422,7 @@ Every report must follow the standardized 17-section structure:
 
 1. Ensure the defect has been verified against the actual codebase.
 2. Check existing entries in the Master Bug Index to prevent duplicates.
-3. Assign the next available sequential ID (`BUG-091`).
+3. Assign the next available sequential ID (`BUG-092`).
 4. Follow the 17-section template.
 5. Add an entry to the Master Bug Index and the relevant Category section in this `Readme.md`.
 

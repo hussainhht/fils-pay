@@ -96,6 +96,94 @@ tables and cascading dependents; fixture data is not safe for shared databases.
 
 ## Images and environment
 
+### OTP email delivery (PMA-01)
+
+Merchant/admin login emails use the stored user email after password verification.
+There is no SMS/phone identity path. Both flows share a Resend HTTPS adapter,
+using Node's built-in fetch with no new package or service. Merchant resend uses
+the same adapter; admin has no resend endpoint in the existing API.
+
+In production, supply these settings through your deployment secret configuration
+(never commit a populated env file):
+
+| Name | Requirement |
+|---|---|
+| `NODE_ENV` | `production` |
+| `OTP_DELIVERY_TRANSPORT` | `resend` (production default); `disabled` is permitted only with FEATURE_TOTP in production, and rejects email delivery |
+| `OTP_EMAIL_FROM` | Single bare sender email address on a verified Resend domain |
+| `OTP_RESEND_API_KEY` | Resend API key authorized to send for that domain |
+| `OTP_DELIVERY_TIMEOUT_MS` | Integer 100-30000 ms; default 5000 |
+| `OTP_DEV_EXPOSE` | Unset/false in production; true/1 makes startup fail |
+
+Production email mode fails before DB connection if delivery configuration is missing.
+The local setup script still generates only development settings. Local/test
+defaults send nothing and log metadata only; existing `devOtpCode` responses
+remain available outside production. No raw codes are logged in any environment.
+
+Submission occurs after the challenge/session transaction commits. Login only
+sets its pending cookie after provider acceptance; a provider error/timeout gives
+503 `otp_delivery_unavailable` without exposing upstream details. Provider
+acceptance means queued, not inbox delivery. There is no automatic send retry;
+the provider idempotency key is scoped to plane and challenge. A timed-out send
+may still arrive. After a failed login, retry login within existing challenge-rate
+limits. Merchant resend keeps its 30-second cooldown and inherited guess budget,
+including after failed sends; a new resend replaces the previous code. Failed
+login challenges/sessions expire normally and still count toward issuance limits.
+
+Before public sign-off, authorize a controlled test destination for each plane,
+verify sender/domain credentials, deliver both codes and complete both logins.
+Inspect delivery/bounce status in the provider dashboard. Do not enable
+development exposure as a fallback. Real delivery remains unverified until that
+test is performed; automated tests use mocks and never send mail.
+
+### Microsoft Authenticator / standard TOTP
+
+Apply the approved `db/migrations/0085_authenticators.sql` through the normal
+migration runner, then set `FEATURE_TOTP=true` and provide
+`TOTP_SECRET_ENCRYPTION_KEY` through your secret manager: base64 encoding of
+32 cryptographically random bytes. Keep this dedicated key separate from
+webhook encryption keys; retain encrypted backups securely. Do not replace the
+key without first re-encrypting stored authenticator secrets under a reviewed
+rotation procedure. Losing it can lock out authenticator verification. No key is
+generated or stored in source/config templates by this implementation.
+
+With email bootstrap, retain the Resend settings above. For an explicitly
+TOTP-only deployment use `OTP_DELIVERY_TRANSPORT=disabled`; no email provider is
+then required. **Unenrolled accounts cannot complete a new login in that mode.**
+Enroll them through a trusted existing MFA-authenticated session plus fresh
+password verification, or first restore authorized email delivery and complete
+the existing password + email OTP journey. No password-only bootstrap, API-key
+bootstrap, impersonation bootstrap, or administrator-created MFA bypass exists.
+If no trusted session or recovery factor exists, identity verification and an
+approved recovery process are required outside this implementation. Do not edit
+the database to mark a pending session authenticated.
+
+Open **Account security** at `/dashboard/security` (merchant) or `/security`
+(admin). Select **Other account** in Microsoft Authenticator and scan the local
+QR, or enter the manual secret as a time-based account. Confirm a code before
+activation and store the ten recovery codes securely. Setup lasts ten minutes,
+is bound to that session, and permits five incorrect confirmations. Recovery
+codes are one-use. Replacement requires a trusted session, current password,
+and current authenticator/recovery proof; it preserves the old device until
+new confirmation, rotates recovery codes, and revokes other sessions.
+
+Enrolled logins use SHA-1 RFC 6238, 6 digits, 30 seconds, with at most one step
+of clock drift in either direction. Synchronize all API hosts using NTP. The
+confirmation step and each accepted login step are consumed globally per user,
+under a database lock. A code just used to confirm/setup cannot immediately be
+reused for login: wait for the next code or use one recovery code. Never disable
+FEATURE_TOTP as an account recovery shortcut; this changes the authentication
+policy and must be a deliberate deployment decision.
+
+Serve both UIs/API over HTTPS and preserve the original Host header at the
+reverse proxy; management requests validate Origin against that host. Disable
+request/response body capture for authentication endpoints in proxies/APM:
+passwords, setup secrets, codes and recovery responses must not enter logs or
+caches. New management responses carry no-store. No Microsoft Entra ID or push
+approval infrastructure is used. Database integration and an actual Microsoft
+Authenticator scan/login still require deployment verification; see
+`Evidence/MICROSOFT_AUTHENTICATOR_INTEGRATION.md`.
+
 `Dockerfile.node` uses Node 22 and the root lockfile for API, reporting,
 migrations, and seed. `Dockerfile.go` builds a static settlement binary in a
 separate builder image; its runtime includes CA certificates and timezone data.

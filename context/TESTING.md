@@ -4,7 +4,45 @@
 
 ---
 
+## BUG-033 retirement verification (2026-10-30)
+
+- `scripts/reconcile_march.safety.test.ts`: four database-free regressions cover
+  dependency/poster removal, repeated CLI refusal with/without configuration,
+  silent import with preserved pure helpers, and package/ops automation references.
+  A loader rejects `pg` before evaluation, so baseline testing cannot run the poster.
+- Baseline: three failures, one pass; fixed: four passes. Existing pure-helper and
+  janitor/SQL-filter regressions also pass (11 tests total).
+- Full `npm.cmd run typecheck`: passed. Windows sandbox blocked tsx user lookup;
+  the approved run outside the sandbox succeeded.
+- March DB stress test and supported batch DB integration: not verified without
+  a configured, verified disposable database. See the safety evidence report.
+
 ## 1. Testing Frameworks & Philosophy
+
+### Webhook audit verification (2026-10-30)
+
+`webhooks/auditLifecycle.test.ts` exercises real migrated PostgreSQL and a real
+loopback HTTP receiver: capture, 500/retry identity, partial/full refund, duplicate
+requests, decline/expiry publication, eight concurrent same-key declines, expiry
+scanner contention, rollback invisibility, abandoned leases and malformed inbound
+callback fields. `auditTransport.test.ts` covers DNS-time development SSRF, strict
+jitter cap and real slow-header/body timeouts. Baseline lifecycle tests: 1 pass,
+3 failures; baseline transport tests: 1 pass, 2 failures. Fixed focused suite:
+10/10 passed. A later full API run exposed a same-key capture lock-order deadlock;
+apply now matches prepare's idempotency-claim -> transaction lock order.
+
+Use an isolated migrated `filspay_test_*` database: existing TOTP tests reject
+other database names. All 79 existing migrations applied cleanly to PostgreSQL
+18.6; no seed/truncation. Reporting 13/13 and events 4/4 passed, both UI builds
+passed, repository typecheck passed. Actual HTTP registration/authorize/capture
+and background delivery, raw-byte signature verification, process-restart pending
+recovery, API health/readiness and both Vite proxies were also verified. Full
+command results and limits are in `Evidence/webhook_audit_and_implementation.md`.
+Docker/PostgreSQL 16 parity and production network/receiver behavior were not run.
+Final API suite: 557 passed, zero failed/skipped. Go `go test ./...` against a
+separate fresh migrated database and settlement build also passed with a temporary
+Go cache after default-cache Windows ACL failure. The isolated PostgreSQL cluster
+was stopped after verification; the user's existing services were preserved.
 
 FilsPay enforces strict test-driven verification for all financial, security, and authorization logic:
 1. **Never Weaken Tests:** Never delete, skip, or modify an existing test to produce a green result. A failing test signals an architectural defect.
@@ -132,3 +170,29 @@ Baseline `850504a2e500997fe1323b227354ea1d6fe50ea0`, initially clean. Existing B
 - Runtime: existing health/ready and Vite health 200; real PostgreSQL 16.15 SELECT confirmed. Two isolated test databases created; all **78 existing migrations** applied, no migration source edits, seed/truncation/destructive cleanup. No real-provider payment calls. Existing services left running. Restricted-shell tsx failed before tests; approved unrestricted checks succeeded.
 
 Not verified: physical mobile/other engines, OS clipboard, screen-reader speech, real providers or broader admin/KYC/settlement/reporting runtime paths. The full API suite remains red for the unrelated jitter assertion. Evidence is maintained in the existing FEAT-003, not a separate feature report.
+
+## Merged main and payment-link verification — 2026-10-30
+
+The merged source incorporates main's deterministic jitter assertion, resolving the earlier feature-branch test failure. `npm.cmd run test -w @filspay/web`: **67 passed**; `npm.cmd run typecheck` and `npm.cmd run build -w @filspay/web`: **PASS**. Installed Edge checks: **15 checkout** and **14 payment-link amount/expiration** mocked browser groups passed; the checkout script now waits for the redesigned loading state. Desktop/390px/320px layout, checkout retry identity, amount editing and expiration selections were exercised. Screenshots use sandbox fixtures.
+
+Full `npm.cmd run test -w @filspay/api`, with `DATABASE_URL` pointing to a fresh local `filspay_test_merge_<digits>` database after applying the 79 existing migrations: **566 passed, 0 failed, 0 skipped**. An earlier run without `DATABASE_URL` failed database suites; a subsequent isolated database with the wrong name yielded **564 passed, 2 failed** because the TOTP tests enforce the `filspay_test_*` naming safety guard. No tests were weakened. Both test databases were retained without truncation/drop. No real provider calls, production migration or seed was used. Broader running-stack verification was not repeated for this merge; earlier feature-branch live creation results remain historical. See `Evidence/implementation/agent-main-merge.md`.
+
+## PMA-01 delivery regression coverage (2026-10-30)
+
+`apps/api/src/auth/otpDelivery.new.test.ts` exercises both notifiers with mocked fetch: payload/recipient/plane/idempotency, sanitized provider errors, network/body timeouts, startup validation, production exposure refusal and no-code logs. `apps/api/src/routes/otpDelivery.new.test.ts` uses real Fastify handlers and crypto with an in-memory query fixture: both login/verify paths, after-commit submission, no success cookie on failure, consumed/expired/incorrect/exhausted OTPs, cookie separation, account/challenge limits and merchant resend semantics. These are not Postgres integration tests and do not prove locks/concurrency or inbox delivery. Existing `routes/auth-security.new.test.ts`, `auth/forkBatch1.new.test.ts` and DB-backed auth suites remain required against an identified isolated migrated database. See Evidence/PMA-01_OTP_DELIVERY_FIX.md for exact executed command/counts and blockers.
+
+## Microsoft Authenticator verification (2026-10-30)
+
+Focused checks only, per user request to avoid overtesting. auth/totp.new.test.ts covers RFC vectors, drift bounds, AES-GCM tamper/plane/user isolation, QR URI, recovery entropy/scoping and atomic-helper behavior. routes/otpDelivery.new.test.ts additionally exercises real Fastify TOTP handlers over an in-memory SQL fixture: enrollment ownership, Origin/impersonation, confirmation expiry/attempts/session binding, login replay, recovery use and replacement. These mocks do not prove PostgreSQL locking. routes/totp.integration.test.ts contains two real local-test-DB scenarios for concurrent replay/recovery, factor replacement/session revocation, and shared-email merchant tenant isolation; both skip without DATABASE_URL. They were not run against Postgres here. Evidence/MICROSOFT_AUTHENTICATOR_INTEGRATION.md records commands, counts and deployment/device blockers.
+
+## PMA-08 retired reconciliation safety (2026-10-30)
+
+`node --import tsx --test scripts/reconcile_march.test.ts scripts/reconcile_march.retirement.test.ts`: 6/6 pass. New tests cover dependency/posting removal, CLI refusal (twice each with absent and synthetic database configuration), silent import with helper compatibility, and absence of package/automation invocations. A loader guard rejects pg before module evaluation; no historical posting logic or database was executed. Baseline safety tests failed as expected. `npm.cmd run typecheck` passes. Database-backed reconciliation stress and settlement runtime checks were not run: no DATABASE_URL or Docker is available. Full Go verification outcome is recorded in Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md.
+
+## Checkout UI redesign (2026-10-30)
+
+Focused validation completed: web suite 45/45, simulator 6/6, payment-link pay/status/serialization unit tests 13/13, production web build and full repository typecheck passed. Seven new checkout render/callback tests use React server rendering and inspect actual JSX callbacks; they do not prove browser interactions or payment integration. No lint script/configuration is present. Browser host/native automation unavailable; visual checks at 375, 768, 1024 and 1440, keyboard checks and screenshots were not run. No identified isolated DATABASE_URL or Docker executable: DB-backed checkout/recovery tests not run. Existing API /healthz and /readyz returned 200, which does not verify a current real DB query. User requested no further testing after these focused checks. Screenshot fixture: node scripts/checkout-preview.mjs; original baseline: add --before. See Evidence/ui_checkout_redesign.md.
+
+### Checkout screenshot regression follow-up (2026-10-30)
+
+One added intrinsic-SVG-sizing regression was observed failing before the fix (from apps/web, to use its JSX configuration). After the fix: web suite 46/46, web build and full repository typecheck passed. HTTP checks of the real localhost:5173 CSS/module bodies now assert layout selectors and explicit SVG sizes rather than merely HTTP 200. No additional payment integration or broad suites run. Browser screenshots remain unavailable.

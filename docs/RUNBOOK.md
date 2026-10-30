@@ -110,18 +110,15 @@ what the scheme was paid; finance reconciles against it.
 
 ## Month-end residue (finance)
 
-Until residue posting is automated (see ARCHITECTURE, "The scheme
-boundary"), finance runs a month-end script modelled on
-`scripts/reconcile_march.ts`:
+`scripts/reconcile_march.ts` is retired and refuses execution before database
+access (PMA-08 / BUG-033). Do not copy or reactivate its historical posting
+logic: it had no deduplication and used incorrect amounts/accounts and scope.
 
-1. Copy the script, change the window constants at the top to the new
-   month (UTC calendar month, `YYYY-MM-01T00:00Z` to the first of the next
-   month).
-2. Run it once against production with finance on the call.
-3. Attach the log from `scripts/out/` to the month-end ticket.
-
-The script checks for an existing posting with the same description, so a
-second run is a no-op.
+Current `CloseBatch` posts scheme-line residue for new closes. Historical
+March corrections require a separately approved financial remediation design,
+including read-only investigation, correct amounts/accounts/windows, stable
+operation identity, and review of any previous postings. No historical repair
+is authorized by this runbook. See `Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md`.
 
 > **Huda** (#fp-finance): please don't run anything for April onwards until March (FP-187) is resolved
 

@@ -8,6 +8,7 @@ import "./CheckoutPage.css";
 import { CheckoutFrame } from "./CheckoutFrame.js";
 import { CardPaymentForm } from "./CardPaymentForm.js";
 import { linkHasExpired } from "./cardInput.js";
+import { CheckoutMerchant, CheckoutSummary, CheckoutTestInfo } from "./CheckoutDetails.js";
 
 type LoadState =
   | { kind: "loading" }
@@ -107,14 +108,14 @@ function CheckoutSession({ token }: { token: string | undefined }) {
   if (loadState.kind === "loading") {
     return (
       <CheckoutFrame>
-        <p className="fp-loading-state" role="status">Loading...</p>
+        <div className="checkout-loading" role="status"><span className="checkout-spinner" aria-hidden="true" /><h1>Preparing your checkout</h1><p>Loading payment details...</p></div>
       </CheckoutFrame>
     );
   }
 
   if (loadState.kind === "not_found") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>Payment link not found</h1>
         <p>This payment link does not exist.</p>
       </CheckoutFrame>
@@ -125,10 +126,12 @@ function CheckoutSession({ token }: { token: string | undefined }) {
 
   if (payState.kind === "success") {
     return (
-      <CheckoutFrame result="success">
+      <CheckoutFrame result="success" summary={<CheckoutSummary link={link} />}>
         <h1>Payment successful</h1>
         <p>Thank you — your payment has been received.</p>
-        <dl>
+        <CheckoutMerchant name={link.merchantDisplayName} />
+        <p className="checkout-amount">{formatBhd(toFils(payState.result.amountFils))} <span>BHD</span></p>
+        <dl className="checkout-receipt">
           <dt>Transaction ID</dt>
           <dd>{payState.result.transactionId}</dd>
           <dt>Paid at</dt>
@@ -140,7 +143,7 @@ function CheckoutSession({ token }: { token: string | undefined }) {
 
   if (payState.kind === "terminal") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>Unable to pay</h1>
         <p>{payState.message}</p>
       </CheckoutFrame>
@@ -149,7 +152,7 @@ function CheckoutSession({ token }: { token: string | undefined }) {
 
   if (link.status === "paid") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>Already paid</h1>
         <p>This invoice has already been paid.</p>
       </CheckoutFrame>
@@ -157,7 +160,7 @@ function CheckoutSession({ token }: { token: string | undefined }) {
   }
   if (link.status === "expired" || (link.status === "active" && !attemptKey.current && linkHasExpired(link.expiresAt, now))) {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>Link expired</h1>
         <p>This payment link has expired.</p>
       </CheckoutFrame>
@@ -165,7 +168,7 @@ function CheckoutSession({ token }: { token: string | undefined }) {
   }
   if (link.status === "canceled") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>No longer available</h1>
         <p>This payment link is no longer available.</p>
       </CheckoutFrame>
@@ -174,7 +177,7 @@ function CheckoutSession({ token }: { token: string | undefined }) {
   if (link.status === "processing") {
     return (
       <CheckoutFrame>
-        <h1>Payment processing</h1>
+        <div className="checkout-loading" role="status"><span className="checkout-spinner" aria-hidden="true" /><h1>Payment processing</h1></div>
         <p>A payment is being processed for this link — please wait a moment and refresh.</p>
       </CheckoutFrame>
     );
@@ -185,21 +188,19 @@ function CheckoutSession({ token }: { token: string | undefined }) {
   const submitting = payState.kind === "submitting";
 
   return (
-    <CheckoutFrame>
-      <p className="checkout-test-label">Test checkout</p>
-      <div className="checkout-summary">
-      <h1>{link.merchantDisplayName}</h1>
-      <p className="checkout-amount">{amount} BHD</p>
-      {link.description ? <p className="checkout-description">{link.description}</p> : null}
-      {link.reference ? <p className="checkout-reference">Reference: {link.reference}</p> : null}
-      </div>
+    <CheckoutFrame summary={<CheckoutSummary link={link} />}>
+      <section className="checkout-summary" aria-labelledby="paying-to-title">
+        <p className="checkout-eyebrow" id="paying-to-title">Paying to</p>
+        <CheckoutMerchant name={link.merchantDisplayName} />
+        <div className="checkout-amount-section"><h1>Amount</h1><p className="checkout-amount">{amount} <span>BHD</span></p></div>
+      </section>
 
-      {payState.kind === "declined" ? <p className="checkout-error" role="alert">{payState.message}</p> : null}
+      {payState.kind === "declined" ? <div className="checkout-error" role="alert" id="checkout-payment-error"><strong>Payment not completed</strong><p>{payState.message}</p></div> : null}
 
       <CardPaymentForm amount={amount} submitting={submitting}
         recovery={payState.kind === "declined" && Boolean(payState.recovery)} onPay={handleSubmit} />
 
-      <p className="checkout-help">Test checkout only. Use sandbox card details; no real charges are made.</p>
+      <CheckoutTestInfo />
     </CheckoutFrame>
   );
 }

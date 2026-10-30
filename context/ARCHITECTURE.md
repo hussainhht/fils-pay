@@ -4,6 +4,17 @@
 
 ---
 
+## Retirement safety update (2026-10-30, BUG-033)
+
+`scripts/reconcile_march.ts` is a fail-closed historical entrypoint, not a ledger
+writer. It has no database dependency and refuses CLI execution with exit 1.
+Current `CloseBatch` posts `grossFils - truncated` per scheme line inside its
+batch transaction (credit `card_scheme_clearing`, debit `scheme_rounding_residue`),
+and row-locks the batch before returning a no-op for already closed/paid batches.
+Historical reports claiming no Go residue posting exists are stale at this HEAD.
+Retirement does not backfill prior closes or settle the ADR 0003/0004/0006 and
+HANDOVER policy conflicts; these remain human decisions.
+
 ## 1. Architectural Philosophy & Principles
 
 FilsPay is designed around a single shared PostgreSQL 16 database acting as both the transactional store and the decoupled messaging backbone. The system balances strict financial consistency with distributed microservice responsibilities:
@@ -118,7 +129,7 @@ Settlement executes daily to aggregate captures, deduct MDR fees, disburse net f
 ### 3. Card Scheme Export Boundary
 - Visa and Mastercard clearing requires amounts in 2-decimal formats (e.g. BD with 2 decimal places).
 - The platform quantizes 3-decimal fils amounts to 2 decimals at export time.
-- **Residue Gap:** Quantization creates a fractional residue (1–9 fils per transaction). ADR 0002 intended to journal this residue to `scheme_rounding_residue`, but automated residue posting was never wired into `CloseBatch`.
+- **Scheme Residue (PMA-08 source review, 2026-10-30):** Current `CloseBatch` journals gross-minus-truncated residue per export line as credit `card_scheme_clearing` / debit `scheme_rounding_residue` in its transaction. This applies to new closes only. The retired March CLI has no database or posting implementation; historical corrections need a separate approved design and database investigation.
 
 ---
 
@@ -126,12 +137,20 @@ Settlement executes daily to aggregate captures, deduct MDR fees, disburse net f
 
 FilsPay uses the **Transactional Outbox Pattern** to achieve atomic consistency between database updates and external asynchronous notifications:
 
-1. **Atomic Insertion:** Any business mutation inserts a row into `outbox_events` (`event_type`, `aggregate_id`, `payload`, `status = 'pending'`) within the same PostgreSQL transaction.
-2. **Notification Wakeup:** Upon transaction commit, PostgreSQL triggers `pg_notify('outbox_event_created', event_id)`.
+1. **Atomic Insertion:** Producers insert `outbox_events` (`event_type`, `aggregate_type`, `aggregate_id`, `payload`, nullable `processed_at`) within the same PostgreSQL transaction as their state change. There is no outbox status column; webhook state lives in `webhook_deliveries`.
+2. **Notification Wakeup:** Upon transaction commit, PostgreSQL triggers the `outbox_events_channel` notification.
 3. **Consumers:**
-   - **Webhook Dispatcher (`apps/api`):** Listens for events, looks up registered `webhook_endpoints`, signs payloads with HMAC-SHA256, and delivers HTTP webhooks with exponential backoff.
+   - **Webhook Dispatcher (`apps/api`):** Tracks independent durable `webhook_deliveries`, signs canonical wire bytes with timestamped HMAC-SHA256, leases sends with `SKIP LOCKED`, and retries with capped exponential backoff. Delivery/replay never mutates finances.
    - **Reporting Consumer (`apps/reporting`):** Advances its cursor in `reporting_outbox_cursor` and materializes events into analytics read models (`merchant_daily_volume`).
 4. **Resilience & Polling:** If the `LISTEN` connection disconnects, a background fallback poll queries for pending rows every 5 seconds, guaranteeing at-least-once delivery.
+
+Webhook update (2026-10-30): definitive authorize/capture declines now publish
+`payment.failed` atomically with the completed idempotency claim. A serialized,
+bounded scanner records `payment_link.expired` for active expired links without
+changing their derived status; reserved links are excluded. Delivery to an
+endpoint requires registration before expiry. Reporting filters its own event
+types and ignores these additions. See `docs/WEBHOOKS.md`; finite retries can
+exhaust, so eventual success requires receiver recovery and authorized replay.
 
 ---
 

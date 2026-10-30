@@ -2,6 +2,42 @@
 
 > **Scope:** Persistent audit trail of all updates, additions, and revisions made to the `context/` knowledge base. Every meaningful change to the repository must append an entry here.
 
+## 2026-10-30 — Merge main into payment-link feature branch
+
+- Baselines: feature branch `2679bef60f265b27372905a0aad595cfa98baa39`, `origin/main` `1f88a47ee619e87728219ad531df4dc4e4cbad56`, common ancestor `1c3f99e0c5478e1ff616898cdfc1cd6f5283172d`.
+- Resolved checkout presentation conflicts by retaining main's responsive order summary and the feature branch's card validation, editable inputs, expiration admission and same-key payment recovery. Updated the existing checkout browser harness to wait for main's renamed loading indicator. Combined compatible context records and corrected obsolete checkout and jitter-test issue descriptions. No accepted financial ADR decision changed; ADR 0003/0004/0006 and HANDOVER conflicts remain open human questions.
+- Verification and limitations are recorded in `Evidence/implementation/agent-main-merge.md` and `context/TESTING.md`. No migrations or seeds were modified; existing main migrations were applied to isolated local test databases only.
+
+## 2026-10-30 — Webhook audit and verification
+
+- Baseline `13d8161`; external commit `85803e4` occurred during verification
+  (the audit agent did not commit). Added definitive `payment.failed` and derived
+  `payment_link.expired` notifications using existing outbox/delivery infrastructure.
+- Bounded preparation/transport exception retries, capped final jitter, applied
+  development DNS checks, validated callback field types/UUID/time, and aligned
+  capture apply locks with prepare to remove a reproduced same-key deadlock.
+- Added lifecycle/local receiver, concurrency, rollback, recovery and transport
+  regressions; preserved all four prior envelopes and partner HTTP contracts.
+- Refreshed stale event helper signature/types, notification channel, replay
+  identity, headers and callback route in relevant module/system context.
+- Local raw-byte HMAC delivery and actual process-restart recovery verified;
+  typecheck, reporting/events tests and UI builds passed. Comprehensive final
+  test results and production limits are recorded in
+  `Evidence/webhook_audit_and_implementation.md`. No schema, money or Go changes.
+
+## 2026-10-30 — PMA-08 / BUG-033 retirement safety
+
+- Baseline `1c3f99e0c5478e1ff616898cdfc1cd6f5283172d`; removed the retired March
+  script's DB dependency and poster. CLI exits 1; imports retain pure helpers.
+- Replaced unsafe month-end runbook instructions. Added four safety regressions;
+  11 database-free script tests and repository typecheck pass.
+- Updated scripts module, dependency map, architecture/decision source correction,
+  testing and known issues. BUG-033 becomes `fix-verified` for future prevention.
+- Go settlement suite passes its runnable tests, with DB tests skipped because
+  DATABASE_URL is unset. Historical financial data remains unverified.
+- Evidence: `Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md`. No financial records,
+  migrations, protected money implementation, or supported settlement code changed.
+
 ---
 
 ## 2026-10-30 — FEAT-003 payment-link expiration completion
@@ -110,3 +146,30 @@ When completing any coding task:
 - Verified: 55 web tests; full repository typecheck; web build; 11 Edge browser groups with sandbox API fixtures; all 8 existing payment-link API tests against local PostgreSQL 16.15; real DB SELECT and API/proxy health. Baseline browser regression fails before and passes after. No migrations, seeding or real payments.
 - Feature implementation/evidence added to the existing `Evidence/features/features.md` as FEAT-003. Updated `FRONTEND`, `PAYMENT_FLOWS`, `modules/apps-web`, `TESTING` and `KNOWN_ISSUES`. Reviewed `DEPENDENCY_MAP` and architecture/decision implications: no interface, dependency, schema, settlement or architecture changes required.
 - Limits: Chromium viewport emulation is not physical mobile testing; paste uses synthetic clipboard events; browser creation uses intercepted API/auth, independently of the real API route tests. Other engines, IME, screen-reader speech, full merchant auth-to-creation and settlement/reporting were not verified.
+
+## 2026-10-30 ? PMA-01 OTP delivery implementation
+
+- Baseline HEAD c3eb21830dd133a47e86bf5f9150a3ba8f9caffd. Added shared Resend HTTPS adapter with native fetch, no dependencies/schema changes; merchant login/resend and admin login await post-commit delivery.
+- Validate production sender/key/transport and timeout; block production development exposure. Remove OTP logging in every environment. Preserve session/OTP tables, verification, rate limits and resend attempt inheritance.
+- Added notifier and mocked HTTP regressions, updated production config test fixtures without weakening assertions, documented deployment settings and failure recovery.
+- Refreshed AUTH_AND_SECURITY, modules/apps-api, INFRASTRUCTURE, DEPENDENCY_MAP, DECISIONS, TESTING and KNOWN_ISSUES. Schema/API route tables and frontend modules reviewed: no schema, route shape or frontend changes needed.
+- See Evidence/PMA-01_OTP_DELIVERY_FIX.md for exact validation. External delivery and Postgres integration remain blocked; PMA-01 not declared fully resolved.
+
+## 2026-10-30 ? Microsoft Authenticator TOTP integration
+
+- Added maintained otplib/qrcode dependencies and user-approved migration 0085 with separate authenticator tables; migration not applied here. No financial/partner contract changes.
+- Added encrypted, session-owned enrollment, QR/manual setup, confirmation, replay-safe TOTP and single-use recovery, authenticated replacement and other-session revocation. Updated admin audit types.
+- Integrated login factor selection/recovery UI and shared Account security pages in merchant/admin shells. Added explicit fail-closed TOTP-only email-disabled production mode; no password-only bootstrap.
+- Updated auth/API/database/frontend/module/dependency/infrastructure/decision/test/known-issue context and ops deployment instructions. Focused tests/builds only, per user request. See Evidence/MICROSOFT_AUTHENTICATOR_INTEGRATION.md for exact verification and remaining DB/device/provider gates.
+
+## 2026-10-30 - PMA-08 / BUG-033 retired reconciliation safety
+
+Removed all database/posting implementation from scripts/reconcile_march.ts; direct CLI refuses with exit 1 and import retains pure historical helpers only. Added retirement regression coverage; 6/6 focused tests and repository typecheck pass. Removed unsafe runbook execution guidance and updated the canonical bug, registry, scripts module, dependency map, decisions, repository map, context status and testing documentation. Baseline HEAD c3eb21830dd133a47e86bf5f9150a3ba8f9caffd. Historical financial impact remains unverified and no records were changed; see Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md. Existing unrelated working changes were preserved.
+
+## 2026-10-30 - Hosted checkout UI redesign
+
+Baseline HEAD 2ee8df0a691e0bc0fe3624b4aa40e90f20d87617. Replaced narrow checkout presentation with responsive two-panel green/neutral styling, dynamic merchant/order summary, preserved four-input form, native test disclosure and improved busy/error/result visuals. Added seven presentation/callback tests and an isolated screenshot fixture with original-baseline mode. No payment/API/schema/routing changes. Updated FRONTEND, modules/apps-web, TESTING and KNOWN_ISSUES; corrected stale countdown/reclaim descriptions against source. Reviewed DEPENDENCY_MAP and PAYMENT_FLOWS: no new service/library dependency or financial behavior change; historical PAYMENT_FLOWS reservation SQL remains stale and must not be treated as current code. Validation and remaining limits are in Evidence/ui_checkout_redesign.md. User requested no further testing.
+
+## 2026-10-30 - Checkout screenshot follow-up
+
+Confirmed actual localhost:5173 served an empty checkout CSS transform despite populated source. Rewrote stylesheet to invalidate it and removed BOM; added intrinsic icon/result/illustration SVG dimensions and a failing-before/passing-after regression. Corrected fixture/docs to source /pay/:token route. Web 46/46, build, full typecheck and served module-content checks pass; visual browser check unavailable. Updated checkout evidence, frontend/module/testing/known-issue context. Dependency map and architecture reviewed: no dependency or behavioral change.

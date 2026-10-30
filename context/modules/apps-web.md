@@ -54,6 +54,7 @@
 - Rendered in isolation without the dashboard layout.
 - Calls public `GET /v1/payment-links/:token` for amount and status.
 - `CardPaymentForm.tsx` owns numeric input, digit-anchored caret/selection, separator deletion (including mobile input-only events), inline Luhn/length/expiry/CVV validation and masked CVV. Visa, Mastercard (including 2221?2720) and Amex use local licensed SVGs; other numbers receive a generic card indicator.
+- `CheckoutFrame.tsx` and `CheckoutDetails.tsx` provide the merged responsive two-column order summary and test-environment disclosure; `CheckoutPaymentForm.tsx` remains as a separately tested presentation component but is not used by the active checkout route.
 - Open active links expire locally while the server remains authoritative. Existing bound attempts can be retried after the link deadline.
 - Checkout is explicitly simulator-only. No provider tokenization/vault or cardholder identity exists; card saving is unavailable and no consent checkbox or saved-card endpoints are exposed.
 - On submit, calls `POST /v1/payment-links/:token/pay`.
@@ -96,3 +97,11 @@
 1. **Document Title (BUG-085):** Dashboard pages incorrectly retained the title string "Checkout".
 2. **Date Filtering (BUG-076):** Date pickers generated UTC midnight timestamps, cutting off the first 3 hours of Bahrain daily volume.
 3. **Payment Links Pagination (BUG-077):** Link table was capped at 100 links with no pagination controls.
+
+## Checkout redesign verification (2026-10-30)
+
+Presentation split across CheckoutFrame, CheckoutDetails, CheckoutPaymentForm and scoped CSS; CheckoutPage still owns fetching, card state, submission and payment-state branches. Input callbacks, raw PAN, numeric month/year conversion, request body and idempotency lifecycle are preserved. Seven checkout presentation tests cover dynamic escaped data/exact fils display, native validation attributes, submitting/declined markup, sandbox suffixes, result composition and input/submit callback forwarding. Web suite: 45/45 pass; production build and repository typecheck pass. Local-only scripts/checkout-preview.mjs serves the actual app with synthetic /v1 responses on loopback port 5175, without proxy/database access; --before loads the three original checkout files from baseline 2ee8df0. This fixture is not payment integration evidence. See Evidence/ui_checkout_redesign.md for capture instructions and limitations.
+
+### Screenshot follow-up (2026-10-30)
+
+Actual public route is /pay/:token (router.tsx); the fixture uses /pay/preview. Running Vite was observed returning an empty checkout CSS JavaScript module while ?direct contained CSS. Rewriting the stylesheet invalidated the stale transform; final HTTP checks inspect layout content, not just status. All checkout SVGs now have intrinsic dimensions to avoid oversized icons without CSS. New regression fails before missing dimensions and passes after. Web tests 46/46, build and repository typecheck passed. Browser appearance remains unverified.

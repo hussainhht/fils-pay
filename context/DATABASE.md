@@ -256,3 +256,7 @@ Because the trigger is `DEFERRABLE INITIALLY DEFERRED`, individual legs can be i
 - **Safety Mechanism:** It checks `process.env.ALLOW_DESTRUCTIVE_SEED === "1"`.
 - If the flag is not explicitly set, the script immediately terminates without modifying any tables.
 - **Rule:** Never execute `npm run seed` against shared, staging, or production databases.
+
+## Approved migration 0085: authenticator storage (2026-10-30)
+
+Separate merchant_authenticators and admin_authenticators tables each key user_id to its own identity table. Columns: secret_ciphertext, enabled_at, last_used_step BIGINT, recovery_hashes TEXT[], pending_ciphertext, pending_id UUID, pending_session_id referencing that plane's sessions, pending_expires_at and pending_attempts (0..5). Only encrypted secrets and recovery hashes persist; confirmation/replay/recovery updates run under row locks. Session identity/expiry and pending binding are enforced server-side. User explicitly approved this new authentication migration; existing migrations and financial schemas are unchanged. Migration is added, not applied in this environment; existing migration-count metadata above predates this work.

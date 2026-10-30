@@ -39,6 +39,7 @@ export function AdminLayout() {
             <NavLink to="/settlement"><Icon name="settlement" />Settlement ops</NavLink>
             <NavLink to="/adjustment-imports"><Icon name="import" />Import adjustments</NavLink>
             <NavLink to="/webhooks"><Icon name="webhooks" />Webhook replay</NavLink>
+            <NavLink to="/security">Account security</NavLink>
           </nav>
           <div className="admin-identity">
             {admin ? (
