@@ -28,6 +28,10 @@ fils. The table lists `data` fields; all include `merchantId`.
 | `payment.failed` | `paymentAttemptId`, optional `transactionId`, `stage`, `amountFils`, `reason` | Definitive authorize/capture decline. Stage is `authorize` or `capture`; reason is `card_declined`. |
 | `payment_link.expired` | `paymentLinkId`, `amountFils`, `expiredAt` | An active, unpaid link passed its server expiry time. |
 
+Capture preparation and completion acquire claim then transaction row locks in
+the same order. Concurrent same-key completion returns the persisted response
+and cannot publish a second decline or capture event.
+
 The final two types were added on 2026-10-30. Existing payloads and partner
 HTTP routes are unchanged. All active endpoints receive eligible types;
 receivers must tolerate unknown event types. `paymentAttemptId` identifies the

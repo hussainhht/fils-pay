@@ -196,3 +196,9 @@ API errors return standard JSON envelopes with descriptive machine-readable erro
 Both /v1/auth and /v1/admin/auth add GET /totp (enabled/recoveryCodesRemaining), POST /totp/enroll (password, plus currentCode when replacing; returns enrollmentId, manual secret, QR data URL and expiry), POST /totp/confirm (enrollmentId/code; returns enabled and one-time recoveryCodes). They require the matching full session, refuse impersonation, validate Origin when present, and return no-store. No user/merchant identity is accepted as authorization from the body. Password-only pending sessions cannot enroll.
 
 Login responses add optional verificationMethod=email|totp. Existing /otp/verify accepts six-digit authenticator codes or a recovery code for an enrolled identity; email cannot downgrade an enrolled factor. Merchant /otp/resend refuses enrolled identities. Existing route paths, role responses and cookie planes are unchanged. FEATURE_TOTP gates the new tables/feature until migration 0085 has been applied.
+
+## Webhook API verification (2026-10-30)
+
+Merchant routes are under `/v1/merchants/:merchantId/webhook-endpoints`: POST registration (secret shown once), GET list, PATCH URL/status, DELETE (safe disable with history), POST `/:id/test`, GET `/:id/deliveries`, GET `/:id/deliveries/:deliveryId`, and POST `/:id/deliveries/:deliveryId/replay`. Tenant and role checks run server-side; impersonation is read-only.
+
+Incoming `/v1/acquirer/callbacks` accepts signed informational fraud-review notes, validates field types/UUID/ISO timestamp, checks raw-byte HMAC with 300-second freshness, and deduplicates callback IDs. It performs no financial state transition. New outgoing `payment.failed` and `payment_link.expired` events are additive; existing captured/voided/refund/settlement envelopes and partner HTTP contracts are unchanged. Full contracts and limits: `docs/WEBHOOKS.md`; verified results: `Evidence/webhook_audit_and_implementation.md`.

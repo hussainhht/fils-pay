@@ -127,7 +127,8 @@ test("capture decline emits once; ambiguous acquirer error is not reported as pa
   const transactionId = (auth.body as { id: string }).id;
   const input = { merchantId, transactionId, idempotencyKey: randomUUID(), actor: { type: "system" as const, id: randomUUID() } };
   const declining: AcquirerSimulator = { ...acquirer, capture: async req => ({ outcome: "declined", acquirerReference: req.acquirerReference, latencyMs: 0 }) };
-  await Promise.all([captureTransaction(pool, declining, input), captureTransaction(pool, declining, input)]);
+  const results = await Promise.all(Array.from({ length: 8 }, () => captureTransaction(pool, declining, input)));
+  assert.ok(results.every(result => result.statusCode === 402));
   const rows = (await pool.query("SELECT payload FROM outbox_events WHERE event_type='payment.failed' AND payload->>'transactionId'=$1", [transactionId])).rows;
   assert.equal(rows.length, 1); assert.equal(rows[0].payload.stage, "capture");
   const unavailable: AcquirerSimulator = { ...acquirer, authorize: async () => ({ outcome: "error", acquirerReference: "unknown", latencyMs: 0 }) };

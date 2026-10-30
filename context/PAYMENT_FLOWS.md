@@ -78,7 +78,10 @@ The transaction lifecycle enforces strict, irreversible state transitions:
   6. **Amount Headroom:** Capture amount must not exceed `transaction.amount_fils - transaction.captured_fils`.
 - **Acquirer Execution:**
   - Invokes acquirer client `acquirer.capture(...)`.
-  - *Note on BUG-061:* The external acquirer call currently occurs while holding the DB transaction open. Work is in progress to implement durable pending state and decouple the network I/O from the row lock.
+  - Capture prepares a durable idempotency claim, commits, calls the acquirer,
+    then applies the outcome in a short transaction. Prepare and apply both
+    lock the idempotency claim before the transaction row; this ordering was
+    verified by concurrent same-key decline regression in the webhook audit.
 - **Financial Finalization:**
   1. Updates `transactions`:
      - Increments `captured_fils`.

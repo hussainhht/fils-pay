@@ -19,6 +19,31 @@
 
 ## 1. Testing Frameworks & Philosophy
 
+### Webhook audit verification (2026-10-30)
+
+`webhooks/auditLifecycle.test.ts` exercises real migrated PostgreSQL and a real
+loopback HTTP receiver: capture, 500/retry identity, partial/full refund, duplicate
+requests, decline/expiry publication, eight concurrent same-key declines, expiry
+scanner contention, rollback invisibility, abandoned leases and malformed inbound
+callback fields. `auditTransport.test.ts` covers DNS-time development SSRF, strict
+jitter cap and real slow-header/body timeouts. Baseline lifecycle tests: 1 pass,
+3 failures; baseline transport tests: 1 pass, 2 failures. Fixed focused suite:
+10/10 passed. A later full API run exposed a same-key capture lock-order deadlock;
+apply now matches prepare's idempotency-claim -> transaction lock order.
+
+Use an isolated migrated `filspay_test_*` database: existing TOTP tests reject
+other database names. All 79 existing migrations applied cleanly to PostgreSQL
+18.6; no seed/truncation. Reporting 13/13 and events 4/4 passed, both UI builds
+passed, repository typecheck passed. Actual HTTP registration/authorize/capture
+and background delivery, raw-byte signature verification, process-restart pending
+recovery, API health/readiness and both Vite proxies were also verified. Full
+command results and limits are in `Evidence/webhook_audit_and_implementation.md`.
+Docker/PostgreSQL 16 parity and production network/receiver behavior were not run.
+Final API suite: 557 passed, zero failed/skipped. Go `go test ./...` against a
+separate fresh migrated database and settlement build also passed with a temporary
+Go cache after default-cache Windows ACL failure. The isolated PostgreSQL cluster
+was stopped after verification; the user's existing services were preserved.
+
 FilsPay enforces strict test-driven verification for all financial, security, and authorization logic:
 1. **Never Weaken Tests:** Never delete, skip, or modify an existing test to produce a green result. A failing test signals an architectural defect.
 2. **Mandatory Regression Tests:** Every fix for a confirmed bug must be accompanied by a dedicated regression test (`*.test.ts` or `*.reg.test.ts`) that fails against the baseline code and passes after the fix.

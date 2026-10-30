@@ -4332,3 +4332,5 @@
 {"level":30,"time":1793380659385,"pid":29636,"hostname":"hht","reqId":"req-6p","res":{"statusCode":200},"responseTime":1.5254999995231628,"msg":"request completed"}
 {"level":30,"time":1793380659396,"pid":29636,"hostname":"hht","reqId":"req-6q","req":{"method":"GET","url":"/v1/payment-links/plink_K0sR1YgGc-p_dXyd3vMY4S","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":56991},"msg":"incoming request"}
 {"level":30,"time":1793380659397,"pid":29636,"hostname":"hht","reqId":"req-6q","res":{"statusCode":200},"responseTime":1.5705000013113022,"msg":"request completed"}
+{"level":30,"time":1793380919668,"pid":29636,"hostname":"hht","reqId":"req-6r","req":{"method":"POST","url":"/v1/payment-links/plink_K0sR1YgGc-p_dXyd3vMY4S/pay","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":62556},"msg":"incoming request"}
+{"level":30,"time":1793380920208,"pid":29636,"hostname":"hht","reqId":"req-6r","res":{"statusCode":200},"responseTime":539.8871999997646,"msg":"request completed"}

@@ -137,7 +137,7 @@ Settlement executes daily to aggregate captures, deduct MDR fees, disburse net f
 
 FilsPay uses the **Transactional Outbox Pattern** to achieve atomic consistency between database updates and external asynchronous notifications:
 
-1. **Atomic Insertion:** Any business mutation inserts a row into `outbox_events` (`event_type`, `aggregate_id`, `payload`, `status = 'pending'`) within the same PostgreSQL transaction.
+1. **Atomic Insertion:** Producers insert `outbox_events` (`event_type`, `aggregate_type`, `aggregate_id`, `payload`, nullable `processed_at`) within the same PostgreSQL transaction as their state change. There is no outbox status column; webhook state lives in `webhook_deliveries`.
 2. **Notification Wakeup:** Upon transaction commit, PostgreSQL triggers the `outbox_events_channel` notification.
 3. **Consumers:**
    - **Webhook Dispatcher (`apps/api`):** Tracks independent durable `webhook_deliveries`, signs canonical wire bytes with timestamped HMAC-SHA256, leases sends with `SKIP LOCKED`, and retries with capped exponential backoff. Delivery/replay never mutates finances.

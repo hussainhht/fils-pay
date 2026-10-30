@@ -23,6 +23,23 @@
 
 ## 2. P0 Blocker Defects
 
+### Scoped webhook audit delta (2026-10-30)
+
+See `Evidence/webhook_audit_and_implementation.md`; this scoped delta does not
+recount unrelated historical rows. Seven confirmed findings are `fix-verified`:
+missing definitive-decline events, missing link-expiry events, unbounded delivery
+preparation errors, malformed callback fields, development DNS SSRF checks,
+jitter exceeding retry cap, and the capture prepare/apply lock-order deadlock.
+Ten original webhook-related findings (BUG-045–051 and BUG-068–070) are
+`already-fixed` at audit baseline for their original mechanisms. New events are
+additive public webhook behavior; consumers must tolerate unknown types.
+
+Remaining deployment acceptance: PostgreSQL 16 parity, production TLS/egress,
+secret-manager continuity, backlog load/retention and operational alerts, and
+merchant receiver idempotency. These are unverified deployment conditions, not
+assertions of confirmed-current defects. Expiry excludes reserved ambiguous
+checkouts; notification scanning does not change payment-link financial state.
+
 | ID | Title & Summary | Status | Root Cause & Code Reference |
 |---|---|---|---|
 | **BUG-001** | Merchant login grants full access without entering OTP | `fix-verified` | Pre-handler accepted session with `pending_otp = true`. Resolved in `apps/api/src/auth/requireMerchantAuth.ts`. |

@@ -2,6 +2,23 @@
 
 > **Scope:** Persistent audit trail of all updates, additions, and revisions made to the `context/` knowledge base. Every meaningful change to the repository must append an entry here.
 
+## 2026-10-30 — Webhook audit and verification
+
+- Baseline `13d8161`; external commit `85803e4` occurred during verification
+  (the audit agent did not commit). Added definitive `payment.failed` and derived
+  `payment_link.expired` notifications using existing outbox/delivery infrastructure.
+- Bounded preparation/transport exception retries, capped final jitter, applied
+  development DNS checks, validated callback field types/UUID/time, and aligned
+  capture apply locks with prepare to remove a reproduced same-key deadlock.
+- Added lifecycle/local receiver, concurrency, rollback, recovery and transport
+  regressions; preserved all four prior envelopes and partner HTTP contracts.
+- Refreshed stale event helper signature/types, notification channel, replay
+  identity, headers and callback route in relevant module/system context.
+- Local raw-byte HMAC delivery and actual process-restart recovery verified;
+  typecheck, reporting/events tests and UI builds passed. Comprehensive final
+  test results and production limits are recorded in
+  `Evidence/webhook_audit_and_implementation.md`. No schema, money or Go changes.
+
 ## 2026-10-30 — PMA-08 / BUG-033 retirement safety
 
 - Baseline `1c3f99e0c5478e1ff616898cdfc1cd6f5283172d`; removed the retired March

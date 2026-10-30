@@ -33,7 +33,7 @@
   - `refunds.ts`: `/v1/refunds` and `/v1/merchants/:merchantId/refunds` (FP-212 refunds).
   - `paymentLinks.ts`: `/v1/merchants/:merchantId/payment-links` and public `/v1/payment-links/:token`.
   - `admin*.ts`: `/v1/admin/*` (admin auth, merchants, KYC reviews, bulk approvals, credits, balance adjustments, batch re-runs, balance rebuilds).
-  - `acquirerCallbacks.ts`: `/v1/acquirer/callback` (inbound HMAC verified webhook receiver).
+  - `acquirerCallbacks.ts`: `/v1/acquirer/callbacks` (inbound HMAC verified informational fraud-review receiver).
   - `webhooks.ts`: `/v1/merchants/:merchantId/webhook-endpoints` (merchant webhook registrations and deliveries).
   - `settlement.ts`: `/v1/settlement` (batch queries).
   - `reporting.ts`: `/v1/reporting` (daily volume, payout trends, saved filters).

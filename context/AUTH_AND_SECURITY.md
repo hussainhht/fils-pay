@@ -109,6 +109,13 @@ When support or admin operators need to troubleshoot a merchant's dashboard:
 - Inbound callbacks to `/v1/acquirer/callbacks` provide `Acquirer-Callback-Signature`.
 - The signature is computed over the raw request payload using `ACQUIRER_CALLBACK_SIGNING_SECRET`.
 - Verified using `crypto.timingSafeEqual` to prevent timing attacks (`BUG-046`).
+  - The route enforces a 300-second freshness window and mandatory signatures in
+    production/test. Development retains its explicit optional mode. Nonempty
+    strings, UUID, timezone-bearing ISO time and allowed outcomes are checked
+    before DB access; callback IDs deduplicate informational notes.
+  - Outgoing native HTTP(S) checks/pins DNS outside test, rejects internal targets
+    and redirects, and bounds DNS/request/body time and response memory. Receiver
+    deduplication must accompany freshness checks. See `docs/WEBHOOKS.md`.
 
 ### 4. API Key Mechanics
 - API keys format: `fp_live_<random_bytes>` or `fp_test_<random_bytes>`.
