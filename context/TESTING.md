@@ -19,6 +19,21 @@
 
 ## 1. Testing Frameworks & Philosophy
 
+### Server deployment checks (2026-10-30)
+
+Local full `npm.cmd run typecheck` passed. Production Node-image dependency
+installation, source typecheck and both Vite builds passed on Ubuntu; the source
+archive intentionally excludes test files/data/secrets. Settlement image build
+passed. nginx syntax and production Compose configuration validated. Public
+merchant/admin/deep routes and each JS/CSS asset returned 200, missing assets
+404; API/health deliberately return 503 pending real production email config.
+Private PostgreSQL 16 is healthy with 79 existing migrations and zero seeded
+merchants/admins; reporting/settlement worker startup passed. API role connection,
+non-superuser/no-CREATE privileges, and fail-closed configuration were verified
+in a one-off container. No remote financial transactions, seed, provider email,
+production login, browser journey, TLS, or full API activation were performed.
+Evidence: `Evidence/agent-1-server-deployment.md`.
+
 ### Webhook audit verification (2026-10-30)
 
 `webhooks/auditLifecycle.test.ts` exercises real migrated PostgreSQL and a real
@@ -152,3 +167,7 @@ Focused validation completed: web suite 45/45, simulator 6/6, payment-link pay/s
 ### Checkout screenshot regression follow-up (2026-10-30)
 
 One added intrinsic-SVG-sizing regression was observed failing before the fix (from apps/web, to use its JSX configuration). After the fix: web suite 46/46, web build and full repository typecheck passed. HTTP checks of the real localhost:5173 CSS/module bodies now assert layout selectors and explicit SVG sizes rather than merely HTTP 200. No additional payment integration or broad suites run. Browser screenshots remain unavailable.
+
+## Checkout capacity preparation (2026-10-30)
+
+`node --test scripts/checkout-capacity.test.mjs` passed 4/4 actual loopback HTTP runner tests: unsafe/public target refusal, exact outcome classification, fixed-arrival generator drops, and closed-loop fixture exhaustion. This is tooling validation, not application capacity evidence. Focused existing acquirer/pool/payment-link unit tests passed 20/20; full repository typecheck passed. Go available tests passed with temporary GOCACHE after default-cache ACL failure; DB-backed scenarios skipped with DATABASE_URL absent. Full API/reporting DB suites were not run. Node syntax and stage-script PowerShell AST parsing passed. Docker/Compose semantic validation, isolated fixture SQL and all sustained capacity, resource enforcement, financial/restart/recovery measurements remain pending. Do not run integration suites against measured fixture data. Exact commands, matrix and metric limitations: `Evidence/agent-1-capacity-optimization.md`.

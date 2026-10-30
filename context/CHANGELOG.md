@@ -2,6 +2,21 @@
 
 > **Scope:** Persistent audit trail of all updates, additions, and revisions made to the `context/` knowledge base. Every meaningful change to the repository must append an entry here.
 
+## 2026-10-30 — Remote server frontend deployment
+
+- Baseline `1f88a47ee619e87728219ad531df4dc4e4cbad56`; deployed sanitized source
+  plus new production templates to `68.183.82.221` over authorized SSH.
+- Added separate production Node build/Compose/nginx templates and an operational
+  runbook, preserving the local development stack and protected application code.
+- Public IP merchant/admin static pages and assets verified; PostgreSQL 16 and
+  reporting/settlement run privately with separate non-superuser roles and all
+  79 existing migrations. No accounts or financial fixture data were seeded.
+- API remains inactive because real Resend configuration is missing. HTTP preview
+  does not constitute production login/payment acceptance; HTTPS also remains.
+- Typecheck/build/config checks passed. Updated infrastructure, ops module,
+  testing and known deployment limits. Full evidence and activation steps are in
+  `Evidence/agent-1-server-deployment.md` and `ops/PRODUCTION.md`. No commit/push.
+
 ## 2026-10-30 — Webhook audit and verification
 
 - Baseline `13d8161`; external commit `85803e4` occurred during verification
@@ -141,3 +156,11 @@ Baseline HEAD 2ee8df0a691e0bc0fe3624b4aa40e90f20d87617. Replaced narrow checkout
 ## 2026-10-30 - Checkout screenshot follow-up
 
 Confirmed actual localhost:5173 served an empty checkout CSS transform despite populated source. Rewrote stylesheet to invalidate it and removed BOM; added intrinsic icon/result/illustration SVG dimensions and a failing-before/passing-after regression. Corrected fixture/docs to source /pay/:token route. Web 46/46, build, full typecheck and served module-content checks pass; visual browser check unavailable. Updated checkout evidence, frontend/module/testing/known-issue context. Dependency map and architecture reviewed: no dependency or behavioral change.
+
+## 2026-10-30 � Checkout capacity benchmark preparation
+
+- Baseline `1f88a47ee619e87728219ad531df4dc4e4cbad56`; Docker unavailable. User explicitly requested preparation/source review while leaving the runtime comparison pending and the existing localhost DB untouched.
+- Added `scripts/checkout-capacity.mjs`, its real HTTP fixture tests, guarded additive fixture preparer, and separate `ops/capacity/` Compose/init/nginx/stage/SQL tooling. `.dockerignore` excludes generated capacity artifacts.
+- Current authorize/capture release transactions before provider waits. Historical BUG-061 wording in the API module is corrected. Missing checkout admission and existing Compose resource enforcement remain source-confirmed gaps; next bottleneck is unmeasured.
+- Client tests 4/4 and focused existing tests 20/20 pass; repository typecheck passes. Go available tests pass with temporary cache; DB-backed cases skipped without configuration. Node syntax/PowerShell parsing pass; Docker/Compose/fixture SQL and all actual capacity/correctness measurements remain pending.
+- Evidence and exact future commands: `Evidence/agent-1-capacity-optimization.md`. No payment implementation, schema, dependency, protected contract, production template or submitted server changed. Existing context edits were preserved and these findings appended.

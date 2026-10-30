@@ -31,6 +31,22 @@
 
 ## 2. Infrastructure & Local Stack (`ops/`)
 
+### Remote deployment templates (2026-10-30)
+
+- `Dockerfile.production.node`: locked dependency install, typecheck, production
+  web/admin builds. Existing `VITE_WEB_BASE_URL` build argument sets the public
+  merchant origin in admin links; API calls use the same origin.
+- `docker-compose.production.yml`: private PostgreSQL 16, explicit migrations,
+  separate role/env files, persistent DB/KYC volumes, restartable workers, and a
+  loopback-only API binding. It has no seed service.
+- `nginx.production.conf`: compiled SPA/static serving, merchant/admin route
+  splitting, API proxy and generic fail-closed 503 while API is unavailable.
+- `PRODUCTION.md`: current host/release, secret locations without values,
+  activation, migration, verification and rollback instructions.
+
+The remote IP frontend is published; API activation is still pending verified
+Resend settings and HTTPS. Existing local Compose behavior is unchanged.
+
 ### 1. Environment Generator (`ops/setup-env.mjs`)
 - Generates `ops/.env.docker` with cryptographically secure random values:
   - `WEBHOOK_SECRET_ENCRYPTION_KEY`: 32 random bytes (base64).
@@ -65,3 +81,10 @@
   ```bash
   npx.cmd tsx --test scripts/*.test.ts
   ```
+
+## Checkout capacity tooling (2026-10-30)
+
+- `scripts/checkout-capacity.mjs`: standalone Node 22 closed/arrival HTTP generator; 1000-fils fresh links, loopback-only target, no redirects/retries, explicit expected-error classification, generator-drop/exhaustion invalidation. Run its separate `.mjs` tests explicitly: `node --test scripts/checkout-capacity.test.mjs` (not included by the existing `*.test.ts` package glob).
+- `scripts/checkout-capacity-prepare.mjs`: additive fixtures guarded to the dedicated Compose DB; manifests written exclusively under ignored runtime output.
+- `ops/capacity/`: separate capped Compose, private config initializer, nginx, PowerShell stage runner and read-only SQL checks. No production/local shared volume or DB port. Runtime/Compose/SQL not executed here; client fixture tests pass 4/4.
+- Exact startup, identity/resource checks, stage commands, comparison matrix, monitoring gaps and pending-runtime status: `Evidence/agent-1-capacity-optimization.md`. No application dependency/interface change.

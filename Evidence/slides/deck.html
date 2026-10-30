@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FilsPay Final Pitch</title>
+<style>
+  :root {
+    --green: #087f5b; --green-dark: #064e3b; --soft: #eaf5ef;
+    --ink: #172c25; --muted: #586b63; --bg: #f6f8f7; --card: #ffffff;
+    --line: #dbe5e0; --danger: #a3293e; --danger-soft: #f8e9ec;
+    --warn: #855516; --warn-soft: #fff4e0;
+  }
+  @page { size: 1280px 720px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Inter, Arial, sans-serif;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .slide {
+    width: 1280px; height: 720px; position: relative; overflow: hidden;
+    background: var(--bg); padding: 44px 64px 56px;
+    display: flex; flex-direction: column;
+    break-after: page; page-break-after: always;
+  }
+  .slide:last-child { break-after: auto; page-break-after: auto; }
+  .kicker { font-size: 18px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--green); }
+  h1 { font-size: 48px; line-height: 1.1; font-weight: 700; letter-spacing: -.01em; margin-top: 6px; }
+  .lede { font-size: 27px; line-height: 1.3; color: var(--muted); margin-top: 12px; }
+  .foot {
+    position: absolute; left: 64px; right: 64px; bottom: 18px;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 24px;
+    font-size: 14px; color: var(--muted);
+  }
+  .foot .note { max-width: 1000px; }
+  .needed {
+    display: inline-block; border: 2px dashed var(--warn); background: var(--warn-soft);
+    color: var(--warn); font-weight: 600; padding: 1px 10px; border-radius: 6px;
+  }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .id {
+    font-family: Consolas, "Cascadia Mono", monospace; font-size: 17px; color: var(--green-dark);
+    background: var(--soft); border-radius: 6px; padding: 1px 8px; white-space: nowrap;
+  }
+  code, .mono { font-family: Consolas, "Cascadia Mono", monospace; }
+  .shot {
+    border: 2px dashed #b4c4bc; border-radius: 10px; color: var(--warn); font-weight: 600;
+    background: repeating-linear-gradient(45deg, #ffffff, #ffffff 10px, #eef3f0 10px, #eef3f0 20px);
+    display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px;
+  }
+  .brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; color: var(--green); }
+  .brand svg { color: var(--green); }
+  .chip { display: inline-block; font-size: 16px; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+  .chip.ok { background: var(--soft); color: var(--green-dark); }
+  .chip.no { background: var(--warn-soft); color: var(--warn); }
+  .chip.bad { background: var(--danger-soft); color: var(--danger); }
+
+  /* Slide 1 */
+  .team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 40px; }
+  .member { padding: 28px 30px; }
+  .member .name { font-size: 30px; font-weight: 700; }
+  .member .gh { font-size: 20px; color: var(--muted); margin-top: 4px; }
+  .member ul { margin-top: 18px; padding-left: 0; list-style: none; }
+  .member li { font-size: 24px; line-height: 1.45; padding-left: 22px; position: relative; }
+  .member li::before { content: ""; position: absolute; left: 0; top: 15px; width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
+
+  /* Slide 2 */
+  .causes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 34px; }
+  .cause { padding: 22px 22px 20px; border-top: 6px solid var(--green); display: flex; flex-direction: column; gap: 12px; }
+  .cause .what { font-size: 25px; font-weight: 700; line-height: 1.2; }
+  .cause .eg { font-size: 23px; line-height: 1.3; color: var(--ink); }
+  .cause .id { margin-top: auto; align-self: flex-start; }
+  .docs-row { margin-top: 22px; padding: 16px 22px; font-size: 22px; display: flex; gap: 14px; align-items: center; border-left: 6px solid var(--warn); }
+
+  /* Slide 3 */
+  .ranked { margin-top: 26px; display: flex; flex-direction: column; gap: 14px; }
+  .rank-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 22px; align-items: center; padding: 16px 24px; }
+  .rank-n { width: 52px; height: 52px; border-radius: 50%; background: var(--green); color: #fff; font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .rank-row .t { font-size: 30px; font-weight: 700; line-height: 1.15; }
+  .rank-row .e { font-size: 24px; color: var(--muted); margin-top: 4px; line-height: 1.3; }
+  .rank-row .ids { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 210px; }
+
+  /* Slide 4 */
+  .fixes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 28px; }
+  .fix { padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .fix .h { font-size: 26px; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .ba { border-radius: 8px; padding: 10px 14px; font-size: 22px; line-height: 1.3; }
+  .ba b { display: block; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+  .ba.before { background: var(--danger-soft); color: #5e1a26; }
+  .ba.before b { color: var(--danger); }
+  .ba.after { background: var(--soft); color: var(--green-dark); }
+  .ba.after b { color: var(--green); }
+  .proof { font-size: 18px; color: var(--muted); line-height: 1.35; margin-top: auto; }
+  .proof code { font-size: 16px; color: var(--ink); }
+  .strip { margin-top: 18px; padding: 14px 22px; font-size: 20px; line-height: 1.4; display: flex; flex-direction: column; gap: 4px; }
+
+  /* Slide 5 */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 24px; }
+  .step { display: flex; flex-direction: column; gap: 10px; }
+  .step .n { font-size: 16px; font-weight: 700; color: var(--green); letter-spacing: .06em; text-transform: uppercase; }
+  .step .t { font-size: 25px; font-weight: 700; line-height: 1.2; }
+  .step .d { font-size: 20px; color: var(--muted); line-height: 1.3; min-height: 52px; }
+  .step .shot { height: 210px; font-size: 16px; }
+  .rules { margin-top: 20px; padding: 14px 22px; font-size: 22px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .rules span.r { background: var(--soft); color: var(--green-dark); border-radius: 999px; padding: 3px 14px; font-weight: 600; font-size: 20px; }
+
+  /* Slide 6 */
+  .load { display: grid; grid-template-columns: 600px 1fr; gap: 22px; margin-top: 16px; flex: 1; min-height: 0; }
+  .load .chart { padding: 14px 16px 6px; }
+  .chart-title { font-size: 18px; font-weight: 600; color: var(--ink); }
+  .chart-sub { font-size: 15px; color: var(--muted); }
+  .right-col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .arch { padding: 10px 12px 6px; }
+  .stat { display: grid; grid-template-columns: 116px 1fr; gap: 14px; align-items: baseline; padding: 10px 16px; }
+  .stat .k { font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .stat .v { font-size: 22px; line-height: 1.25; }
+  .stat .v b { font-size: 26px; }
+  .stat.est { border-left: 5px dashed var(--muted); }
+  .stat.meas { border-left: 5px solid var(--green); }
+  .stat.over { border-left: 5px solid var(--warn); }
+
+  /* Slide 7 */
+  .setup { margin-top: 24px; padding: 18px 24px; font-size: 24px; line-height: 1.4; }
+  .setup .k { font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--green); display: block; margin-bottom: 4px; }
+  .wrong { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 20px; overflow: hidden; }
+  .wrong .col { padding: 18px 24px; }
+  .wrong .col + .col { border-left: 1px solid var(--line); }
+  .wrong .hd { font-size: 16px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
+  .wrong .said .hd { color: var(--danger); }
+  .wrong .saw .hd { color: var(--green); }
+  .wrong p { font-size: 25px; line-height: 1.35; margin-bottom: 10px; }
+  .caught { margin-top: 18px; font-size: 25px; line-height: 1.35; display: flex; gap: 14px; align-items: baseline; }
+  .caught b { color: var(--green); }
+
+  /* Slide 8 */
+  table.risks { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 22px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  table.risks th { text-align: left; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 10px 18px; background: #eef3f0; }
+  table.risks td { font-size: 20px; line-height: 1.25; padding: 8px 18px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.risks td:first-child { font-weight: 600; width: 37%; }
+  table.risks td:nth-child(2) { color: var(--muted); width: 28%; }
+
+  /* Appendix */
+  .appx { background: #ffffff; }
+  .appx .kicker { color: var(--muted); }
+  .appx h1 { font-size: 34px; }
+  .appx-tag { position: absolute; top: 18px; right: 64px; font-size: 14px; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 3px 10px; letter-spacing: .04em; }
+  table.dense { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 15px; }
+  table.dense th { text-align: left; font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--line); padding: 6px 8px; }
+  table.dense td { border-bottom: 1px solid var(--line); padding: 4px 8px; vertical-align: top; line-height: 1.3; }
+  table.dense td.num, table.dense th.num { text-align: right; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 12px; }
+  .small { font-size: 15px; line-height: 1.45; color: var(--ink); }
+  .small p + p { margin-top: 8px; }
+  .small ul { padding-left: 20px; }
+  .small li { margin-bottom: 4px; }
+  pre.out { font-family: Consolas, "Cascadia Mono", monospace; font-size: 13.5px; line-height: 1.4; background: #f3f6f4; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; color: var(--ink); }
+  h3 { font-size: 17px; margin: 10px 0 6px; color: var(--green-dark); }
+  .ui-grid { display: grid; grid-template-columns: 170px 1fr 1fr; gap: 10px 14px; margin-top: 14px; align-items: stretch; }
+  .ui-grid .lbl { font-size: 16px; font-weight: 700; align-self: center; }
+  .ui-grid .shot { height: 118px; font-size: 14px; }
+  .ui-grid .colh { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ============ 1. TEAM ============ -->
+<section class="slide">
+  <div class="brand" style="font-size:30px">
+    <svg width="44" height="44" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><path d="M11 23V9h11M11 15h8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    FilsPay
+  </div>
+  <h1 style="margin-top:34px; font-size:56px"><span class="needed">[NEEDED: Team name]</span></h1>
+  <p class="lede">Finding, fixing and proving the defects in a Bahrain payment gateway</p>
+  <div class="team-grid">
+    <div class="card member">
+      <div class="name"><span class="needed">[NEEDED: full name]</span></div>
+      <div class="gh">GitHub: hussainali7</div>
+      <ul>
+        <li>Refund feature</li>
+        <li>OTP email delivery + authenticator (TOTP)</li>
+        <li>Webhooks, UI redesign, server deployment</li>
+      </ul>
+    </div>
+    <div class="card member">
+      <div class="name"><span class="needed">[NEEDED: full name]</span></div>
+      <div class="gh">GitHub: qalnasha</div>
+      <ul>
+        <li>OTP session enforcement</li>
+        <li>Login attempt serialisation</li>
+        <li>Refunds → payouts &amp; reconciliation; money / reporting fixes</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot">
+    <span class="note">Fork: github.com/hussainhht/fils-pay · Last commit: <span class="needed">[NEEDED: final commit ID before 11 pm]</span> · Ownership read from git history: <span class="needed">[NEEDED: team to confirm]</span></span>
+    <span>1 / 8</span>
+  </div>
+</section>
+
+<!-- ============ 2. ROOT CAUSE ============ -->
+<section class="slide">
+  <div class="kicker">Root cause</div>
+  <h1>The money rules were written down, but not enforced where money moves</h1>
+  <p class="lede">The code trusted client input, comments and passing tests instead of server checks and atomic transactions.</p>
+  <div class="causes">
+    <div class="card cause">
+      <div class="what">No server-side tenant check</div>
+      <div class="eg">A password alone opened the merchant dashboard</div>
+      <span class="id">BUG-001 · 003</span>
+    </div>
+    <div class="card cause">
+      <div class="what">Money in the wrong unit</div>
+      <div class="eg">4.75 BD imported as 0.475 BD</div>
+      <span class="id">BUG-009 · 010</span>
+    </div>
+    <div class="card cause">
+      <div class="what">Writes not atomic</div>
+      <div class="eg">Two refunds at once were both paid</div>
+      <span class="id">BUG-008 · 006</span>
+    </div>
+    <div class="card cause">
+      <div class="what">Client clock trusted</div>
+      <div class="eg">Expired link paid using the client’s timestamp</div>
+      <span class="id">BUG-005</span>
+    </div>
+  </div>
+  <div class="card docs-row"><b style="color:var(--warn)">Decoys:</b> docs and ADRs described rules the code broke, and an old handover note called impersonation read-only.</div>
+  <div class="foot"><span>FilsPay · root cause</span><span>2 / 8</span></div>
+</section>
+
+<!-- ============ 3. KEY FINDINGS ============ -->
+<section class="slide">
+  <div class="kicker">Key findings</div>
+  <h1>Four findings, ranked by impact</h1>
+  <div class="ranked">
+    <div class="card rank-row">
+      <div class="rank-n">1</div>
+      <div><div class="t">Tenant takeover without OTP</div>
+        <div class="e">Password step gave a full session; OTP could bind to another merchant</div></div>
+      <div class="ids"><span class="id">001</span><span class="id">002</span></div>
+    </div>
+    <div class="card rank-row">
+      <div class="rank-n">2</div>
+      <div><div class="t">Refunds could pay out twice</div>
+        <div class="e">Two concurrent refunds both succeeded; headroom used authorized, not captured</div></div>
+      <div class="ids"><span class="id">008</span><span class="id">007</span><span class="id">003</span><span class="id">027</span></div>
+    </div>
+    <div class="card rank-row">
+      <div class="rank-n">3</div>
+      <div><div class="t">Money read in the wrong unit</div>
+        <div class="e">“4.75” BD became 475 fils, 10× too small; payouts in float32</div></div>
+      <div class="ids"><span class="id">009</span><span class="id">010</span><span class="id">032</span></div>
+    </div>
+    <div class="card rank-row">
+      <div class="rank-n">4</div>
+      <div><div class="t">Derived data overwrote the ledger</div>
+        <div class="e">Balance rebuild read scheme gross, not the ledger; MDR recalc rewrote paid batches</div></div>
+      <div class="ids"><span class="id">011</span><span class="id">035</span><span class="id">034</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>IDs refer to Evidence/bugs/bug-NNN-*.md · full table in Appendix A1</span><span>3 / 8</span></div>
+</section>
+
+<!-- ============ 4. FIXES AND PROOF ============ -->
+<section class="slide">
+  <div class="kicker">Fixes and proof</div>
+  <h1>Each fix has a test or a live check behind it</h1>
+  <div class="fixes">
+    <div class="card fix">
+      <div class="h">Login <span class="id">001 · 016</span></div>
+      <div class="ba before"><b>Before</b>Pending cookie = full access</div>
+      <div class="ba after"><b>After</b>401 until OTP; token rotated on promotion</div>
+      <div class="proof"><code>auth-security.new.test.ts</code> + hosted check: pre-OTP <code>/v1/auth/me</code> → 401<br><span class="chip no">DB test not re-run</span></div>
+    </div>
+    <div class="card fix">
+      <div class="h">CSV import <span class="id">009</span></div>
+      <div class="ba before"><b>Before</b>“4.75” → 475 fils = 0.475 BD</div>
+      <div class="ba after"><b>After</b>“4.75” → 4,750 fils = 4.750 BD</div>
+      <div class="proof"><code>adjustmentCsvParsing</code> tests<br><span class="chip ok">14 / 14 pass · re-run 30 Oct</span></div>
+    </div>
+    <div class="card fix">
+      <div class="h">Refunds <span class="id">008 · 007</span></div>
+      <div class="ba before"><b>Before</b>Two concurrent refunds both paid</div>
+      <div class="ba after"><b>After</b>Only one reaches the acquirer; ledger balances</div>
+      <div class="proof"><code>refundHelpers.new.test.ts</code>, <code>processRefund.test.ts</code><br><span class="chip no">DB test not re-run</span></div>
+    </div>
+  </div>
+  <div class="card strip">
+    <div><b>DB guards:</b> batches paid once · immutable ledger &amp; audit · BIGINT counters <span style="color:var(--muted)">(0078–0084)</span></div>
+    <div><b>Re-run 30 Oct:</b> typecheck ✓ · web 46/46 · money 40/40 · <span style="color:var(--warn)">DB tests not run</span></div>
+  </div>
+  <div class="foot"><span>Per-fix detail and test names: Appendix A3</span><span>4 / 8</span></div>
+</section>
+
+<!-- ============ 5. LIVE DEMO ============ -->
+<section class="slide">
+  <div class="kicker">Live demo</div>
+  <h1>A full and a partial refund, end to end</h1>
+  <div style="margin-top:10px"><span class="needed">[NEEDED: confirm public API is live. Last record (30 Oct): API not activated, /v1 returned 503]</span></div>
+  <div class="steps">
+    <div class="step">
+      <div class="n">Step 1</div>
+      <div class="t">Pay on hosted checkout</div>
+      <div class="d">Two payments, 1.000 BD each</div>
+      <div class="shot">[SCREENSHOT NEEDED: checkout success]</div>
+    </div>
+    <div class="step">
+      <div class="n">Step 2</div>
+      <div class="t">Refund from the dashboard</div>
+      <div class="d">Payment A in full; payment B in part</div>
+      <div class="shot">[SCREENSHOT NEEDED: refund drawer]</div>
+    </div>
+    <div class="step">
+      <div class="n">Step 3</div>
+      <div class="t">Dashboard shows it</div>
+      <div class="d">“Refunded” and “Partially refunded”</div>
+      <div class="shot">[SCREENSHOT NEEDED: transaction list with both statuses]</div>
+    </div>
+    <div class="step">
+      <div class="n">Step 4</div>
+      <div class="t">Settlement report</div>
+      <div class="d">Refunds lower the net payout</div>
+      <div class="shot">[SCREENSHOT NEEDED: batch detail + reconciliation]</div>
+    </div>
+  </div>
+  <div class="card rules"><b>What to check:</b>
+    <span class="r">refund ≤ captured − refunded</span>
+    <span class="r">balanced ledger group</span>
+    <span class="r">fee reversed to the fil</span>
+    <span class="r">next payout reduced</span>
+  </div>
+  <div class="foot"><span>Owner/finance only · <code>POST /v1/refunds</code> with Idempotency-Key · ledger entries: Appendix A4</span><span>5 / 8</span></div>
+</section>
+
+<!-- ============ 6. UNDER LOAD ============ -->
+<section class="slide">
+  <div class="kicker">Under load</div>
+  <h1 style="font-size:44px">8 users stay inside the bar. Beyond that, requests queue</h1>
+  <div class="load">
+    <div class="card chart">
+      <div class="chart-title">Checkout p95 latency (GET link + POST pay), by concurrent users</div>
+      <div class="chart-sub">Measured 30 Oct · bar: p95 ≤ 1,500 ms · checkouts per second under each point</div>
+      <svg id="loadchart" width="566" height="404" role="img" aria-label="p95 latency by users"></svg>
+    </div>
+    <div class="right-col">
+      <div class="card arch">
+        <svg width="100%" viewBox="0 0 514 196" role="img" aria-label="Architecture">
+          <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#586b63"/></marker></defs>
+          <rect x="0" y="0" width="128" height="196" rx="8" fill="#eaf5ef"/>
+          <text x="64" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#087f5b" letter-spacing=".06em">PUBLIC</text>
+          <text x="64" y="186" text-anchor="middle" font-size="12" fill="#064e3b">ports 22, 80</text>
+          <rect x="10" y="70" width="108" height="56" rx="8" fill="#fff" stroke="#087f5b" stroke-width="2"/>
+          <text x="64" y="94" text-anchor="middle" font-size="16" font-weight="700" fill="#172c25">nginx :80</text>
+          <text x="64" y="113" text-anchor="middle" font-size="12.5" fill="#586b63">SPAs + /v1 proxy</text>
+          <rect x="150" y="70" width="152" height="56" rx="8" fill="#fff" stroke="#9fb3aa"/>
+          <text x="226" y="94" text-anchor="middle" font-size="16" font-weight="700" fill="#172c25">API (Fastify)</text>
+          <text x="226" y="113" text-anchor="middle" font-size="12.5" fill="#586b63">127.0.0.1:3000</text>
+          <rect x="330" y="70" width="182" height="56" rx="8" fill="#fff" stroke="#9fb3aa"/>
+          <text x="421" y="94" text-anchor="middle" font-size="16" font-weight="700" fill="#172c25">PostgreSQL 16</text>
+          <text x="421" y="113" text-anchor="middle" font-size="12.5" fill="#586b63">no host port</text>
+          <rect x="330" y="4" width="182" height="44" rx="8" fill="#fff" stroke="#9fb3aa"/>
+          <text x="421" y="24" text-anchor="middle" font-size="15" font-weight="700" fill="#172c25">Reporting worker</text>
+          <text x="421" y="40" text-anchor="middle" font-size="12" fill="#586b63">no port · reads outbox</text>
+          <rect x="330" y="148" width="182" height="44" rx="8" fill="#fff" stroke="#9fb3aa"/>
+          <text x="421" y="168" text-anchor="middle" font-size="15" font-weight="700" fill="#172c25">Settlement (Go)</text>
+          <text x="421" y="184" text-anchor="middle" font-size="12" fill="#586b63">:8091 internal only</text>
+          <line x1="118" y1="98" x2="148" y2="98" stroke="#586b63" stroke-width="2" marker-end="url(#ah)"/>
+          <line x1="302" y1="98" x2="328" y2="98" stroke="#586b63" stroke-width="2" marker-end="url(#ah)"/>
+          <line x1="421" y1="48" x2="421" y2="68" stroke="#586b63" stroke-width="2" marker-end="url(#ah)"/>
+          <line x1="421" y1="148" x2="421" y2="128" stroke="#586b63" stroke-width="2" marker-end="url(#ah)"/>
+          <path d="M226 126 V170 H328" fill="none" stroke="#586b63" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+          <text x="236" y="164" font-size="12" fill="#586b63">internal HTTP</text>
+        </svg>
+      </div>
+      <div class="card stat est"><div class="k">Estimated</div><div class="v"><b>~10 /s</b> · 5 DB pool slots × ~0.5 s acquirer wait</div></div>
+      <div class="card stat meas"><div class="k">Measured</div><div class="v"><b>9.2 /s</b> at 8 users, p95 1,063 ms</div></div>
+      <div class="card stat over"><div class="k">Overload</div><div class="v">No shedding: requests wait in the pool. 80 users: 0 errors, p95 8.7 s. Back to 4 users: 686 ms</div></div>
+    </div>
+  </div>
+  <div class="foot"><span class="note">Load test on the 30 Oct preview image, caps set via <code>docker update</code>: API 0.5 vCPU / 512 MiB, stack 1.0 vCPU. The final build releases DB connections before acquirer calls: <span class="needed">[NEEDED: re-run on final build]</span></span><span>6 / 8</span></div>
+</section>
+
+<!-- ============ 7. AI ============ -->
+<section class="slide">
+  <div class="kicker">How we used AI</div>
+  <h1>Our AI got our own code wrong. The “check the code” rule caught it</h1>
+  <div class="card setup"><span class="k">Setup in one line</span><code>AGENTS.md</code> shared rules → <code>CLAUDE.md</code> · <code>GEMINI.md</code> · Cursor rules, a <code>context/</code> knowledge base, one <code>Evidence/</code> report per task. Rule 1: docs are leads; confirm in code.</div>
+  <div class="card wrong">
+    <div class="col said"><div class="hd">AI-maintained notes said</div>
+      <p>“72 migrations”</p>
+      <p>“No automated scheme residue posting”</p>
+    </div>
+    <div class="col saw"><div class="hd">The code showed</div>
+      <p>78 migration files at audit time (79 now)</p>
+      <p><code style="font-size:22px">batch.go:314–325</code> posts the residue</p>
+    </div>
+  </div>
+  <div class="caught"><b>Caught by:</b> the post-merge audit re-read the source instead of trusting <code>context/README.md</code>.</div>
+  <div class="foot"><span><span class="needed">[NEEDED: team confirms this is the case to present]</span> · three annotated transcripts are in the Submission document</span><span>7 / 8</span></div>
+</section>
+
+<!-- ============ 8. DECISIONS AND OPEN RISKS ============ -->
+<section class="slide">
+  <div class="kicker">Decisions and open risks</div>
+  <h1 style="font-size:44px">What we left alone on purpose, and what is still open</h1>
+  <table class="risks">
+    <thead><tr><th>Item</th><th>Why</th><th>Safeguard we propose</th></tr></thead>
+    <tbody>
+      <tr><td>ADRs 0003 / 0004 / 0006 not edited</td><td>Accounting call, not ours</td><td>Code fixes follow “ledger is authoritative”; finance signs a superseding ADR</td></tr>
+      <tr><td>Void keeps the acquirer hold <span class="id">024</span></td><td>Simulator has no reverse call</td><td>Add reversal to acquirer client; reconcile holds daily</td></tr>
+      <tr><td>Old acquirer secret in git history <span class="id">057</span></td><td>Rotation is external</td><td>Owner rotates it; secret scan in CI</td></tr>
+      <tr><td>March sweep: past impact unknown <span class="id">033</span></td><td>No production DB access</td><td>Script retired (exits 1); read-only ledger audit</td></tr>
+      <tr><td>Destructive seed, real providers not run</td><td>Data and money safety</td><td>Seed needs <code>ALLOW_DESTRUCTIVE_SEED=1</code> on an isolated DB</td></tr>
+      <tr><td>No TLS, off-host backups, alerting or resource caps in prod compose</td><td>Time; Resend + domain pending</td><td>Certificate, nightly off-host dump, API caps in compose</td></tr>
+    </tbody>
+  </table>
+  <div class="foot"><span>Also open: 043 partial, 073, 081, 091; dependency advisories (A6); redeploy vs settlement run <span class="needed">[NEEDED]</span></span><span>8 / 8</span></div>
+</section>
+
+<!-- ============ APPENDIX A1: FINDINGS TABLE ============ -->
+<section class="slide appx">
+  <span class="appx-tag">Appendix, not presented</span>
+  <div class="kicker">A1 · Findings registry</div>
+  <h1>Top findings with status</h1>
+  <p class="small" style="margin-top:8px">Source: <code>Evidence/bugs/Readme.md</code>, index rows read 30 Oct 2026: <b>91 IDs</b> (BUG-001..091) = 82 Fixed · 1 Fixed (fresh DB) · 1 Fixed (local boot) · 1 fix-verified (BUG-033, script retired) · 2 Partial · 3 Open · 1 confirmed-current (BUG-091). The registry’s summary table says “Fixed 83”; the index rows give 82. Original audit snapshot: 84 unique, 14 Critical / 44 High / 22 Medium / 4 Low; 13 runtime-reproduced, 71 statically confirmed. “Fixed” is remediation status. Many fixes were verified statically or by unit test only; each report states its limits.</p>
+  <table class="dense">
+    <thead><tr><th>ID</th><th>Finding</th><th>Severity</th><th>Original verification</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">001</td><td>Merchant login grants full access without OTP</td><td>Critical</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">002</td><td>OTP and session bound to different merchant (tenant takeover)</td><td>Critical</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">003</td><td>Cross-merchant refunds (no ownership check)</td><td>Critical</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">004</td><td>Admin impersonation grants write access</td><td>Critical</td><td>Runtime</td><td>Fixed</td></tr>
+      <tr><td class="mono">005</td><td>Payment link paid after expiry via client <code>submittedAt</code></td><td>Critical</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">006</td><td>Payment link double charge via concurrent reservation reclaim</td><td>Critical</td><td>Runtime</td><td>Fixed</td></tr>
+      <tr><td class="mono">007</td><td>Refund headroom capped at authorized, not captured</td><td>Critical</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">008</td><td>Concurrent refunds both succeed (double money out)</td><td>Critical</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">009</td><td>CSV parser treats BHD as 2-decimal (10× too small)</td><td>Critical</td><td>Runtime</td><td>Fixed</td></tr>
+      <tr><td class="mono">010</td><td>Net payout computed in float32</td><td>Critical</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">011</td><td>Recalculate balances reads scheme gross instead of ledger</td><td>Critical</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">014</td><td>Fresh DB migrations fail at 0054/0055; view 0072 bad join</td><td>Critical</td><td>Runtime</td><td>Fixed (fresh DB)</td></tr>
+      <tr><td class="mono">027</td><td><code>POST /v1/refunds</code> returned 501</td><td>High</td><td>Static</td><td>Fixed (behind FEATURE_REFUNDS)</td></tr>
+      <tr><td class="mono">034</td><td>Scheme export rounds while ledger truncates</td><td>High</td><td>Static</td><td>Fixed</td></tr>
+      <tr><td class="mono">035</td><td>MDR recalculation rewrites paid batches</td><td>High</td><td>Static</td><td>Fixed</td></tr>
+    </tbody>
+  </table>
+  <div class="foot"><span>Per-finding symptom / reproduction / root cause / fix / verification / data effect: Submission document §4</span><span>A1</span></div>
+</section>
+
+<!-- ============ APPENDIX A2: ROOT-CAUSE GROUPS ============ -->
+<section class="slide appx">
+  <span class="appx-tag">Appendix, not presented</span>
+  <div class="kicker">A2 · Root-cause groups</div>
+  <h1>One cause, six families of symptoms</h1>
+  <p class="small" style="margin-top:8px">Team synthesis of the registry (not a quote from it). Bug IDs refer to <code>Evidence/bugs/</code>.</p>
+  <table class="dense">
+    <thead><tr><th style="width:26%">Cause group</th><th>Symptoms (bug IDs)</th></tr></thead>
+    <tbody>
+      <tr><td><b>Missing server-side authorization / tenant scoping</b></td><td>Login without OTP (001); OTP sent to another merchant (002); cross-merchant refund (003); impersonation had write access (004); payment-link cancel across merchants (018); reporting IDOR / unauthenticated export (019, 020); credits without role check (041)</td></tr>
+      <tr><td><b>Wrong money type / units</b></td><td>CSV import 10× too small (009); float32 net payout (010); split payouts lose fils (030); int32 volume overflow (031); float32 lifetime estimate (063); promo discount ×100 (088); progress bar /10000 (082)</td></tr>
+      <tr><td><b>Multi-step writes not atomic / idempotent / race-safe</b></td><td>Payment-link double charge (006); concurrent refunds double payout (008); OTP attempt race (015); duplicate callbacks / payout notices (048, 049); reporting double-apply (052); webhook dispatch with no claim (069); analytics rebuild non-atomic (074)</td></tr>
+      <tr><td><b>Time-zone / time-source errors</b></td><td>Link paid after expiry via client <code>submittedAt</code> (005); daily close at 03:15 (036); UTC-midnight date filter (076); exclusive end date included (084)</td></tr>
+      <tr><td><b>Docs, ADRs and comments that legitimised bugs</b></td><td>ADR 0003 (UTC month), 0004 (console rebuild from settled data), 0006 (cache-only adjustments); ADR 0002 status line says residue posting “implemented” (it was not at baseline); <code>docs/HANDOVER.md</code> says holds are never deleted and impersonation is read-only (code contradicted both); <code>docs/ONBOARDING.md</code> says tests are the tie-breaker (tests were locked to buggy behaviour)</td></tr>
+      <tr><td><b>Ops / deployment</b></td><td>Fresh-DB migrations broken (014); seed truncates DB (054); committed secret and broken compose (057, 058)</td></tr>
+    </tbody>
+  </table>
+  <div class="foot"><span>Design decision behind the group: invariants lived in prose, not in constraints, locks or server checks</span><span>A2</span></div>
+</section>
+
+<!-- ============ APPENDIX A3: FIX EVIDENCE ============ -->
+<section class="slide appx">
+  <span class="appx-tag">Appendix, not presented</span>
+  <div class="kicker">A3 · Fix evidence</div>
+  <h1>Tests, migrations and what was actually re-run</h1>
+  <div class="two">
+    <div>
+      <h3>Commands re-run on 30 Oct 2026 (HEAD 1f88a47 + uncommitted ops files)</h3>
+<pre class="out">npm run typecheck                    → all workspaces pass
+npm run test -w @filspay/web         → tests 46 · pass 46 · fail 0
+npm run test -w @filspay/money       → tests 40 · pass 40 · fail 0
+tsx --test src/admin/adjustmentCsvParsing.new.test.ts \
+           src/admin/adjustmentCsvParsing.test.ts
+                                     → tests 14 · pass 14 · fail 0</pre>
+      <p class="small" style="margin-top:8px"><b>Not run here:</b> API / reporting tests that need a migrated Postgres (<code>DATABASE_URL</code>). No Docker or Postgres was available on this machine. These are <b>not</b> claimed as passing in this deck.</p>
+      <h3>Regression tests named in the deck</h3>
+      <ul class="small">
+        <li><code>routes/auth-security.new.test.ts</code>: “merchant pending cookie is denied; OTP rotates token and extends browser/server TTL”; concurrent OTP failures cannot exceed the guess budget</li>
+        <li><code>admin/adjustmentCsvParsing.new.test.ts</code>: “4.75 BD is 4750 fils”; “4.755 BD keeps the third decimal as 4755 fils”</li>
+        <li><code>payments/refundHelpers.new.test.ts</code>: “two concurrent refunds cannot exceed captured money and only one reaches the acquirer”; “another merchant’s transaction is a 404 and is not refunded”</li>
+        <li><code>payments/processRefund.test.ts</code>: “the refund’s ledger group balances and reverses the fee that was charged”</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Database guards added (db/migrations)</h3>
+      <table class="dense" style="margin-top:4px">
+        <tbody>
+          <tr><td class="mono">0077</td><td>pending refund reservations</td></tr>
+          <tr><td class="mono">0078</td><td>settlement batch paid once</td></tr>
+          <tr><td class="mono">0079</td><td>ledger and audit tables immutable (trigger)</td></tr>
+          <tr><td class="mono">0080</td><td>BIGINT counters</td></tr>
+          <tr><td class="mono">0081</td><td>unique acquirer callback ID</td></tr>
+          <tr><td class="mono">0082</td><td>adjustment import idempotency</td></tr>
+          <tr><td class="mono">0083</td><td>unique payout disbursement</td></tr>
+          <tr><td class="mono">0084</td><td>refund merchant summary counted once</td></tr>
+          <tr><td class="mono">0085</td><td>authenticators (optional TOTP)</td></tr>
+        </tbody>
+      </table>
+      <h3>Other documented fixes</h3>
+      <ul class="small">
+        <li>OTP delivery: production was log-only → Resend HTTPS adapter, sanitised 503 on failure, no raw OTP logged (<code>PMA-01</code>)</li>
+        <li>BUG-033: March residue sweep retired; direct run refuses and exits 1 (<code>PMA-08</code>)</li>
+        <li>Webhooks: bounded retries, <code>payment.failed</code>, <code>payment_link.expired</code></li>
+        <li>Post-merge audit (HEAD c3eb218): 144 safe tests passing, 90 baseline test files present, 0 conflict markers in 491 files</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Sources: Evidence/bugs/*, Evidence/implementation/*, Evidence/POST_MERGE_AUDIT_REPORT.md</span><span>A3</span></div>
+</section>
+
+<!-- ============ APPENDIX A4: REFUND LEDGER FLOW ============ -->
+<section class="slide appx">
+  <span class="appx-tag">Appendix, not presented</span>
+  <div class="kicker">A4 · Refund money flow</div>
+  <h1>What one refund writes, and how settlement sees it</h1>
+  <div class="two">
+    <div>
+      <h3>Ledger group per successful refund (balanced, one entry_group_id)</h3>
+      <table class="dense">
+        <thead><tr><th>Account</th><th>Side</th><th class="num">Amount</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">merchant_payable</td><td>debit</td><td class="num">refund gross</td></tr>
+          <tr><td class="mono">card_scheme_clearing</td><td>credit</td><td class="num">refund gross</td></tr>
+          <tr><td class="mono">platform_fee_revenue</td><td>debit</td><td class="num">fee reversed</td></tr>
+          <tr><td class="mono">merchant_payable</td><td>credit</td><td class="num">fee reversed</td></tr>
+        </tbody>
+      </table>
+      <ul class="small" style="margin-top:10px">
+        <li>Refundable = captured − refunded − pending reservations, checked under the same row lock as capture and void.</li>
+        <li>Each partial refund reverses its share of the fee; the last one reverses whatever is left, so reversals add up to the fee charged.</li>
+        <li><code>POST /v1/refunds</code> needs owner or finance role and an <code>Idempotency-Key</code>; omitted amount = everything still refundable.</li>
+        <li>One <code>refund.succeeded</code> outbox event per success; timeline records <code>refund_partial</code> or <code>refunded</code>.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Settlement and reporting</h3>
+      <ul class="small">
+        <li><code>CloseBatch</code> subtracts succeeded, unbatched refunds from the same Bahrain business day: gross loses <code>amount_fils</code>, fee loses <code>fee_reversed_fils</code>. Refunds are stamped with the batch ID, so a second close does not count them again.</li>
+        <li>Reconciliation counts an unbatched refund in pending net (<code>amount_fils − fee_reversed_fils</code>), so ledger, closed batches and pending still meet.</li>
+        <li>Reporting adds <code>refund_count</code> and <code>refund_gross_fils</code> to <code>merchant_daily_volume</code> for the Bahrain date.</li>
+        <li>Shipped behind <code>FEATURE_REFUNDS</code> (code default off; set in dev compose). Production reads it from the server env file: <span class="needed">[NEEDED: confirm it is on]</span></li>
+      </ul>
+      <h3>Demo evidence</h3>
+      <div class="shot" style="height:150px; font-size:15px">[SCREENSHOT / QUERY OUTPUT NEEDED: ledger rows for the demo full + partial refunds, captured from the live system]</div>
+    </div>
+  </div>
+  <div class="foot"><span>Source: Evidence/features/features.md, apps/api/src/payments/processRefund.ts</span><span>A4</span></div>
+</section>
+
+<!-- ============ APPENDIX A5: LOAD TEST ============ -->
+<section class="slide appx">
+  <span class="appx-tag">Appendix, not presented</span>
+  <div class="kicker">A5 · Capacity</div>
+  <h1>Load test: method, results, bottleneck, money check</h1>
+  <div class="two">
+    <div>
+      <table class="dense">
+        <thead><tr><th class="num">Users</th><th class="num">Checkouts</th><th class="num">Paid</th><th class="num">Sim. 402/502</th><th class="num">p50</th><th class="num">p95</th><th class="num">/s</th><th>Bar</th></tr></thead>
+        <tbody>
+          <tr><td class="num">1</td><td class="num">14</td><td class="num">13</td><td class="num">1</td><td class="num">577 ms</td><td class="num">751 ms</td><td class="num">1.7</td><td>yes</td></tr>
+          <tr><td class="num">2</td><td class="num">31</td><td class="num">30</td><td class="num">1</td><td class="num">557 ms</td><td class="num">737 ms</td><td class="num">3.8</td><td>yes</td></tr>
+          <tr><td class="num">4</td><td class="num">62</td><td class="num">59</td><td class="num">3</td><td class="num">542 ms</td><td class="num">742 ms</td><td class="num">7.3</td><td>yes</td></tr>
+          <tr><td class="num"><b>8</b></td><td class="num">79</td><td class="num">74</td><td class="num">5</td><td class="num">850 ms</td><td class="num"><b>1,063 ms</b></td><td class="num"><b>9.2</b></td><td><b>yes</b></td></tr>
+          <tr><td class="num">12</td><td class="num">77</td><td class="num">72</td><td class="num">5</td><td class="num">1,238 ms</td><td class="num">1,868 ms</td><td class="num">8.7</td><td>no</td></tr>
+          <tr><td class="num">20</td><td class="num">125</td><td class="num">123</td><td class="num">2</td><td class="num">2,000 ms</td><td class="num">2,708 ms</td><td class="num">9.3</td><td>no</td></tr>
+          <tr><td class="num">36</td><td class="num">104</td><td class="num">98</td><td class="num">6</td><td class="num">3,606 ms</td><td class="num">4,400 ms</td><td class="num">9.3</td><td>no</td></tr>
+          <tr><td class="num">80</td><td class="num">155</td><td class="num">151</td><td class="num">4</td><td class="num">8,550 ms</td><td class="num">8,743 ms</td><td class="num">8.9</td><td>no</td></tr>
+        </tbody>
+      </table>
+      <p class="small" style="margin-top:8px">Capacity errors: 0 at every level. No HTTP 500s, no client timeouts.</p>
+      <h3>Method</h3>
+      <ul class="small">
+        <li>Node.js 22 <code>fetch</code> closed-loop runner (k6 not installed); about 8 s per level.</li>
+        <li>Fixed scenario: <code>GET /v1/payment-links/:token</code> → <code>POST …/pay</code>, 1,000 fils (1.000 BD), Idempotency-Key, one fresh link per iteration.</li>
+        <li>Bar: end-to-end p95 ≤ 1,500 ms and ≤ 1% unexpected failures (simulator’s default 2% decline/error counted separately).</li>
+        <li>Caps for the run: API 0.50 CPU / 512 MiB · Postgres 0.30 / 768 MiB · settlement 0.10 / 256 MiB · reporting 0.10 / 256 MiB.</li>
+      </ul>
+    </div>
+    <div class="small">
+      <h3>Bottleneck</h3>
+      <p>API Postgres pool of <b>5</b> connections held across two acquirer-simulator sleeps (100–400 ms each) in the measured image. 5 slots × ~0.5 s ≈ 10 checkouts/s; measured plateau 9/s. API CPU peaked ~11% of a 50% quota; RSS ~165–170 of 512 MiB; five sessions “idle in transaction” waiting on the app.</p>
+      <h3>Overload and recovery</h3>
+      <p>No rate limit or 503 shedder on the public pay route; excess requests queue for a pool slot (5 s connection timeout). After the 36-user wave, 4 users: 53/53 paid, p95 686 ms, same process. Dev compose restart policy is <code>no</code>; production compose uses <code>unless-stopped</code>.</p>
+      <h3>Money check (run capload-1793375189959, 420 links)</h3>
+      <p>399 paid · 399 transactions captured at 1,000 fils = 399,000 fils (399.000 BD) · 0 duplicate transaction IDs · 21 links back to active (simulator declines/errors). <b style="color:var(--danger)">9 failures left an authorized transaction with an active 1,000-fil hold</b> while the link returned to active (9.000 BD reserved). This was a finding in the measured image’s <code>pay.ts</code>.</p>
+      <h3>Caveat</h3>
+      <p>The measured image was not the working-tree code: working-tree <code>authorize.ts</code>/<code>capture.ts</code> release the connection before the acquirer call, and its <code>pay.ts</code> voids a definitive decline. <span class="needed">[NEEDED: re-run on the final deployed build]</span></p>
+    </div>
+  </div>
+  <div class="foot"><span>Source: Evidence/capacity_checkout_load_test.md (measured 30 Oct 2026)</span><span>A5</span></div>
+</section>
+
+<!-- ============ APPENDIX A6: DEPLOYMENT + DEPENDENCIES ============ -->
+<section class="slide appx">
+  <span class="appx-tag">Appendix, not presented</span>
+  <div class="kicker">A6 · Deployment and dependency scan</div>
+  <h1>How it is hosted, and what the scanners found</h1>
+  <div class="two">
+    <div class="small">
+      <h3>Services and exposure</h3>
+      <table class="dense" style="margin-top:2px">
+        <thead><tr><th>Service</th><th>Port / exposure</th></tr></thead>
+        <tbody>
+          <tr><td>nginx (host)</td><td>80 public (443 open, no certificate yet). Serves both SPAs, proxies API, generic 503 JSON if API down</td></tr>
+          <tr><td>API (Fastify)</td><td><code>127.0.0.1:3000</code>, loopback only</td></tr>
+          <tr><td>Settlement (Go)</td><td>8091, internal Docker network, authenticated</td></tr>
+          <tr><td>Reporting worker</td><td>no port, consumes outbox</td></tr>
+          <tr><td>PostgreSQL 16</td><td>no host port; separate non-superuser roles per service</td></tr>
+          <tr><td>SSH</td><td>22, admin</td></tr>
+        </tbody>
+      </table>
+      <h3>Redeploy (from ops/PRODUCTION.md, in /srv/filspay/current)</h3>
+<pre class="out">sudo docker compose -p filspay -f ops/docker-compose.production.yml up -d api</pre>
+      <p style="margin-top:6px"><b>Secrets:</b> generated on the server only, root-only mode-0600 files under <code>/etc/filspay</code>; never in git, chat or logs.</p>
+      <p><b>Health / restart:</b> all services <code>restart: unless-stopped</code>; Postgres healthcheck gates a one-shot migrate job, which gates the apps. No API container healthcheck in compose; nginx returns 503 JSON when the API is down. Release images tagged <code>20261030-1f88a47</code> for rollback.</p>
+    </div>
+    <div class="small">
+      <p style="margin-top:10px"><b>Status recorded 30 Oct:</b> server 1 vCPU / ~2 GiB + 2 GiB swap; 79 migrations applied; frontends 200; API not activated (needs Resend sender + HTTPS). <span class="needed">[NEEDED: current API state]</span></p>
+      <p><b>Redeploy vs settlement run:</b> <span class="needed">[NEEDED: not yet documented]</span></p>
+      <h3><code>npm audit</code> (30 Oct)</h3>
+      <p>Production tree: 5 advisories (4 moderate, 1 high, 0 critical). Full tree: 8 (5 moderate, 3 high).</p>
+      <ul>
+        <li><b>sharp 0.33.5</b> (high, production): libvips/libheif/librsvg; fix needs breaking bump to 0.35.5.</li>
+        <li><b>fastify 5.12.3</b> (moderate): HTTP/2 trailer bug not on request path (HTTP/2 not enabled); header-schema bug in range.</li>
+        <li><b>react-router 6.30.6</b> (moderate): open redirect / SSR; fix is a major bump to 7.x. Apps are Vite SPAs.</li>
+      </ul>
+      <h3><code>govulncheck</code> (Go settlement)</h3>
+      <p>3 reachable vulnerabilities in 2 modules: <code>golang.org/x/text v0.21.0</code> (GO-2026-6629, GO-2026-5970; on the pool-setup call graph) and <code>pgx/v5 v5.7.2</code> (GO-2026-5004; traced to a fixed statement at <code>batch.go:482</code> with no placeholders or user input).</p>
+      <p style="margin-top:6px"><b>Not upgraded:</b> breaking bumps need approval. k6, semgrep, trivy, gitleaks, ZAP not run.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Sources: ops/PRODUCTION.md, ops/docker-compose.production.yml, Evidence/agent-1-server-deployment.md, Evidence/security_tool_scan.md</span><span>A6</span></div>
+</section>
+
+<!-- ============ APPENDIX A7: UI / UX ============ -->
+<section class="slide appx">
+  <span class="appx-tag">Appendix, not presented</span>
+  <div class="kicker">A7 · UI and UX</div>
+  <h1>One design system across checkout, dashboard and console</h1>
+  <div style="display:grid; grid-template-columns: 430px 1fr; gap: 28px; margin-top: 8px;">
+    <div class="small">
+      <ul>
+        <li><b>Shared <code>apps/ui/</code></b>: tokens, primitives, Brand / Icon / PageHeading, used by all three apps. System fonts, no external requests.</li>
+        <li><b>Layout:</b> 232 px sidebar, consistent icons, active-edge indicator; tablet/mobile collapse to grid nav.</li>
+        <li><b>Tables:</b> named, keyboard-focusable scroll regions (UI-A11Y-001: 13 failing tests at baseline, passing now); tabular numerals for money.</li>
+        <li><b>Actions:</b> danger style on Cancel link, Void, Delete webhook, Reject credit, Reject KYC.</li>
+        <li><b>States:</b> pill status badges with dot, left-accent notices, loading pulse, reduced-motion support.</li>
+        <li><b>Checkout:</b> branded masthead, amount hierarchy, grouped card fields, success/failure result states.</li>
+        <li><b>Preserved:</b> routes, role gates, API calls, money formatters. No fake metrics or trust badges.</li>
+      </ul>
+      <p style="margin-top:8px; color:var(--muted)">Capture: <code>node ops/preview.mjs</code> (web 5173, admin 5174); <code>node scripts/checkout-preview.mjs --before</code> serves the original checkout.</p>
+    </div>
+    <div class="ui-grid">
+      <div></div><div class="colh">Before</div><div class="colh">After</div>
+      <div class="lbl">Checkout</div><div class="shot">[SCREENSHOT NEEDED: checkout before]</div><div class="shot">[SCREENSHOT NEEDED: checkout after]</div>
+      <div class="lbl">Merchant dashboard</div><div class="shot">[SCREENSHOT NEEDED: dashboard before]</div><div class="shot">[SCREENSHOT NEEDED: dashboard after]</div>
+      <div class="lbl">Admin console</div><div class="shot">[SCREENSHOT NEEDED: admin before]</div><div class="shot">[SCREENSHOT NEEDED: admin after]</div>
+    </div>
+  </div>
+  <div class="foot"><span>Sources: Evidence/ui_ux_redesign.md, Evidence/ui_checkout_redesign.md · rendered visuals not yet checked in a browser by an agent</span><span>A7</span></div>
+</section>
+
+<!-- ============ APPENDIX A8: AI SETUP ============ -->
+<section class="slide appx">
+  <span class="appx-tag">Appendix, not presented</span>
+  <div class="kicker">A8 · AI setup</div>
+  <h1>Where the AI setup lives, and how output was checked</h1>
+  <div class="two">
+    <div class="small">
+      <h3>Files in the repository</h3>
+      <ul>
+        <li><code>AGENTS.md</code>: the shared authority: architecture, commands, safety rules, P0–P3 severity, bug status taxonomy, Definition of Done, git safety.</li>
+        <li><code>CLAUDE.md</code>, <code>GEMINI.md</code>, <code>.cursor/rules/filspay.mdc</code>: tool-specific additions that defer to <code>AGENTS.md</code>.</li>
+        <li><code>context/</code>: persistent knowledge base (architecture, database, API, auth, payment flows, testing, known issues, dependency map, decisions, changelog, modules). Updated after each task.</li>
+        <li><code>Evidence/</code>: one report per workstream plus the bug registry. Each states baseline HEAD, commands actually run with real outcomes, per-bug before/after, and what was not verified.</li>
+      </ul>
+      <p style="margin-top:6px; color:var(--muted)">No custom slash commands or permission files are in the repo (<code>.claude/</code> does not exist). <span class="needed">[NEEDED: list any setup kept outside the repo]</span></p>
+    </div>
+    <div class="small">
+      <h3>Verification rules given to every agent</h3>
+      <ul>
+        <li>Docs, ADRs and comments are leads, not proof; confirm each defect in current code.</li>
+        <li>Regression test with every fix; never weaken a test to make it pass.</li>
+        <li>No changes to <code>packages/money/</code>, migrations or the <code>v1</code> partner contract without approval.</li>
+        <li>No destructive seed or git commands; no end-to-end claims without runtime evidence.</li>
+        <li>A planted folder of old agent instructions (“1 BD = 100 cents”, “Math.random is fine”) was marked as a decoy, not to be read.</li>
+      </ul>
+      <h3>Other times AI output was checked and corrected</h3>
+      <ul>
+        <li>First server-render test failed with <code>React is not defined</code> in shared JSX outside the app tsconfig boundary; fixed with explicit imports, not by weakening the test.</li>
+      </ul>
+      <h3>Condensed transcript excerpt</h3>
+      <div class="shot" style="height:90px; font-size:14px">[NEEDED: team-supplied excerpt; full three annotated excerpts are in the Submission document]</div>
+    </div>
+  </div>
+  <div class="foot"><span>Note: context/README.md still says “72 migrations” today; it is the stale note shown on slide 7</span><span>A8</span></div>
+</section>
+
+<script>
+  // Slide 6 chart: single series (p95), one y-axis. Data: Evidence/capacity_checkout_load_test.md
+  (function () {
+    var data = [
+      { u: 1, p95: 751, tps: 1.7 }, { u: 2, p95: 737, tps: 3.8 }, { u: 4, p95: 742, tps: 7.3 },
+      { u: 8, p95: 1063, tps: 9.2 }, { u: 12, p95: 1868, tps: 8.7 }, { u: 20, p95: 2708, tps: 9.3 },
+      { u: 36, p95: 4400, tps: 9.3 }, { u: 80, p95: 8743, tps: 8.9 }
+    ];
+    var W = 566, H = 404, L = 64, R = 14, T = 30, B = 74, BAR = 1500, YMAX = 9000;
+    var pw = W - L - R, ph = H - T - B;
+    var x = function (i) { return L + (i + 0.5) * pw / data.length; };
+    var y = function (v) { return T + ph * (1 - v / YMAX); };
+    var s = [];
+    [0, 3000, 6000, 9000].forEach(function (t) {
+      s.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(t) + '" y2="' + y(t) + '" stroke="#e3ebe7" stroke-width="1"/>');
+      s.push('<text x="' + (L - 10) + '" y="' + (y(t) + 5) + '" text-anchor="end" font-size="14" fill="#586b63">' + t.toLocaleString('en-US') + '</text>');
+    });
+    s.push('<text x="' + (L - 10) + '" y="' + (T - 14) + '" text-anchor="end" font-size="13" fill="#586b63">ms</text>');
+    // capacity band at 8 users
+    var bx = x(3), bw = pw / data.length;
+    s.push('<rect x="' + (L) + '" y="' + T + '" width="' + (bx + bw / 2 - L) + '" height="' + ph + '" fill="#eaf5ef" opacity="0.7"/>');
+    s.push('<text x="' + (L + 8) + '" y="' + (T + 18) + '" font-size="14" font-weight="700" fill="#064e3b">Capacity: 8 users</text>');
+    // bar line
+    s.push('<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(BAR) + '" y2="' + y(BAR) + '" stroke="#855516" stroke-width="2" stroke-dasharray="6 5"/>');
+    s.push('<text x="' + (W - R) + '" y="' + (y(BAR) - 8) + '" text-anchor="end" font-size="14" font-weight="600" fill="#855516">bar 1,500 ms</text>');
+    // line
+    var pts = data.map(function (d, i) { return x(i) + ',' + y(d.p95); }).join(' ');
+    s.push('<polyline points="' + pts + '" fill="none" stroke="#087f5b" stroke-width="2.5" stroke-linejoin="round"/>');
+    data.forEach(function (d, i) {
+      var inside = d.p95 <= BAR;
+      s.push('<circle cx="' + x(i) + '" cy="' + y(d.p95) + '" r="6" fill="' + (inside ? '#087f5b' : '#a3293e') + '" stroke="#fff" stroke-width="2"/>');
+      s.push('<text x="' + x(i) + '" y="' + (T + ph + 24) + '" text-anchor="middle" font-size="16" font-weight="600" fill="#172c25">' + d.u + '</text>');
+      s.push('<text x="' + x(i) + '" y="' + (T + ph + 44) + '" text-anchor="middle" font-size="13.5" fill="#586b63">' + d.tps.toFixed(1) + '/s</text>');
+    });
+    // selective direct labels
+    var lab = function (i, txt, dy, anchor) {
+      s.push('<text x="' + (x(i) + (anchor === 'end' ? -10 : 0)) + '" y="' + (y(data[i].p95) + dy) + '" text-anchor="' + (anchor || 'middle') + '" font-size="14" font-weight="600" fill="#172c25">' + txt + '</text>');
+    };
+    lab(3, '1,063 ms', -30);
+    lab(4, '1,868 ms', -16);
+    lab(7, '8,743 ms', 5, 'end');
+    s.push('<text x="' + (L + pw / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="14" fill="#586b63">concurrent users (closed loop) · checkouts per second · <tspan fill="#087f5b">●</tspan> inside bar  <tspan fill="#a3293e">●</tspan> over bar</text>');
+    document.getElementById('loadchart').innerHTML = s.join('');
+  })();
+</script>
+</body>
+</html>

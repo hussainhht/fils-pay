@@ -1,5 +1,9 @@
 # Local development stack
 
+For the IP preview/server deployment and remaining production activation steps,
+see [PRODUCTION.md](PRODUCTION.md). The production Compose file is separate from
+this development stack; do not deploy the development fixture credentials.
+
 Postgres, API, settlement, and reporting run through Docker Compose. Web and
 admin remain separate Vite development servers. This configuration uses a
 shared development database role and public fixture credentials; provision

@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file: /etc/filspay/database.env
+    restart: unless-stopped
+    volumes:
+      - filspay_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filspay_owner -d filspay"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: filspay-node:production
+    env_file: /etc/filspay/migrate.env
+    command: ["npm", "run", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    image: filspay-node:production
+    env_file: /etc/filspay/api.env
+    restart: unless-stopped
+    command: ["node", "--import", "tsx", "apps/api/src/index.ts"]
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - filspay_kyc:/app/data/kyc
+    depends_on: &app_dependencies
+      migrate:
+        condition: service_completed_successfully
+
+  reporting:
+    image: filspay-node:production
+    env_file: /etc/filspay/reporting.env
+    restart: unless-stopped
+    command: ["node", "--import", "tsx", "apps/reporting/src/index.ts", "worker"]
+    depends_on: *app_dependencies
+
+  settlement:
+    image: filspay-settlement:production
+    env_file: /etc/filspay/settlement.env
+    restart: unless-stopped
+    command: ["./settlement", "daemon"]
+    depends_on: *app_dependencies
+
+volumes:
+  filspay_pgdata:
+  filspay_kyc:

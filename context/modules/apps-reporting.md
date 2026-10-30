@@ -83,5 +83,5 @@
 
 ## 7. Known Defects & Limitations
 
-1. **Non-Atomic Watermark Commit (BUG-052):** If the worker process restarts mid-pass after applying an event but before committing the cursor, events can double-increment daily volume.
+1. **Historical Non-Atomic Watermark Commit (BUG-052):** Current `runConsumerPass.ts` applies events and advances the locked cursor in one transaction, protected by an outbox SHARE-lock producer barrier. Individual incremental UPSERTs are not independently replay-idempotent; the atomic cursor protocol supplies that guarantee. Capacity impact of the table lock remains unmeasured (2026-10-30 source review; `Evidence/agent-1-capacity-optimization.md`).
 2. **Stale Dashboards After Seeding:** After a destructive database re-seed, the reporting worker must be restarted to reset its cursor cache.

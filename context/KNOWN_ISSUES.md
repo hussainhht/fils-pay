@@ -23,6 +23,17 @@
 
 ## 2. P0 Blocker Defects
 
+### Deployment activation limit (2026-10-30)
+
+The server IP serves the compiled merchant/admin frontend, but is an HTTP
+preview. Production Resend sender/key are not configured; the API remains off
+and nginx API/health responses are intentionally 503. This is an explicit
+deployment configuration blocker, not a claim of a new product-code defect or
+completed end-to-end production verification. Valid HTTPS, authorized initial
+account provisioning, real OTP delivery, and login acceptance remain required.
+Private DB/reporting/settlement are running without seeded data. See
+`Evidence/agent-1-server-deployment.md` and `ops/PRODUCTION.md`.
+
 ### Scoped webhook audit delta (2026-10-30)
 
 See `Evidence/webhook_audit_and_implementation.md`; this scoped delta does not
@@ -146,3 +157,7 @@ No historical bug statuses changed by this presentation redesign. Source-confirm
 ### Checkout missing styles/oversized SVG follow-up (2026-10-30)
 
 P2 screenshot defect: confirmed-current -> fix-verified at served-module/regression level. The running Vite CSS module was empty; rewriting the file restored layout CSS, and intrinsic SVG dimensions prevent icon enlargement without styles. Browser visual confirmation remains pending. Exact stale-transform cause undetermined. Existing ambiguous-payment retry issue above is unchanged.
+
+## Checkout capacity source clarification (2026-10-30)
+
+Scoped source review at `1f88a47`: BUG-061's historical row-lock-across-acquirer description no longer matches current capture source. Prepare commits before network I/O; apply reacquires locks. The historical reopened-link/live-hold behavior also differs: current checkout voids definitive capture declines before releasing and retains ambiguous reservations. Both are `already-fixed` by source inspection here; no new integration confirmation. Checkout-specific bounded admission and existing Compose CPU/RAM enforcement are `confirmed-current` P2 gaps, with overload impact/live enforcement unmeasured. Reporting outbox SHARE-lock contention and simulator result-cache growth are performance hypotheses (`unverified` impact), not measured bottlenecks. New `ops/capacity/compose.yml` declares a separate disposable benchmark budget; it does not fix production configuration. Scope/status counts and verification limits: `Evidence/agent-1-capacity-optimization.md`. This clarification does not rescan or replace the historical 86-issue registry.

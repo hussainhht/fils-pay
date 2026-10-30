@@ -6,6 +6,26 @@
 
 ## 1. Local Infrastructure Topology (`ops/docker-compose.yml`)
 
+### Remote IP frontend preview (2026-10-30)
+
+`68.183.82.221` now runs nginx and a separate production Compose project
+(`ops/docker-compose.production.yml`). Release source/artifacts are under
+`/srv/filspay/releases/20261030-1f88a47`, with `/srv/filspay/current` selecting
+static assets. Merchant `/dashboard/login` and admin `/login` share the IP
+origin; nginx splits SPA routes and resolves both hashed asset sets.
+
+PostgreSQL 16, reporting and settlement run privately. All 79 existing migrations
+applied to a new empty DB; no users/financial records were seeded. Root-only
+server configuration lives in `/etc/filspay/*.env`; per-service non-superuser
+roles replace shared development credentials. No database/settlement ports are
+publicly published. API port 3000 will be loopback-only when activated.
+
+**API is not active**: real Resend sender/key are absent. Production configuration
+fails closed, and nginx returns 503 for API/health routes. HTTP frontend delivery
+is verified; authenticated production use also needs valid HTTPS and a matching
+checkout origin. No OTP bypass, development exposure or TOTP-only bootstrap was
+enabled. See `ops/PRODUCTION.md` and `Evidence/agent-1-server-deployment.md`.
+
 The platform's local runtime architecture is orchestrated using Docker Compose. All backend services and the database communicate over an isolated bridge network:
 
 ```text
@@ -135,3 +155,7 @@ Production now requires `OTP_DELIVERY_TRANSPORT=resend` (default in production),
 ## TOTP deployment (2026-10-30)
 
 FEATURE_TOTP defaults false and requires approved migration 0085 before activation. Provide TOTP_SECRET_ENCRYPTION_KEY as base64 32 random bytes from secret management; no fallback and no automatic key generation/rotation. Keep API host clocks synchronized. Explicit OTP_DELIVERY_TRANSPORT=disabled is now allowed in production only with FEATURE_TOTP; this overrides earlier unconditional Resend requirement for TOTP-only deployments and returns 503 on any email send. Unenrolled accounts still need a trusted MFA session or restored authorized email OTP to bootstrap; there is no password-only enrollment path. Serve over HTTPS, preserve Host, and suppress auth body capture in proxies/APM. Follow ops/README.md; DB migration and real device/provider verification were not performed here.
+
+## Prepared isolated capacity stack (2026-10-30)
+
+`ops/capacity/compose.yml` is independent of local/production Compose, with its own project-scoped PostgreSQL 16 volume and only nginx on 127.0.0.1:3300. Steady declared quotas total 0.95 CPU/1600 MiB including API 0.5 CPU/512 MiB; 0.05 CPU/448 MiB remains for OS/Docker/monitoring on a 1-CPU/2-GiB host. Swap maxima equal RAM limits. Actual enforcement/overhead remains unverified without Docker. Private `.env` is generated exclusively, runtime files ignored/excluded from builds, simulator 100–400 ms/2%/seed42 fixed, and existing auth checks retained. Additive fixtures only use capacity-postgres/filspay_test_capacity; no existing DB was used. Image builds, semantic Compose validation, provisioning and capacity remain pending. This is not a production deployment change. Exact commands and limitations: `Evidence/agent-1-capacity-optimization.md`.

@@ -128,7 +128,7 @@
 
 ## 9. Known Limitations & Risks
 
-1. **Row Lock Across Acquirer (BUG-061):** Capture retains DB row lock during external acquirer network I/O.
+1. **Row Lock Across Acquirer (BUG-061):** Current capture commits preparation before external I/O and takes locks again during apply. The historical serving image retained the lock; current-build capacity and runtime lock sampling remain pending. See `Evidence/agent-1-capacity-optimization.md`.
 2. **CSV Import Precision (BUG-009):** Admin balance adjustment CSV parser assumes 2 decimals.
 3. **Webhook Replay Identity (BUG-068):** Already fixed: replay retains the original delivery identity.
 4. **Acquirer Callback Signature (BUG-047):** Acquirer callbacks accepted unsigned by default in dev.

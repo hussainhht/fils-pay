@@ -1,0 +1,99 @@
+# Disposable benchmark only. Never combine with a production Compose file.
+services:
+  capacity-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: capacity
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node ops/capacity/init.mjs first}
+      POSTGRES_DB: filspay_test_capacity
+    command: [postgres, -c, max_connections=40, -c, shared_buffers=128MB]
+    cpus: 0.25
+    mem_limit: 640m
+    memswap_limit: 640m
+    volumes:
+      - capacity-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U capacity -d filspay_test_capacity]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    image: filspay-capacity-node:${CAPACITY_IMAGE_TAG:-baseline}
+    build:
+      context: ../..
+      dockerfile: ops/Dockerfile.node
+    env_file: .env
+    command: [npm, run, migrate]
+    depends_on:
+      capacity-postgres:
+        condition: service_healthy
+
+  api:
+    image: filspay-capacity-node:${CAPACITY_IMAGE_TAG:-baseline}
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      OTP_DEV_EXPOSE: 'false'
+      PORT: '3000'
+      PG_POOL_MAX: '5'
+      PG_POOL_CONNECTION_TIMEOUT_MS: '5000'
+      ACQUIRER_LATENCY_MIN_MS: '100'
+      ACQUIRER_LATENCY_MAX_MS: '400'
+      ACQUIRER_FAILURE_RATE: '0.02'
+      ACQUIRER_RNG_SEED: '42'
+      FEATURE_REFUNDS: 'true'
+      SETTLEMENT_INTERNAL_URL: http://settlement:8091
+      CHECKOUT_BASE_URL: http://127.0.0.1:3300
+    command: [node, --import, tsx, apps/api/src/index.ts]
+    cpus: 0.5
+    mem_limit: 512m
+    memswap_limit: 512m
+    depends_on: &migrated
+      migrate:
+        condition: service_completed_successfully
+
+  reporting:
+    image: filspay-capacity-node:${CAPACITY_IMAGE_TAG:-baseline}
+    env_file: .env
+    command: [node, --import, tsx, apps/reporting/src/index.ts, worker]
+    cpus: 0.075
+    mem_limit: 192m
+    memswap_limit: 192m
+    depends_on: *migrated
+
+  settlement:
+    image: filspay-capacity-settlement:${CAPACITY_IMAGE_TAG:-baseline}
+    build:
+      context: ../..
+      dockerfile: ops/Dockerfile.go
+    env_file: .env
+    command: [./settlement, daemon]
+    cpus: 0.075
+    mem_limit: 192m
+    memswap_limit: 192m
+    depends_on: *migrated
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - '127.0.0.1:3300:80'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    cpus: 0.05
+    mem_limit: 64m
+    memswap_limit: 64m
+    depends_on:
+      - api
+
+  prepare:
+    profiles: [tools]
+    image: filspay-capacity-node:${CAPACITY_IMAGE_TAG:-baseline}
+    env_file: .env
+    command: [node, scripts/checkout-capacity-prepare.mjs]
+    volumes:
+      - ./runtime:/capacity-output
+    depends_on: *migrated
+
+volumes:
+  capacity-data:
