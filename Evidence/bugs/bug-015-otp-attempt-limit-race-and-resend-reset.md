@@ -1,5 +1,7 @@
 # BUG-015 — OTP Attempt Limit Is Racy and Resend Resets Guess Budget
 
+**Fixed (2026-10-30):** Merchant/admin verify serialize session/challenge access; incorrect-attempt increments commit, resends carry the budget, and expired codes can be resent within a valid pending session. Concurrent verify/resend regressions pass in `routes/auth-security.new.test.ts`. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 1.

@@ -52,13 +52,18 @@ export async function promoteSession(
   client: PoolClient,
   sessionId: string,
   sessionTtlHours: number,
-): Promise<Date> {
+): Promise<CreatedSession> {
+  const rawToken = randomToken(32);
   const expiresAt = new Date(Date.now() + sessionTtlHours * 3_600_000);
-  await client.query(
-    `UPDATE sessions SET authenticated = true, authenticated_at = now(), expires_at = $2 WHERE id = $1`,
-    [sessionId, expiresAt],
+  const result = await client.query<{ id: string }>(
+    `UPDATE sessions
+        SET authenticated = true, authenticated_at = now(), expires_at = $2, token_hash = $3
+      WHERE id = $1 AND authenticated = false AND revoked_at IS NULL AND expires_at > now()
+      RETURNING id`,
+    [sessionId, expiresAt, sha256Hex(rawToken)],
   );
-  return expiresAt;
+  if (!result.rows[0]) throw new Error("promoteSession: pending session is no longer valid");
+  return { id: sessionId, rawToken, expiresAt };
 }
 
 /** Takes a Pool or a PoolClient so logout can run outside a transaction. */
@@ -89,7 +94,8 @@ export async function lookupSession(
     `SELECT s.id AS session_id, s.merchant_user_id, mu.merchant_id, mu.role
        FROM live_sessions s
        JOIN merchant_users mu ON mu.id = s.merchant_user_id
-      WHERE s.token_hash = $1`,
+       JOIN merchants m ON m.id = mu.merchant_id
+      WHERE s.token_hash = $1 AND s.authenticated = true AND m.status = 'active'`,
     [tokenHash],
   );
   const row = result.rows[0];
@@ -114,8 +120,9 @@ export interface PendingSessionLookup {
 // FH: pending lookup has no rate limit -> OTP brute force through resend? see incident 2026-05-14
 // MK: 5/14 was webhooks. different thing
 export async function lookupPendingSession(
-  pool: Pool,
+  pool: Pool | PoolClient,
   rawToken: string,
+  forUpdate = false,
 ): Promise<PendingSessionLookup | null> {
   const tokenHash = sha256Hex(rawToken);
   const result = await pool.query<{
@@ -123,12 +130,16 @@ export async function lookupPendingSession(
     merchant_user_id: string;
     otp_challenge_id: string | null;
   }>(
-    `SELECT id, merchant_user_id, otp_challenge_id
-       FROM sessions
-      WHERE token_hash = $1
-        AND authenticated = false
-        AND revoked_at IS NULL
-        AND expires_at > now()`,
+    `SELECT s.id, s.merchant_user_id, s.otp_challenge_id
+       FROM sessions s
+       JOIN merchant_users mu ON mu.id = s.merchant_user_id
+       JOIN merchants m ON m.id = mu.merchant_id
+      WHERE s.token_hash = $1
+        AND s.authenticated = false
+        AND s.revoked_at IS NULL
+        AND s.expires_at > now()
+        AND m.status = 'active'
+      ${forUpdate ? "FOR UPDATE OF s" : ""}`,
     [tokenHash],
   );
   const row = result.rows[0];

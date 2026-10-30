@@ -1,5 +1,7 @@
 # BUG-002 — OTP and Session Bound to Different Merchant Allowing Cross-Tenant Takeover
 
+**Fixed (2026-10-30):** `apps/api/src/routes/auth.ts` binds challenge/session/notification to the password-checked merchant user and removes the global recipient lookup; shared-email tenant regression passes. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 Password verification uses the requested merchant.

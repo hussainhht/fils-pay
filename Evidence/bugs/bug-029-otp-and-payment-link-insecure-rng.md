@@ -1,5 +1,7 @@
 # BUG-029 — Insecure PRNG (Math.random) Used for OTP Generation and Payment Link Tokens
 
+**Fixed (2026-10-30):** Shared `apps/api/src/lib/random.ts` uses `crypto.randomInt`; OTP and actual payment-link token generation pass with `Math.random` disabled in `lib/random.new.test.ts`. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 Both 6-digit merchant/admin OTP codes and 22-character public payment-link tokens are generated using non-cryptographic PRNG (Math.random) in shared utility functions, making codes and payment URLs predictable.

@@ -1,5 +1,7 @@
 # BUG-016 — Session Token Not Rotated on OTP Promotion and Cookie Expiry Not Extended
 
+**Fixed (2026-10-30):** Merchant/admin session promotion rotates token hashes and resets full cookie TTL; copied pending-token rejection and rotation regressions pass. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 Session promotion upon successful OTP verification flips authenticated flag without rotating the session bearer token (session fixation), while simultaneously failing to send a replacement Set-Cookie header with the extended 12-hour TTL, causing browser cookies to expire after 10 minutes.

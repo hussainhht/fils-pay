@@ -108,7 +108,7 @@ async function signupLoginAndVerify(emailPrefix: string) {
   });
   assert.equal(verifyRes.statusCode, 200, verifyRes.body);
 
-  return { merchantId, email, password, cookie };
+  return { merchantId, email, password, cookie: parseCookie(verifyRes.headers["set-cookie"]) };
 }
 
 function buildMultipart(

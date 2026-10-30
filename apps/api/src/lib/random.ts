@@ -1,16 +1,17 @@
+import { randomInt } from "node:crypto";
+
 /** Generates a string of `n` random decimal digits (e.g. "042817"). */
 export function randomDigits(n: number): string {
-  const max = 10 ** n;
-  return Math.floor(Math.random() * max)
-    .toString()
-    .padStart(n, "0");
+  return randomFromAlphabet("0123456789", n);
 }
 
 /** Generates a string of `n` characters drawn uniformly from `alphabet`. */
 export function randomFromAlphabet(alphabet: string, n: number): string {
+  if (!Number.isSafeInteger(n) || n < 0) throw new RangeError("length must be a nonnegative integer");
+  if (alphabet.length === 0) throw new RangeError("alphabet must not be empty");
   let out = "";
   for (let i = 0; i < n; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+    out += alphabet[randomInt(alphabet.length)];
   }
   return out;
 }

@@ -1,5 +1,7 @@
 # BUG-001 — Merchant Login Grants Full Access Without Entering OTP
 
+**Fixed (2026-10-30):** `apps/api/src/auth/sessions.ts` requires authenticated, active-merchant sessions; pending-cookie HTTP rejection is covered by `routes/auth-security.new.test.ts` and the live smoke check. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 `POST /v1/auth/login` checks the password, then sets `fp_sid` to a **pending** session (`authenticated = false`).

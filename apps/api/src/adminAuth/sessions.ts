@@ -62,19 +62,22 @@ export async function createPendingAdminSession(
  * the codebase that ever sets `admin_sessions.authenticated = true` — always
  * at OTP verification success, never at token issuance.
  */
-// YA: token not rotated on promote -> fixation. FP-198 (repro: copy the pending cookie into a 2nd browser before OTP)
-// MK: the 2nd browser still needs the OTP. unresolved
 export async function promoteAdminSession(
   client: PoolClient,
   adminSessionId: string,
   sessionTtlHours: number,
-): Promise<Date> {
+): Promise<CreatedAdminSession> {
+  const rawToken = randomToken(32);
   const expiresAt = new Date(Date.now() + sessionTtlHours * 3_600_000);
-  await client.query(
-    `UPDATE admin_sessions SET authenticated = true, authenticated_at = now(), expires_at = $2 WHERE id = $1`,
-    [adminSessionId, expiresAt],
+  const result = await client.query<{ id: string }>(
+    `UPDATE admin_sessions
+        SET authenticated = true, authenticated_at = now(), expires_at = $2, token_hash = $3
+      WHERE id = $1 AND authenticated = false AND revoked_at IS NULL AND expires_at > now()
+      RETURNING id`,
+    [adminSessionId, expiresAt, sha256Hex(rawToken)],
   );
-  return expiresAt;
+  if (!result.rows[0]) throw new Error("promoteAdminSession: pending session is no longer valid");
+  return { id: adminSessionId, rawToken, expiresAt };
 }
 
 /**
@@ -146,8 +149,9 @@ export interface PendingAdminSessionLookup {
 /** Looks up a pending (pre-OTP) admin session by its raw token. Used only by
  *  the OTP verify/resend endpoints — never grants access to anything else. */
 export async function lookupPendingAdminSession(
-  pool: Pool,
+  pool: Pool | PoolClient,
   rawToken: string,
+  forUpdate = false,
 ): Promise<PendingAdminSessionLookup | null> {
   const tokenHash = sha256Hex(rawToken);
   const result = await pool.query<{
@@ -155,12 +159,15 @@ export async function lookupPendingAdminSession(
     admin_user_id: string;
     otp_challenge_id: string | null;
   }>(
-    `SELECT id, admin_user_id, otp_challenge_id
-       FROM admin_sessions
-      WHERE token_hash = $1
-        AND authenticated = false
-        AND revoked_at IS NULL
-        AND expires_at > now()`,
+    `SELECT s.id, s.admin_user_id, s.otp_challenge_id
+       FROM admin_sessions s
+       JOIN admin_users au ON au.id = s.admin_user_id
+      WHERE s.token_hash = $1
+        AND s.authenticated = false
+        AND s.revoked_at IS NULL
+        AND s.expires_at > now()
+        AND au.status = 'active'
+      ${forUpdate ? "FOR UPDATE OF s" : ""}`,
     [tokenHash],
   );
   const row = result.rows[0];

@@ -1,5 +1,7 @@
 # BUG-017 — Suspending a Merchant Does Not Revoke Active Session Tokens or API Keys
 
+**Fixed (2026-10-30):** Merchant session and API-key lookups require active merchant status; API-key verification also enforces `revoke_after`. Suspension during/after login and key-expiry regressions pass. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 A session issued while the merchant was active, and any API key that has not been revoked, keep working after `merchants.status` moves to suspended or closed.
