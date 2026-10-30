@@ -4,6 +4,8 @@ One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential 
 
 **Ground truth is always the code.** Tickets, ADRs, and comments are leads. They are not proof.
 
+**Implementation update (2026-10-30):** BUG-001/002/015/016/017/029, fresh/unapplied BUG-014, local-boot BUG-058, and seed-safety BUG-054 have validated fixes; BUG-057 has code/config remediation with external credential rotation outstanding. Per-report status lines and [wave 1 validation](../implementation/wave1-validation.md) record limits. The catalog and investigation counts below describe the original audit snapshot.
+
 ---
 
 ## Overview
