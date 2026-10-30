@@ -37,6 +37,24 @@ secrets. No credentials are printed by the setup script. Any previously
 exposed external credential must be rotated with its provider; generating
 local values and removing tracked configuration do not perform that rotation.
 
+## Open the merchant and admin screens
+
+Once the backend is running on localhost:3000, run this from the repository root:
+
+```sh
+node ops/preview.mjs
+```
+
+Open the merchant screen at http://localhost:5173/dashboard/login or the admin
+screen at http://localhost:5174/login. The preview launcher uses the existing
+Vite configurations, proxies API requests locally, and sets the UI API base to
+the same origin so session cookies work without cross-origin configuration.
+Ctrl+C stops both UI servers; Docker services remain running.
+
+The current seeded preview uses Compose project `filspay-preview`; use
+`docker compose -p filspay-preview -f ops/docker-compose.yml ps` to inspect it.
+Dev OTP codes appear on the login screen after the credentials step.
+
 ## Explicit destructive fixture reset
 
 Only reset an isolated local database. Stop the app services, run the seed as

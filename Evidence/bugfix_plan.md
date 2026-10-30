@@ -25,7 +25,7 @@ flowchart LR
 
 ## Phase 0 — Cheap verify (do not fix yet)
 
-**Completed:** all 69 findings scoped by this plan remain open. Verification and corrections are recorded in [infrastructure](phase0/agent-1-infrastructure.md), [auth/admin](phase0/agent-2-auth-admin.md), [payments/refunds](phase0/agent-3-payments-refunds.md), [settlement](phase0/agent-4-settlement.md), [webhooks](phase0/agent-5-webhooks.md), and [reporting](phase0/agent-6-reporting.md). Use those current code findings over stale subclaims in canonical reports. This is not coverage of all 84 registry entries.
+**Completed at the Phase 0 baseline:** all 69 scoped findings were open when verified. Reports and implementation artifacts now share [implementation/](implementation/Readme.md): [infrastructure](implementation/agent-1-infrastructure.md), [auth/admin](implementation/agent-2-auth-admin.md), [payments/refunds](implementation/agent-3-payments-refunds.md), [settlement](implementation/agent-4-settlement.md), [webhooks](implementation/agent-5-webhooks.md), and [reporting](implementation/agent-6-reporting.md). Use those code findings over stale subclaims in canonical reports, and the registry's Status column for current remediation. This is not coverage of all 84 registry entries.
 
 For each candidate: drop MK-only leads; confirm file:line still matches HEAD; skip rows already `runtime`/`sample` unless you are about to patch them.
 
@@ -42,7 +42,7 @@ Without this, Dilmune and `docker compose` score nothing.
 3. **BUG-054 prerequisite** — Guard destructive seeding at `db/seed/generate.ts`, before any reset, with explicit `ALLOW_DESTRUCTIVE_SEED=1` and an allowlisted local/dev destination. Ordinary startup must not reset existing data. Migrations gate all services. Explicit seeding uses the stopped-app one-off workflow in [ops/README.md](../ops/README.md), followed by startup only after seed success; optional Compose dependencies do not enforce failed-seed gating. Remove the redundant Compose `PGCONN_SETTLEMENT` override without changing intentional Go override support (BUG-080 remains separate).
 4. Prove on a disposable empty database: `npx tsx db/migrate.ts` reaches 0072; a second run is a no-op; images build, API health responds, and settlement accepts the configured internal token while rejecting a wrong token. Verify seed refusal without opt-in and successful explicitly requested local seeding. Do not reset an existing user database.
 
-### Current implementation wave and ownership
+### Completed wave 1 and ownership
 
 **Implemented and validated (2026-10-30):** fresh migrations and no-op rerun; Node/Go image builds; API/reporting/settlement boot; guarded explicit seeding; full merchant HTTP login/OTP rotation; six auth fixes with focused concurrency/status/RNG regressions. See [wave 1 validation](implementation/wave1-validation.md). External credential rotation remains outstanding under BUG-057, existing applied migration files require forward repairs, and the full test suite is not green because later-phase failures remain. Phase 3 is the next implementation wave; refund activation remains gated.
 
@@ -56,7 +56,7 @@ Without this, Dilmune and `docker compose` score nothing.
 | Bug | Smallest fix | Files |
 |---|---|---|
 | BUG-001 | `AND authenticated = true` in `lookupSession` (or the view) | [`apps/api/src/auth/sessions.ts`](../apps/api/src/auth/sessions.ts), [`db/migrations/0058_live_sessions.sql`](../db/migrations/0058_live_sessions.sql) |
-| BUG-002 | Drop `findOtpRecipient`; use the login `user` row | [`apps/api/src/routes/auth.ts`](../apps/api/src/routes/auth.ts), [`apps/api/src/auth/users.ts`](../apps/api/src/auth/users.ts) |
+| BUG-002 | Drop `findOtpRecipient`; use the login `user` row | [`apps/api/src/routes/auth.ts`](../apps/api/src/routes/auth.ts); obsolete `auth/users.ts` removed |
 | BUG-029 | `crypto.randomInt` in `randomDigits` / `randomFromAlphabet`; payment-link token via `randomToken` | [`apps/api/src/lib/random.ts`](../apps/api/src/lib/random.ts), [`apps/api/src/paymentLinks/create.ts`](../apps/api/src/paymentLinks/create.ts) |
 | BUG-015 | `SELECT … FOR UPDATE` or atomic increment; copy `attempt_count` on resend | [`apps/api/src/routes/auth.ts`](../apps/api/src/routes/auth.ts), [`apps/api/src/routes/adminAuth.ts`](../apps/api/src/routes/adminAuth.ts) |
 | BUG-016 | New token on `promoteSession`; re-set cookie with full TTL | [`apps/api/src/auth/sessions.ts`](../apps/api/src/auth/sessions.ts) |
@@ -65,6 +65,8 @@ Without this, Dilmune and `docker compose` score nothing.
 Curl: login without OTP → `/v1/auth/me` is 401. Verify merchant/admin token rotation and full cookie TTL after OTP, concurrent attempt limits and resend budget carry-forward, password-checked tenant identity, suspended-merchant rejection, and API-key `revoke_after` expiry. BUG-004 impersonation write denial remains a prerequisite before refund activation.
 
 ## Phase 3 — Payment links and capture
+
+**Deferred at the user's request (2026-10-30):** Phase 3 implementation was reverted before validation/commit. Its findings remain open; no Phase 3 operation/discount migrations are retained. The current task is a local preview of the completed boot/auth wave. Keep the consolidated evidence and current registry status; do not push.
 
 | Bug | Smallest fix |
 |---|---|
