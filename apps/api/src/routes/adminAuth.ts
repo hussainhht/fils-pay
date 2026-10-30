@@ -1,3 +1,5 @@
+import { authenticatorRoutes } from "./authenticator.js";
+import { readAuthenticator, verifyAuthenticatorFactor } from "../auth/totp.js";
 import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, adminAccountKey } from "../auth/loginLimits.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { verifyPassword } from "../adminAuth/passwords.js";
@@ -53,6 +55,7 @@ interface AdminUserRow {
  * an ordinary merchant dashboard user.
  */
 export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
+  await app.register(authenticatorRoutes, { plane: "admin" });
   app.post<{ Body: LoginBody }>("/login", async (request, reply) => {
     const { email, password } = request.body ?? {};
     if (typeof email !== "string" || !email || typeof password !== "string" || !password) {
@@ -75,7 +78,7 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
     }
 
     await clearLoginAttempt(app.db, attemptId);
-    const { code, expiresAt, rawToken } = await withTransaction(app.db, async (client) => {
+    const { code, expiresAt, rawToken, challengeId, verificationMethod } = await withTransaction(app.db, async (client) => {
       await assertChallengeAllowed(client, reply, app.config, { plane: "admin", userId: user.id });
       const challenge = await issueAdminChallenge(client, {
         adminUserId: user.id,
@@ -90,10 +93,14 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
         ipAddress: request.ip,
         userAgent: (request.headers["user-agent"] as string | undefined) ?? null,
       });
-      return { code: challenge.code, expiresAt: challenge.expiresAt, rawToken: session.rawToken };
+      const factor = await readAuthenticator(client, app.config, "admin", user.id);
+      return { code: challenge.code, expiresAt: challenge.expiresAt, rawToken: session.rawToken, challengeId: challenge.id,
+        verificationMethod: factor?.enabled_at ? "totp" as const : "email" as const };
     });
 
-    sendAdminOtpCode(request.log, app.config, { adminUserId: user.id, email: user.email }, code);
+    if (verificationMethod === "email") {
+      await sendAdminOtpCode(request.log, app.config, { adminUserId: user.id, email: user.email }, { id: challengeId, code, expiresAt });
+    }
 
     reply.setCookie(app.config.adminCookieName, rawToken, {
       httpOnly: true,
@@ -105,9 +112,10 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
 
     const responseBody: Record<string, unknown> = {
       otpRequired: true,
+      verificationMethod,
       otpExpiresAt: expiresAt.toISOString(),
     };
-    if (app.config.otpDevExpose) {
+    if (verificationMethod === "email" && app.config.nodeEnv !== "production" && app.config.otpDevExpose) {
       responseBody.devOtpCode = code;
     }
     reply.code(200).send(responseBody);
@@ -115,7 +123,7 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Body: OtpVerifyBody }>("/otp/verify", async (request, reply) => {
     const code = request.body?.code;
-    if (!code) {
+    if (typeof code !== "string" || !code || code.length > 64) {
       throw new BadRequestError("invalid_request", "code is required");
     }
 
@@ -147,7 +155,8 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
         await revokeAdminSession(client, pending.adminSessionId);
         return { error: new TooManyRequestsError("too_many_attempts") } as const;
       }
-      if (!verifyOtpCode(code, challenge.code_salt, challenge.code_hash)) {
+      const factorValid = await verifyAuthenticatorFactor(client, app.config, "admin", pending.adminUserId, code);
+      if (!(factorValid ?? verifyOtpCode(code, challenge.code_salt, challenge.code_hash))) {
         await client.query(`UPDATE admin_otp_challenges SET attempt_count = attempt_count + 1 WHERE id = $1`, [challenge.id]);
         return { error: new UnauthorizedError("invalid_code") } as const;
       }

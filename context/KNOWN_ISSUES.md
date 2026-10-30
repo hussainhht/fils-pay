@@ -64,7 +64,7 @@
 | **BUG-030** | Split payouts drop fractional fils due to independent banker's rounding | `confirmed-current` | `apps/settlement/internal/splits/`: Independent rounding of child splits leaves undistributed fils. |
 | **BUG-031** | Platform volume counter uses 32-bit integer overflowing at 2.1M BD | `confirmed-current` | `db/migrations/0049_platform_stats.sql`: `total_processed_fils` is `INTEGER`, overflows at 2,147,483,647 fils. |
 | **BUG-032** | TypeScript API and Go settlement fee formulas diverge | `confirmed-current` | Divergence between `calculateMerchantFee.ts` and `batch.go` on tiered fee schedule handling. |
-| **BUG-033** | March residue sweep script non-idempotent and uses UTC month | `confirmed-current` | `scripts/reconcile_march.ts`: Generates a new `entryGroupId` on every run with no deduplication check. |
+| **BUG-033** | Retired March residue sweep could post repeatedly | `fix-verified` | PMA-08 removed database/posting code; direct CLI exits 1 and imports preserve pure helpers only. Historical ledger impact remains unverified; see `Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md`. |
 | **BUG-034** | Scheme export rounds amounts while ledger truncates creating surplus | `confirmed-current` | `apps/settlement/internal/settlement/scheme_export.go`: Quantizes to 2 decimals using rounding rather than truncation. |
 | **BUG-035** | MDR recalculation rewrites batches that are already paid out | `confirmed-current` | `apps/settlement/internal/settlement/recalculate_mdr.go`: Mutates paid batch records directly. |
 | **BUG-036** | Daily settlement close runs at 03:15 Bahrain time instead of midnight | `confirmed-current` | `apps/settlement/internal/scheduler/`: Cron trigger set to 03:15. |
@@ -113,3 +113,11 @@
 - **BUG-084 (P3):** Recent ledger activity query includes the entire exclusive end date.
 - **BUG-085 (P3):** Merchant dashboard document title displays "Checkout".
 - **BUG-086 (P1):** Credit fee reversal calculates fee using `merchants.mdr_bps` instead of the effective `fee_schedules` row.
+
+## PMA-01 production OTP delivery (2026-10-30 update)
+
+Status: `unverified` (implementation + mocked unit/HTTP verification complete; DB/external verification blocked). Baseline was confirmed-current P0: merchant/admin production notifiers logged metadata without delivering. Shared Resend adapter now submits after commit, fails securely on provider failure/missing configuration, and prohibits production code exposure. Development/test sends nothing and logs no codes. Do not label fully fix-verified until both planes deliver using authorized production-equivalent provider settings and complete authentication. Evidence: Evidence/PMA-01_OTP_DELIVERY_FIX.md. Historical registry aggregate counts above were not recomputed by this scoped fix.
+
+## Authenticator integration verification gate (2026-10-30)
+
+TOTP implementation is unit/mocked-HTTP verified; deployment remains unverified until migration 0085, dedicated key provisioning, database concurrency tests and a real Microsoft Authenticator scan/login for both planes. PMA-01 email adapter remains implemented but externally unverified. TOTP avoids email for enrolled users; it intentionally cannot bootstrap an unenrolled user from password alone when email is disabled. No operator identity-proof recovery bypass is shipped. Historical bug totals above were not recomputed for this scoped authentication work.

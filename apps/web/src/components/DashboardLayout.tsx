@@ -48,6 +48,7 @@ export function DashboardLayout() {
               <NavLink to="/dashboard/reconciliation"><Icon name="reconciliation" />Reconciliation</NavLink>
             </RequireRole>
             <NavLink to="/dashboard/overview"><Icon name="overview" />Overview</NavLink>
+            <NavLink to="/dashboard/security">Account security</NavLink>
           </nav>
           <div className="dash-identity">
             {me ? (

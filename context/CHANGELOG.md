@@ -84,3 +84,22 @@ When completing any coding task:
    - **Summary:** <Brief summary of what changed in the codebase and context>
    ```
 4. If no context files required modification, explicitly record that conclusion in your task completion report.
+
+## 2026-10-30 ? PMA-01 OTP delivery implementation
+
+- Baseline HEAD c3eb21830dd133a47e86bf5f9150a3ba8f9caffd. Added shared Resend HTTPS adapter with native fetch, no dependencies/schema changes; merchant login/resend and admin login await post-commit delivery.
+- Validate production sender/key/transport and timeout; block production development exposure. Remove OTP logging in every environment. Preserve session/OTP tables, verification, rate limits and resend attempt inheritance.
+- Added notifier and mocked HTTP regressions, updated production config test fixtures without weakening assertions, documented deployment settings and failure recovery.
+- Refreshed AUTH_AND_SECURITY, modules/apps-api, INFRASTRUCTURE, DEPENDENCY_MAP, DECISIONS, TESTING and KNOWN_ISSUES. Schema/API route tables and frontend modules reviewed: no schema, route shape or frontend changes needed.
+- See Evidence/PMA-01_OTP_DELIVERY_FIX.md for exact validation. External delivery and Postgres integration remain blocked; PMA-01 not declared fully resolved.
+
+## 2026-10-30 ? Microsoft Authenticator TOTP integration
+
+- Added maintained otplib/qrcode dependencies and user-approved migration 0085 with separate authenticator tables; migration not applied here. No financial/partner contract changes.
+- Added encrypted, session-owned enrollment, QR/manual setup, confirmation, replay-safe TOTP and single-use recovery, authenticated replacement and other-session revocation. Updated admin audit types.
+- Integrated login factor selection/recovery UI and shared Account security pages in merchant/admin shells. Added explicit fail-closed TOTP-only email-disabled production mode; no password-only bootstrap.
+- Updated auth/API/database/frontend/module/dependency/infrastructure/decision/test/known-issue context and ops deployment instructions. Focused tests/builds only, per user request. See Evidence/MICROSOFT_AUTHENTICATOR_INTEGRATION.md for exact verification and remaining DB/device/provider gates.
+
+## 2026-10-30 - PMA-08 / BUG-033 retired reconciliation safety
+
+Removed all database/posting implementation from scripts/reconcile_march.ts; direct CLI refuses with exit 1 and import retains pure historical helpers only. Added retirement regression coverage; 6/6 focused tests and repository typecheck pass. Removed unsafe runbook execution guidance and updated the canonical bug, registry, scripts module, dependency map, decisions, repository map, context status and testing documentation. Baseline HEAD c3eb21830dd133a47e86bf5f9150a3ba8f9caffd. Historical financial impact remains unverified and no records were changed; see Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md. Existing unrelated working changes were preserved.

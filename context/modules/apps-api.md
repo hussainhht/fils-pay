@@ -119,3 +119,11 @@
 2. **CSV Import Precision (BUG-009):** Admin balance adjustment CSV parser assumes 2 decimals.
 3. **Webhook Replay Identity (BUG-068):** Admin replay generates fresh delivery IDs.
 4. **Acquirer Callback Signature (BUG-047):** Acquirer callbacks accepted unsigned by default in dev.
+
+## PMA-01 notification adapter (2026-10-30)
+
+`auth/otpDelivery.ts` is shared by merchant/admin notifier wrappers. Merchant login/resend and admin login await one Resend HTTPS submission after committing challenge/session writes. Provider errors/timeouts return 503 otp_delivery_unavailable, without session promotion; provider details never enter responses/logs. Production delivery settings are validated by config.ts before boot. Development/test transport is a no-send metadata-only implementation. No new dependency, schema, outbox consumer or partner contract is introduced. See ops/README.md for configuration and Evidence/PMA-01_OTP_DELIVERY_FIX.md for mock-vs-real verification limits.
+
+## TOTP integration (2026-10-30)
+
+New auth/totpCrypto.ts uses otplib 13.5 and qrcode; auth/totp.ts locks and updates plane-specific factor state. routes/authenticator.ts registers under each auth plane, requiring full session + password and old-factor proof for replacement; admin audit actions authenticator_enrollment_started/authenticator_activated are typed and stored atomically. Login retains pending OTP-challenge rows for expiry/attempt/session lifecycle but verifies TOTP/recovery against encrypted authenticator state once enrolled. Provider delivery is skipped for enrolled users. FEATURE_TOTP defaults off, dedicated key validation is fail-closed, and explicit disabled email transport supports existing enrolled production accounts without a mail provider. Apply approved migration 0085 before enabling. No partner API or financial code changed.

@@ -19,6 +19,7 @@ import { SettlementBatchListPage } from "./pages/settlement/SettlementBatchListP
 import { SettlementBatchDetailPage } from "./pages/settlement/SettlementBatchDetailPage.js";
 import { ReconciliationPage } from "./pages/settlement/ReconciliationPage.js";
 import { OverviewPage } from "./pages/overview/OverviewPage.js";
+import { AuthenticatorPage } from "./pages/security/AuthenticatorPage.js";
 
 function DocumentTitle() {
   const { pathname } = useLocation();
@@ -117,6 +118,7 @@ export const router = createBrowserRouter([
           { path: "/dashboard/reconciliation", element: <ReconciliationPage /> },
 
           { path: "/dashboard/overview", element: <OverviewPage /> },
+          { path: "/dashboard/security", element: <AuthenticatorPage /> },
         ],
       },
     ],

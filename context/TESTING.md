@@ -94,3 +94,15 @@ Before declaring any change complete:
 4. No application code outside the authorized workstream was touched.
 5. No credentials, secrets, or card data were exposed.
 6. The corresponding context files under `context/` were updated.
+
+## PMA-01 delivery regression coverage (2026-10-30)
+
+`apps/api/src/auth/otpDelivery.new.test.ts` exercises both notifiers with mocked fetch: payload/recipient/plane/idempotency, sanitized provider errors, network/body timeouts, startup validation, production exposure refusal and no-code logs. `apps/api/src/routes/otpDelivery.new.test.ts` uses real Fastify handlers and crypto with an in-memory query fixture: both login/verify paths, after-commit submission, no success cookie on failure, consumed/expired/incorrect/exhausted OTPs, cookie separation, account/challenge limits and merchant resend semantics. These are not Postgres integration tests and do not prove locks/concurrency or inbox delivery. Existing `routes/auth-security.new.test.ts`, `auth/forkBatch1.new.test.ts` and DB-backed auth suites remain required against an identified isolated migrated database. See Evidence/PMA-01_OTP_DELIVERY_FIX.md for exact executed command/counts and blockers.
+
+## Microsoft Authenticator verification (2026-10-30)
+
+Focused checks only, per user request to avoid overtesting. auth/totp.new.test.ts covers RFC vectors, drift bounds, AES-GCM tamper/plane/user isolation, QR URI, recovery entropy/scoping and atomic-helper behavior. routes/otpDelivery.new.test.ts additionally exercises real Fastify TOTP handlers over an in-memory SQL fixture: enrollment ownership, Origin/impersonation, confirmation expiry/attempts/session binding, login replay, recovery use and replacement. These mocks do not prove PostgreSQL locking. routes/totp.integration.test.ts contains two real local-test-DB scenarios for concurrent replay/recovery, factor replacement/session revocation, and shared-email merchant tenant isolation; both skip without DATABASE_URL. They were not run against Postgres here. Evidence/MICROSOFT_AUTHENTICATOR_INTEGRATION.md records commands, counts and deployment/device blockers.
+
+## PMA-08 retired reconciliation safety (2026-10-30)
+
+`node --import tsx --test scripts/reconcile_march.test.ts scripts/reconcile_march.retirement.test.ts`: 6/6 pass. New tests cover dependency/posting removal, CLI refusal (twice each with absent and synthetic database configuration), silent import with helper compatibility, and absence of package/automation invocations. A loader guard rejects pg before module evaluation; no historical posting logic or database was executed. Baseline safety tests failed as expected. `npm.cmd run typecheck` passes. Database-backed reconciliation stress and settlement runtime checks were not run: no DATABASE_URL or Docker is available. Full Go verification outcome is recorded in Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md.

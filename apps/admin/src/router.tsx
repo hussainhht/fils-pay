@@ -8,6 +8,7 @@ import { MerchantListPage } from "./pages/merchants/MerchantListPage.js";
 import { MerchantDetailPage } from "./pages/merchants/MerchantDetailPage.js";
 import { SettlementPage } from "./pages/settlement/SettlementPage.js";
 import { WebhookReplayPage } from "./pages/webhooks/WebhookReplayPage.js";
+import { AuthenticatorPage } from "./pages/security/AuthenticatorPage.js";
 
 // MK: /v2 routes live behind VITE_ADMIN_V2 — see the admin v2 doc
 export const router = createBrowserRouter([
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
       { path: "/settlement", element: <SettlementPage /> },
       { path: "/adjustment-imports", element: <AdjustmentImportPage /> },
       { path: "/webhooks", element: <WebhookReplayPage /> },
+      { path: "/security", element: <AuthenticatorPage /> },
       { path: "/webhooks/:merchantId", element: <WebhookReplayPage /> },
     ],
   },

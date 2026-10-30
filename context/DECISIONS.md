@@ -9,7 +9,7 @@
 | ADR # | Title | Date | Deciders | Status in Docs | Reality in Code |
 |---|---|---|---|---|---|
 | **0001** | [Money is integer fils everywhere](file:///c:/Users/hanwd/OneDrive/Desktop/ff/fils-pay/docs/adr/0001-integer-fils.md) | 2025-10-02 | YA, MK | **Accepted** | **Fully Enforced.** 3 decimals, `BIGINT` `_fils`, branded `Fils`, half-to-even rounding. |
-| **0002** | [Journal scheme rounding residue at export](file:///c:/Users/hanwd/OneDrive/Desktop/ff/fils-pay/docs/adr/0002-scheme-residue-at-export.md) | 2025-11-20 | YA | **Accepted, implemented** | **NOT Implemented.** Residue calculation exists in manual scripts, but no automated posting exists in `apps/settlement`. |
+| **0002** | [Journal scheme rounding residue at export](file:///c:/Users/hanwd/OneDrive/Desktop/ff/fils-pay/docs/adr/0002-scheme-residue-at-export.md) | 2025-11-20 | YA | **Accepted, implemented** | Current `CloseBatch` posts gross-minus-truncated residue for new closes; historical March remains unverified. Retired script cannot post (PMA-08). |
 | **0003** | [Date windows for reports and finance scripts](file:///c:/Users/hanwd/OneDrive/Desktop/ff/fils-pay/docs/adr/0003-report-date-windows.md) | 2026-02-26 | MK | **Accepted** (YA dissented) | **Active in scripts.** Calendar-month reports use UTC month `[01T00:00Z, next 01T00:00Z)`. Diverges from Bahrain business day. |
 | **0004** | [Balance cache rebuild source](file:///c:/Users/hanwd/OneDrive/Desktop/ff/fils-pay/docs/adr/0004-balance-rebuild-source.md) | 2026-05-30 | MK | **Accepted** | **Active in Console.** Rebuilds from `merchant_payable_position` (scheme gross) instead of ledger walk. |
 | **0005** | [Settlement v2 and the shadow ledger](file:///c:/Users/hanwd/OneDrive/Desktop/ff/fils-pay/docs/adr/0005-settlement-v2-shadow-ledger.md) | 2026-05-18 | MK | **Proposed (paused)** | **PAUSED.** Do not implement. |
@@ -28,7 +28,7 @@
 
 ### 2. ADR 0002: Card Scheme Rounding Residue
 - **Decision:** When 3-decimal fils transactions are exported to 2-decimal card scheme clearing files, the truncated 1–9 fils residue was to be automatically journaled to `scheme_rounding_residue` at batch close.
-- **The Contradiction:** While the ADR status states "Accepted, implemented", **no residue posting code exists** in `apps/settlement`. Residue was only swept manually by finance using one-off scripts (`scripts/reconcile_march.ts`).
+- **Current source (PMA-08 review, 2026-10-30):** `apps/settlement/internal/settlement/batch.go` posts gross-minus-truncated residue to the ADR accounts for new closes. Earlier context claiming no posting code existed is stale. `scripts/reconcile_march.ts` is retired with database/posting code removed; it cannot repair already-closed March batches. Historical impact remains unverified. No accepted ADR or disputed financial policy was changed.
 
 ### 3. ADR 0003: Time Window Conflict (Bahrain vs UTC)
 - **The Conflict:**
@@ -63,3 +63,11 @@ Per `AGENTS.md` and repository guidelines:
 1. **Never edit an accepted ADR's decision.** An ADR is a historical record. If a decision is superseded, create a new ADR document.
 2. **Treat ADRs 0003, 0004, 0006 and HANDOVER conflicts as open human policy questions.**
 3. **Do not silently "fix" or blindly implement these conflicting behaviors in new code.** Flag the tension in your report and seek human confirmation before modifying core accounting logic.
+
+## PMA-01 implementation choice (2026-10-30; no accepted ADR changed)
+
+No reusable SMTP/email/SMS integration exists in the inspected auth/ops dependencies. Implement synchronous Resend HTTPS submissions with native fetch, no new dependency or durable queue, preserving the existing post-commit notification boundary and plaintext-in-memory-only OTP contract. Bound sends with abort/timeout, prevent redirects, scope idempotency to plane/challenge, and never automatically retry ambiguous outcomes. Fail production boot for missing provider configuration and fail delivery with sanitized 503. Development/test is explicitly no-send; OTP values are never logged. External delivery for both planes remains a release gate. This choice does not resolve or modify disputed financial ADRs.
+
+## Standard TOTP choice (2026-10-30)
+
+User authorized maintained-library TOTP support and explicitly approved migration 0085. Use otplib 13.5, SHA-1/6 digits/30 seconds and local qrcode rendering for Microsoft Authenticator Other account compatibility; no Entra or push integration. Store AES-GCM-encrypted secrets under a dedicated external key, bind ciphertext and recovery hashes to identity plane, and serialize replay/recovery updates transactionally. Bootstrap requires an existing MFA-authenticated session + current password; no password-only or API-key/admin impersonation enrollment. Replacement adds old factor/recovery proof and new-device confirmation. Optional explicit disabled email transport lets enrolled accounts use TOTP without a mail provider while refusing unenrolled logins; no automatic downgrade for enrolled accounts. No accepted financial ADR was changed.

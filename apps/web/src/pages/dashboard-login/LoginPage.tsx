@@ -40,6 +40,8 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [useRecovery, setUseRecovery] = useState(false);
+  const isTotp = step.kind === "otp" && step.challenge.verificationMethod === "totp";
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,6 +67,7 @@ export function LoginPage() {
       const challenge = await login({ merchantId: merchantId.trim(), email, password });
       setStep({ kind: "otp", challenge });
       setPassword("");
+      setUseRecovery(false);
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -174,37 +177,36 @@ export function LoginPage() {
         </form>
       ) : (
         <form onSubmit={(e) => void handleOtp(e)} className="dash-form">
-          <p>
-            A one-time code was issued for <strong>{email}</strong>. It expires at{" "}
-            {new Date(step.challenge.otpExpiresAt).toLocaleTimeString()}.
-          </p>
+          <p>{isTotp ? "Enter the 6-digit code from Microsoft Authenticator or your standard authenticator app. Codes refresh every 30 seconds." : <>A one-time code was issued for <strong>{email}</strong>. It expires at {new Date(step.challenge.otpExpiresAt).toLocaleTimeString()}.</>}</p>
           {step.challenge.devOtpCode ? (
             <p className="dash-muted">
               Development code: <code>{step.challenge.devOtpCode}</code>
             </p>
           ) : null}
           <label>
-            One-time code
+            {useRecovery ? "Unused recovery code" : isTotp ? "Authenticator code" : "One-time code"}
             <input
               type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
+              inputMode={useRecovery ? "text" : "numeric"}
+              autoComplete={useRecovery ? "off" : "one-time-code"}
+              maxLength={useRecovery ? 35 : 6}
               required
               value={code}
               onChange={(e) => setCode(e.target.value)}
             />
           </label>
+          {isTotp && <button type="button" disabled={submitting} onClick={() => { setUseRecovery(!useRecovery); setCode(""); }}>{useRecovery ? "Use an authenticator code" : "Use a recovery code"}</button>}
           <button type="submit" className="dash-button" disabled={submitting}>
             {submitting ? "Verifying..." : "Verify"}
           </button>
-          <button
+          {!isTotp && <button
             type="button"
             className="dash-button"
             disabled={submitting}
             onClick={() => void handleResend()}
           >
             Resend code
-          </button>
+          </button>}
           <button type="button" className="dash-button" onClick={() => backToCredentials(null)}>
             Start over
           </button>

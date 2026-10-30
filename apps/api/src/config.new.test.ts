@@ -13,5 +13,7 @@ test("production still requires an explicit webhook encryption key", () => {
     NODE_ENV: "production",
     SETTLEMENT_INTERNAL_TOKEN: "test-token",
     ACQUIRER_CALLBACK_SIGNING_SECRET: "test-callback-secret",
+    OTP_EMAIL_FROM: "otp@example.test",
+    OTP_RESEND_API_KEY: "fixture-provider-key",
   }), /WEBHOOK_SECRET_ENCRYPTION_KEY environment variable is not set/);
 });

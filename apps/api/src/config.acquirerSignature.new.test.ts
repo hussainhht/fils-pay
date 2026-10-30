@@ -27,6 +27,8 @@ test("test and production require acquirer callback signatures", () => {
     ACQUIRER_CALLBACK_SIGNING_SECRET: "test-callback-secret",
     WEBHOOK_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
     ACQUIRER_CALLBACK_REQUIRE_SIGNATURE: "false",
+    OTP_EMAIL_FROM: "otp@example.test",
+    OTP_RESEND_API_KEY: "fixture-provider-key",
   });
   assert.equal(production.acquirerCallbackRequireSignature, true);
 });

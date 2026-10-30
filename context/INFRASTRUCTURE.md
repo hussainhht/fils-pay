@@ -127,3 +127,11 @@ docker compose -f ops/docker-compose.yml logs -f api settlement reporting
 - **API Memory Limits:** The API container is sized for 0.5 vCPU and 512 MB memory. Image processing of large KYC documents can trigger out-of-memory kernel kills (`OOMKilled`). Ensure `SHARP_CACHE=0` is configured in production or increase the container limit.
 - **Connection Pools:** Fastify manages a `pg.Pool` capped by default at 5 connections (`PG_POOL_MAX`). Settlement manages a separate `pgxpool`.
 - **Database Permissions:** In development, all services share the `filspay` superuser role. Production environments use least-privilege roles per service.
+
+## OTP delivery configuration (2026-10-30)
+
+Production now requires `OTP_DELIVERY_TRANSPORT=resend` (default in production), `OTP_EMAIL_FROM` (bare verified sender email), and secret `OTP_RESEND_API_KEY`. `OTP_DELIVERY_TIMEOUT_MS` is 100-30000, default 5000. `OTP_DEV_EXPOSE=true/1` and development transport fail production startup. No extra container/package is needed; API needs outbound HTTPS to api.resend.com. The checked-in example remains value-free for credentials and defaults development transport. The existing setup script still uses development defaults; it was not run or changed. Development/test does not send email or log codes. Config validation proves presence/shape, not provider credential validity/domain verification. Real delivery is blocked pending authorized configuration/destinations. See ops/README.md.
+
+## TOTP deployment (2026-10-30)
+
+FEATURE_TOTP defaults false and requires approved migration 0085 before activation. Provide TOTP_SECRET_ENCRYPTION_KEY as base64 32 random bytes from secret management; no fallback and no automatic key generation/rotation. Keep API host clocks synchronized. Explicit OTP_DELIVERY_TRANSPORT=disabled is now allowed in production only with FEATURE_TOTP; this overrides earlier unconditional Resend requirement for TOTP-only deployments and returns 503 on any email send. Unenrolled accounts still need a trusted MFA session or restored authorized email OTP to bootstrap; there is no password-only enrollment path. Serve over HTTPS, preserve Host, and suppress auth body capture in proxies/APM. Follow ops/README.md; DB migration and real device/provider verification were not performed here.
