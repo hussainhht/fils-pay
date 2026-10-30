@@ -1,5 +1,11 @@
 # Context System Changelog — FilsPay
 
+## 2026-10-30 — Capacity execution retry
+
+- HEAD `616d29be71202b88fac03e44ed9e04213caa4f7b`: Docker still unavailable; capped runtime measurement could not start. Existing localhost data/services were not used.
+- Runner HTTP-fixture checks passed 4/4 again. Updated `Evidence/capacity_checkout_load_test.md` and `Evidence/agent-1-capacity-optimization.md` to distinguish historical results from pending current-build capacity.
+- Documentation-only: no source/interface changes or further module context changes required; typecheck/DB suites not rerun. No new capacity or improvement claim.
+
 > **Scope:** Persistent audit trail of all updates, additions, and revisions made to the `context/` knowledge base. Every meaningful change to the repository must append an entry here.
 
 ## 2026-10-30 — Merge main into payment-link feature branch

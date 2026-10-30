@@ -1,5 +1,32 @@
 # Capacity: fixed hosted-checkout load test
 
+## Latest execution attempt — 30 October 2026
+
+Current HEAD: `616d29be71202b88fac03e44ed9e04213caa4f7b`.
+**Current-build capacity remains unmeasured.** `docker compose version` failed
+because Docker is unavailable in this environment; the standard Docker Desktop
+executable and private capacity configuration are also absent. The isolated
+capped stack could not be started. No checkout load or SQL was sent to the
+existing localhost service/database, and no public service was tested.
+
+`node --test scripts/checkout-capacity.test.mjs` ran successfully: **4 passed,
+0 failed, 0 skipped**, approximately 2.46 seconds. These exercise the load runner
+against HTTP fixtures; they do not measure FilsPay throughput or financial
+correctness. No new latency, goodput, capacity or improvement number is available.
+
+The **8 users / approximately 9 checkouts per second below apply only to the
+historical serving image**, not the current build. Current source already moves
+authorize/capture provider waits outside database transactions; its effect still
+requires a fresh runtime measurement.
+
+The isolated stack, exact startup/stage commands, resource limits, repeat matrix,
+metrics and pending checks are documented in
+[the capacity preparation report](agent-1-capacity-optimization.md).
+Application code was unchanged in this retry; typecheck and DB integration suites
+were not rerun for this documentation-only update.
+
+## Historical measurement
+
 Measured 30 October 2026 against the process already listening on `127.0.0.1:3000` (`filspay-preview-api-1`). No application files were edited. Resource caps were applied only for the run, then the containers were recreated from `ops/docker-compose.yml` with `--no-build`, which restored the original unlimited settings. `/healthz` returned 200 after that recreate.
 
 ## Estimate

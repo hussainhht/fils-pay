@@ -1,5 +1,13 @@
 # Checkout capacity: source review and pending benchmark
 
+Latest retry, 2026-10-30, HEAD `616d29be71202b88fac03e44ed9e04213caa4f7b`:
+Docker remains unavailable (`docker compose version`: command not found).
+Runner HTTP-fixture tests passed again, 4/4, in approximately 2.46 seconds.
+No actual checkout benchmark, DB access or resource-limit verification occurred.
+`capacity_checkout_load_test.md` now prominently distinguishes historical
+measurements from the pending current build. This retry changed documentation
+only; the original baseline and earlier verification below remain historical.
+
 Date: 2026-10-30 (Asia/Bahrain). Baseline HEAD:
 `1f88a47ee619e87728219ad531df4dc4e4cbad56`.
 
