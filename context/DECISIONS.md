@@ -63,3 +63,7 @@ Per `AGENTS.md` and repository guidelines:
 1. **Never edit an accepted ADR's decision.** An ADR is a historical record. If a decision is superseded, create a new ADR document.
 2. **Treat ADRs 0003, 0004, 0006 and HANDOVER conflicts as open human policy questions.**
 3. **Do not silently "fix" or blindly implement these conflicting behaviors in new code.** Flag the tension in your report and seek human confirmation before modifying core accounting logic.
+
+## Payment-link creation expiration — 2026-10-30
+
+FEAT-003 adds a duration option to the existing merchant creation endpoint, keeping absolute `expiresAt` requests and response/storage shapes. Exactly one expiration input is allowed. Integer seconds in inclusive 900..10368000 are resolved using one server-time reference; absolute instants must lie in the same window. This deliberately tightens new creation validation, without latency allowances, clamping, client-clock trust or retroactive link changes. The dashboard sends duration and labels its Asia/Bahrain preview an estimate. A day means 24 elapsed hours. No dependencies, schema, frozen partner contract or accepted ADR decisions change; ADR 0003/0004/0006 and HANDOVER financial conflicts remain human questions.

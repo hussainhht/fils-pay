@@ -63,12 +63,13 @@
 ### 3. Financial Display Formatting
 - **Invariant:** Never use `toFixed(2)` on monetary figures.
 - Use `formatBhd(fils)`:
-  - Formats integer fils as `X.YYY BD` (e.g. `4750 fils` $\rightarrow$ `4.750 BD`).
+  - Formats integer fils as `X.YYY`; dashboard/checkout append `BHD` (e.g. `4750 fils` $\rightarrow$ `4.750 BHD`).
 
 ### 4. Merchant Payment-Link Amount Entry
 - `pages/payment-links/PaymentLinkCreatePage.tsx` accepts BHD text rather than raw fils. `BhdAmountInput.tsx` uses a decimal-keyboard text input, retains accepted edits and native caret/selection, rejects invalid insertions/pastes and restores selection for non-cancellable input events.
 - Drafts permit one period and up to three fractional digits, including empty text, `.`, `1.` and `0.`. No formatting happens during typing; complete safe amounts normalize to three decimals on blur/submit. Empty/lone-period drafts cannot submit.
-- `bhdAmount.ts` completes strings and delegates exact conversion to the existing `parseBhdToFils`. The page requires positive safe-integer fils and preserves expiry/metadata/auth behavior. No floats or rounding, money-package modifications, dependencies or API changes.
+- `bhdAmount.ts` completes strings and delegates exact conversion to the existing `parseBhdToFils`. The page requires positive safe-integer fils and preserves metadata/auth behavior. No floats or rounding, money-package modifications or added dependencies.
+- `ExpirationInput.tsx`/`.css` provide native single-choice radios (15 Minutes, 24 Hours default, 7/30/90 Days, Custom Duration), green selection/focus and responsive controls. `expiration.ts` validates custom whole minutes/hours/days against inclusive 900..10368000 seconds. Presets ignore hidden custom values; invalid drafts disable creation. The estimated preview explicitly names Asia/Bahrain (UTC+03:00), refreshes every 30 seconds and on selection edits, and is never submitted. `CreatePaymentLinkInput` is an exactly-one-of union for legacy `expiresAt` or server-relative `expiresInSeconds`; the dashboard sends the latter.
 - See `Evidence/features/features.md` (FEAT-003) for grammar, limits and actual verification.
 
 ---
@@ -79,7 +80,8 @@
 - `src/ui-accessibility.test.ts`: Accessibility checks.
 - `src/pages/checkout/cardInput.test.ts`: network/range, formatting/caret/deletion, Luhn, expiry, CVV and payload tests.
 - `src/pages/payment-links/bhdAmount.test.ts`: draft grammar, intermediate states, normalization, exact fils and safe-integer boundary tests.
-- `scripts/paymentLinkAmount.browser.test.mjs`: installed-Chromium decimal/caret/paste/mobile viewport and creation-payload checks with intercepted sandbox API fixtures; `--baseline` reproduces the HEAD raw-fils field losing the trailing decimal. On 2026-10-30 all 11 browser groups and all 55 web tests passed; live browser authentication/creation and physical mobile devices remain unverified.
+- `src/pages/payment-links/expiration.test.ts`: presets/hidden drafts, custom units/bounds/precision and timezone-independent preview tests.
+- `scripts/paymentLinkAmount.browser.test.mjs`: installed-Chromium decimal/caret/paste/mobile/keyboard, expiration options and creation-payload checks. Current result: 14 mocked groups; `node --import tsx ... --live` adds one real password/OTP-to-creation/database group using temporary API/Vite servers and a migrated local `filspay_expiration_test_<digits>` database specified by `DATABASE_URL`. No test fixture seeding/truncation; fixture inserts stay in the isolated DB. `--baseline` now fails on HEAD `850504a`'s missing expiration radios. Current web suite: 59 passing tests. Physical mobile devices remain unverified.
 - `scripts/checkout.browser.test.mjs`: opt-in installed-Chromium UI checks; `--live` adds a simulator payment through localhost API/Postgres using new test fixtures. `--baseline` and `--baseline --retry-only` reproduce the two baseline regressions. See `Evidence/payment_checkout_enhancements.md`.
 - Build verification:
   ```bash

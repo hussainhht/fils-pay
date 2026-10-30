@@ -1,5 +1,7 @@
-// Installed Chromium only; no dependencies or real API/payment calls.
-// Run with the local Vite preview on :5173. --baseline loads the HEAD page.
+// Installed Chromium; mocked UI cases use the Vite preview on :5173.
+// --live additionally starts isolated API/Vite servers against DATABASE_URL,
+// which must name a local filspay_expiration_test_* migrated database.
+// Run --live with node --import tsx. --baseline loads the HEAD creation page.
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
 import { mkdtemp, writeFile, unlink } from "node:fs/promises";
@@ -8,7 +10,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
-const base = "http://127.0.0.1:5173";
+let base = "http://127.0.0.1:5173";
 const baseline = process.argv.includes("--baseline");
 const browserPath = process.argv.find((arg) => arg.startsWith("--browser="))?.slice(10)
   ?? "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
@@ -16,6 +18,9 @@ const profile = await mkdtemp(join(tmpdir(), "filspay-amount-"));
 const browser = spawn(browserPath, ["--headless=new", "--disable-gpu", "--no-first-run", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"], { windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
 let socket;
 let baselineFile;
+let liveApp;
+let liveVite;
+let livePool;
 try {
   const endpoint = await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(Error("Browser debugging endpoint unavailable")), 15000);
@@ -172,15 +177,63 @@ try {
 
   await fill("0"); await submit(); assert.equal(requests.length, 0);
   await fill("9007199254740.992"); await submit(); assert.equal(requests.length, 0);
-  await fill("1.5"); await submit(); assert.equal(requests.length, 0);
+  await fill("1.5");
+  assert.equal(await js('document.querySelectorAll("input[name=expiration]").length'), 6);
+  const choose = (value) => js(`document.querySelector('input[name=expiration][value="${value}"]').click()`);
+  const setField = (selector, value) => js(`(() => {const e=document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(e.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype,'value').set.call(e,${JSON.stringify(value)}); e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input',{bubbles:true}));})()`);
+  await choose("custom"); await submit(); assert.equal(requests.length, 0);
   assert.equal(await js('document.querySelector(".dash-error").textContent.includes("Expiry")'), true);
-  await js(`const e=document.querySelector('input[type="datetime-local"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,'2020-01-01T12:00'); e.dispatchEvent(new Event('input',{bubbles:true}));`);
-  await submit(); assert.equal(requests.length, 0);
-  assert.equal(await js('document.querySelector(".dash-error").textContent.includes("future")'), true);
-  pass("zero/unsafe amounts and missing/past expiry send no creation request");
+  for (const invalid of ["14", "172801", "", ".", "15.5", "1e3", "-15", "Infinity", "9007199254740992"]) {
+    await setField("#payment-link-duration", invalid); await submit(); assert.equal(requests.length, 0);
+    assert.equal(await js('document.querySelector("button[type=submit]").disabled'), true);
+  }
+  pass("zero/unsafe amounts and incomplete/out-of-bounds/invalid custom durations send no request");
 
-  await js(`const fields=document.querySelectorAll('form input'); for(const [n,v] of [[1,' Order 42 '],[2,' Test order '],[3,${JSON.stringify(expiresAt.slice(0, 16))}]]) {Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(fields[n],v);fields[n].dispatchEvent(new Event('input',{bubbles:true}));}`);
-  for (const [draft, fils] of [["1.5", 1500], ["0.001", 1], ["1.", 1000], ["9007199254740.991", Number.MAX_SAFE_INTEGER]]) {
+  for (const [option, seconds] of [["15-minutes", 900], ["24-hours", 86400], ["7-days", 604800], ["30-days", 2592000], ["90-days", 7776000]]) {
+    await choose(option);
+    assert.equal(await js('document.querySelectorAll("input[name=expiration]:checked").length'), 1);
+    assert.equal(await js('document.querySelector("#payment-link-duration") === null'), true);
+    assert.equal(await js('document.querySelector("[data-expiration-preview]").textContent.includes("Estimated expiration (Asia/Bahrain, UTC+03:00)")'), true);
+    assert.equal(await js('getComputedStyle(document.querySelector("input[name=expiration]:checked").closest("label")).backgroundColor'), "rgb(234, 245, 239)");
+    await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
+    assert.equal(requests.at(-1).body.expiresInSeconds, seconds);
+    assert.equal("expiresAt" in requests.at(-1).body, false);
+  }
+  pass("all five presets select exactly one green radio, show the timezone estimate and send durations without hidden custom values");
+
+  await choose("custom");
+  for (const [value, unit, seconds] of [["15", "minutes", 900], ["1", "hours", 3600], ["120", "days", 10368000]]) {
+    await setField("#payment-link-duration", value); await setField("#payment-link-duration-unit", unit);
+    await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
+    assert.equal(requests.at(-1).body.expiresInSeconds, seconds);
+  }
+  await choose("15-minutes");
+  const previewBefore = await js('document.querySelector("[data-expiration-preview]").textContent');
+  await js('window.originalNow=Date.now; Date.now=()=>window.originalNow()+3*3600000');
+  await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
+  assert.equal(requests.at(-1).body.expiresInSeconds, 900);
+  assert.equal(await js('document.querySelector("[data-expiration-preview]").textContent'), previewBefore);
+  await js('Date.now=window.originalNow');
+  pass("custom minutes/hours/days include both limits; a three-hour-old preview still submits a full 15-minute duration");
+
+  await js('document.querySelector("input[name=expiration]:checked").focus()');
+  await key("ArrowRight", "ArrowRight", 39);
+  assert.equal(await js('document.querySelector("input[name=expiration]:checked").value'), "24-hours");
+  await key("ArrowLeft", "ArrowLeft", 37);
+  assert.equal(await js('document.querySelector("input[name=expiration]:checked").value'), "15-minutes");
+  for (const width of [1280, 390, 320]) {
+    await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 500 });
+    await choose("custom");
+    assert.equal(await js('document.documentElement.scrollWidth <= innerWidth'), true);
+    assert.equal(await js('document.querySelector("fieldset").querySelector("legend").textContent'), "Link expiration");
+    assert.equal(await js('document.querySelector("#payment-link-duration").labels[0].textContent.includes("Duration")'), true);
+  }
+  await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  await choose("24-hours");
+  pass("native arrow-key radio selection and labeled custom controls work at desktop/390px/320px without overflow");
+
+  await js(`const fields=document.querySelectorAll('form input'); for(const [n,v] of [[1,' Order 42 '],[2,' Test order ']]) {Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(fields[n],v);fields[n].dispatchEvent(new Event('input',{bubbles:true}));}`);
+  for (const [draft, fils] of [["1.5", 1500], ["0.100", 100], ["0.001", 1], ["1.", 1000], ["9007199254740.991", Number.MAX_SAFE_INTEGER]]) {
     await fill(draft); await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
     assert.equal(requests.at(-1).path, "/v1/merchants/sandbox-merchant/payment-links");
     assert.equal(requests.at(-1).body.amountFils, fils);
@@ -199,9 +252,61 @@ try {
   await waitFor('document.querySelector("main") && document.body.textContent.includes("New payment link")');
   assert.equal(await js('document.querySelector("form") === null'), true);
   pass("existing support-role restriction still hides the creation form");
+
+  if (process.argv.includes("--live")) {
+    const database = new URL(process.env.DATABASE_URL ?? "http://invalid");
+    assert.ok(["127.0.0.1", "localhost"].includes(database.hostname) && /^\/filspay_expiration_test_[0-9]+$/.test(database.pathname), "--live requires an isolated local expiration test database");
+    const { default: pg } = await import("pg");
+    const { randomUUID, randomBytes } = await import("node:crypto");
+    const { buildApp } = await import("../../api/src/app.ts");
+    const { loadConfig } = await import("../../api/src/config.ts");
+    const { hashPassword } = await import("../../api/src/auth/passwords.ts");
+    const { markDbConnectedOnce } = await import("../../api/src/health/state.ts");
+    const { createServer } = await import("vite");
+    livePool = new pg.Pool({ connectionString: database.href });
+    const config = loadConfig({ DATABASE_URL: database.href, NODE_ENV: "test", WEBHOOK_SECRET_ENCRYPTION_KEY: randomBytes(32).toString("base64"), ACQUIRER_FAILURE_RATE: "0" });
+    liveApp = buildApp(config, livePool);
+    liveApp.log.level = "silent"; // Never print development OTPs or test credentials.
+    await livePool.query("SELECT 1"); markDbConnectedOnce();
+    const api = await liveApp.listen({ port: 0, host: "127.0.0.1" });
+    liveVite = await createServer({ root: join(root, "apps/web"), configFile: join(root, "apps/web/vite.config.ts"),
+      define: { "import.meta.env.VITE_API_BASE_URL": JSON.stringify("") },
+      server: { host: "127.0.0.1", port: 0, proxy: { "/v1": api, "/healthz": api, "/readyz": api } } });
+    await liveVite.listen(); base = `http://127.0.0.1:${liveVite.httpServer.address().port}`;
+    liveApp.config.checkoutBaseUrl = base;
+    for (const path of ["/healthz", "/readyz"]) assert.equal((await fetch(`${base}${path}`)).status, 200);
+    assert.equal((await livePool.query("SELECT 1 AS alive")).rows[0].alive, 1);
+    const merchant = (await livePool.query("INSERT INTO merchants (display_name, mdr_bps, onboarding_status) VALUES ($1,250,'approved') RETURNING id", [`Expiration browser test ${randomUUID()}`])).rows[0];
+    const password = randomUUID(); const email = `${randomUUID()}@example.test`;
+    await livePool.query("INSERT INTO merchant_users (merchant_id,email,role,password_hash) VALUES ($1,$2,'owner',$3)", [merchant.id, email, await hashPassword(password, config)]);
+    await send("Fetch.disable");
+    await send("Page.navigate", { url: `${base}/dashboard/payment-links/new` });
+    await waitFor('document.querySelector("input[type=password]") !== null');
+    await setField('input[type=text]', merchant.id); await setField('input[type=email]', email); await setField('input[type=password]', password);
+    await submit(); await waitFor('document.querySelector("input[autocomplete=one-time-code]") !== null');
+    await setField('input[autocomplete=one-time-code]', await js('document.querySelector("form code").textContent'));
+    await submit(); await waitFor('document.querySelector("#payment-link-amount") !== null');
+    await fill("1.500"); await choose("15-minutes");
+    const before = Date.now(); await submit();
+    await waitFor('location.pathname.startsWith("/dashboard/payment-links/") && !location.pathname.endsWith("/new") && document.querySelector(".dash-dl") !== null');
+    const after = Date.now();
+    const id = await js('location.pathname.split("/").at(-1)');
+    const stored = (await livePool.query("SELECT amount_fils, expires_at, created_by_type, token FROM payment_links WHERE id = $1 AND merchant_id = $2", [id, merchant.id])).rows[0];
+    assert.equal(Number(stored.amount_fils), 1500); assert.equal(stored.created_by_type, "merchant_session");
+    assert.ok(stored.expires_at.getTime() >= before + 900000 && stored.expires_at.getTime() <= after + 900000);
+    assert.equal(await js('document.body.textContent.includes("1.500 BHD")'), true);
+    for (const expiration of [{ expiresInSeconds: 899 }, { expiresInSeconds: 10368001 }]) {
+      assert.equal(await js(`fetch('/v1/merchants/${merchant.id}/payment-links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(${JSON.stringify({ amountFils: 1500, ...expiration })})}).then(r=>r.status)`), 400);
+    }
+    await send("Page.navigate", { url: `${base}/pay/${stored.token}` });
+    await waitFor('document.querySelector("#card-number") !== null');
+    assert.equal(await js('document.body.textContent.includes("1.500 BHD")'), true);
+    pass("REAL isolated browser password/OTP -> Vite proxy -> current API -> PostgreSQL creation, authoritative 15-minute deadline, direct bypass rejection and three-decimal checkout/detail display");
+  }
   assert.deepEqual(errors, []);
-  console.log(`PASS ${groups} browser verification groups; all API requests intercepted with sandbox fixtures`);
+  console.log(`PASS ${groups} browser verification groups; UI cases mocked${process.argv.includes("--live") ? "; additional live creation uses isolated API/Postgres" : "; all API requests intercepted"}`);
 } finally {
   if (baselineFile) await unlink(baselineFile);
   socket?.close(); browser.kill();
+  await liveVite?.close(); await liveApp?.close(); await livePool?.end();
 }

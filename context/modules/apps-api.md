@@ -32,6 +32,7 @@
   - `transactions.ts`: `/v1/transactions` (authorize, capture, void, search, CSV export).
   - `refunds.ts`: `/v1/refunds` and `/v1/merchants/:merchantId/refunds` (FP-212 refunds).
   - `paymentLinks.ts`: `/v1/merchants/:merchantId/payment-links` and public `/v1/payment-links/:token`.
+    - Creation calls `paymentLinks/create.ts` and `expiration.ts`: positive safe-integer fils, optional string metadata, exactly one of whole `expiresInSeconds` (900..10368000 inclusive) or absolute ISO `expiresAt` in the same server-relative window. One server-time reference resolves seconds into the existing persisted deadline. Invalid input returns 400. Bounds affect new creation only; historical links, reads, payment admission and durable key/request recovery are unchanged. No partner-tree or schema changes.
   - `admin*.ts`: `/v1/admin/*` (admin auth, merchants, KYC reviews, bulk approvals, credits, balance adjustments, batch re-runs, balance rebuilds).
   - `acquirerCallbacks.ts`: `/v1/acquirer/callback` (inbound HMAC verified webhook receiver).
   - `webhooks.ts`: `/v1/merchants/:merchantId/webhook-endpoints` (merchant webhook registrations and deliveries).
@@ -109,6 +110,7 @@
 
 - Route integration tests: `apps/api/src/routes/*.test.ts` (requires `DATABASE_URL` and migrated PostgreSQL).
 - Unit tests: `apps/api/src/admin/creditApproval.test.ts`, `apps/api/src/reporting/scope.new.test.ts`.
+- Payment-link policy units: `paymentLinks/expiration.test.ts` (fixed clock, exact bounds/types/precision/offsets/latency), `paymentLinks/create.test.ts` (invalid requests never insert). Route tests additionally exercise direct API bounds and persisted timestamps, malformed bodies, historical short/long links and expired bound-attempt recovery in an isolated migrated test database. `lib/random.new.test.ts` uses a valid 900-second duration for its unchanged cryptographic-token assertions.
 - Command to run: `npm.cmd run test -w @filspay/api`.
 
 ---

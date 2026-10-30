@@ -22,7 +22,7 @@ test("OTP and payment-link generation do not use Math.random", async () => {
       },
     } as unknown as Pool;
     await createPaymentLink(pool, { checkoutBaseUrl: "https://checkout.example.test" }, {
-      merchantId: "merchant", amountFils: 1000, expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      merchantId: "merchant", amountFils: 1000, expiresInSeconds: 900,
       createdByType: "merchant_session", createdById: "user",
     });
     assert.match(String(token), /^plink_[A-Za-z0-9_-]{22}$/);

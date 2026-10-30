@@ -139,3 +139,17 @@ The scoped findings above total `fix-verified`: 2; all other status counts: 0.
 | AMOUNT-01: creation used raw fils and a number field that lost the trailing decimal while typing | P2 | `fix-verified` | Baseline Edge check at HEAD `1b1f64b` produced `1` for `1.`. The BHD text field now retains drafts/caret, normalizes only at blur/submit and uses the existing exact money parser; 55 web tests and 11 browser groups pass. See FEAT-003 in `Evidence/features/features.md`. |
 
 Scoped count: `confirmed-current`: 1 before; `fix-verified`: 1 after; all other statuses: 0. Historical BUG-001–BUG-086 counts were not reassessed. Localized separators/digits are unsupported; physical keyboards, other browsers and live browser authentication-to-creation remain unverified.
+
+## Payment-link expiration completion — 2026-10-30
+
+This extends FEAT-003 from baseline `850504a`; the earlier amount-phase live-browser limitation is superseded for authentication/creation by the new isolated check.
+
+| Finding | Severity | Current status | Evidence |
+|---|---|---|---|
+| EXPIRY-01: missing duration choices/bounds; only a future timestamp required | P2 | `fix-verified` | Baseline service accepts a 899-second instant; baseline browser has no expiration radios. Inclusive 900..10368000 seconds, exactly-one-of, server-relative calculation and labeled Bahrain estimate now verified by units, real API/DB and browser checks. Existing historical links and expired bound-attempt recovery preserved. |
+| AMOUNT-02: direct creation accepts zero fils | P2 | `fix-verified` | Baseline service only called nonnegative `toFils`; new positive guard tested before INSERT and by real route 400/no-row assertions. Working BHD editing unchanged. |
+| VERIFY-EXPIRY-01: dispatcher test asserts a fixed delay from a randomly jittered function | P3 | `confirmed-current` | Final fresh full API run: 508/509 pass; unchanged test expected 1000, got 959. Source intentionally adds ±10% jitter. Outside feature scope; no tests weakened. |
+| VERIFY-EXPIRY-02: settlement fake-server fetch failure in one full run | Unclassified | `unverified` | Did not recur in final fresh standalone run. No settlement code touched. |
+| VERIFY-EXPIRY-03: concurrent capture returned internal error in one full run | Unclassified | `unverified` | Did not recur in final fresh standalone run. No capture code touched. |
+
+Implementation findings: before `confirmed-current`: 2; after `fix-verified`: 2, other statuses 0. Separate verification findings: `confirmed-current`: 1 (P3), `unverified`: 2, other statuses 0. No remaining confirmed P0–P2 defect in the scoped implementation; historical registry counts are unchanged, not re-audited. Full API suite is not green. See FEAT-003 for exact commands, test counts, compatibility tightening and runtime limits.

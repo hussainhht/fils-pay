@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-10-30 — FEAT-003 payment-link expiration completion
+
+- Baseline `850504a2e500997fe1323b227354ea1d6fe50ea0`, clean worktree. Preserved the BHD input/parser/caret behavior and protected money package.
+- Added native green single-choice expiration presets and whole minutes/hours/days custom controls, inclusive 15-minute/120-day creation bounds and explicitly estimated Asia/Bahrain preview. The merchant endpoint supports exactly one server-relative `expiresInSeconds` or legacy absolute `expiresAt`; returned/stored absolute deadlines remain unchanged. Bounds are creation-only; historical links, admission expiry and durable recovery unchanged. Direct zero-fils creation and malformed metadata now return 400.
+- Source changes: API `paymentLinks/{create,expiration}.ts`, `routes/paymentLinks.ts`; web `pages/payment-links/{PaymentLinkCreatePage,ExpirationInput}.tsx`, `ExpirationInput.css`, `expiration.ts`, `types.ts`, API-client contract comment. Added policy/service/web tests, extended route/browser tests, updated only the duration fixture in the cryptographic-token test.
+- Fresh results: 59 web tests, 17 targeted API tests, typecheck and web build pass; 14 mocked amount/expiration browser groups plus one real isolated password/OTP-to-creation/DB group pass; 15 existing checkout browser groups pass. Final full API suite: 508/509 pass, unrelated existing webhook jitter assertion fails. Two other earlier suite failures did not recur; cause unverified. Baseline service/browser regressions failed as expected.
+- Updated existing FEAT-003 and context API, frontend, payment flows, API/web modules, decisions, testing, known issues and changelog. Dependency map reviewed: no dependency changes. No schema/migration source, settlement, partner-tree, accepted ADR, commit or push changes. Existing local DB queried read-only; fixtures/migrations restricted to two new isolated local databases, retained without destructive cleanup. Docker daemon inspection denied in restricted shell; local PostgreSQL 16.15 and existing API/Vite reachable. Broader runtime limitations recorded in FEAT-003.
+
 ## [1.1.0] — 2026-10-30
 
 ### UI polish layer (frontend only)

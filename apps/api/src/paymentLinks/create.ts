@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import { toFils } from "@filspay/money";
 import { BadRequestError } from "../lib/errors.js";
 import { randomFromAlphabet } from "../lib/random.js";
+import { resolvePaymentLinkExpiration } from "./expiration.js";
 import { serializePaymentLink, type PaymentLinkDto, type PaymentLinkRow } from "./serialize.js";
 
 const TOKEN_ALPHABET =
@@ -17,7 +18,8 @@ export interface CreatePaymentLinkInput {
   amountFils: number;
   reference?: string | null;
   description?: string | null;
-  expiresAt: string;
+  expiresAt?: unknown;
+  expiresInSeconds?: unknown;
   createdByType: "merchant_session" | "merchant_api_key";
   createdById: string;
 }
@@ -36,13 +38,16 @@ export async function createPaymentLink(
   let amountFils;
   try {
     amountFils = toFils(input.amountFils);
+    if (amountFils <= 0) throw new RangeError("amountFils must be positive");
   } catch (err) {
     throw new BadRequestError("invalid_amount", err instanceof Error ? err.message : String(err));
   }
 
-  const expiresAtDate = new Date(input.expiresAt);
-  if (Number.isNaN(expiresAtDate.getTime()) || expiresAtDate.getTime() <= Date.now()) {
-    throw new BadRequestError("invalid_expiry", "expiresAt must be a valid ISO 8601 date strictly in the future");
+  const expiresAtDate = resolvePaymentLinkExpiration(input);
+  for (const field of ["reference", "description"] as const) {
+    if (input[field] != null && typeof input[field] !== "string") {
+      throw new BadRequestError("invalid_request", `${field} must be a string`);
+    }
   }
 
   const token = `plink_${randomPlinkToken()}`;

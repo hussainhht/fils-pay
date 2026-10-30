@@ -4,9 +4,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPaymentLink } from "../../api/paymentLinks.js";
 import { describeError } from "../../api/client.js";
 import { useDashboardAuth } from "../../auth/DashboardAuthContext.js";
-import { localDateTimeToIso } from "../../format.js";
 import { BhdAmountInput } from "./BhdAmountInput.js";
 import { normalizeBhdAmount, parseBhdAmountDraft } from "./bhdAmount.js";
+import { ExpirationInput } from "./ExpirationInput.js";
+import { expirationSeconds, type DurationUnit, type ExpirationOption } from "./expiration.js";
 
 /**
  * `POST /v1/merchants/:merchantId/payment-links`, `owner`/`finance`
@@ -27,7 +28,10 @@ export function PaymentLinkCreatePage() {
   const [amountBhd, setAmountBhd] = useState("");
   const [reference, setReference] = useState("");
   const [description, setDescription] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
+  const [expirationOption, setExpirationOption] = useState<ExpirationOption>("24-hours");
+  const [customDuration, setCustomDuration] = useState("");
+  const [durationUnit, setDurationUnit] = useState<DurationUnit>("minutes");
+  const durationSeconds = expirationSeconds(expirationOption, customDuration, durationUnit);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,13 +46,8 @@ export function PaymentLinkCreatePage() {
       return;
     }
     setAmountBhd(normalizeBhdAmount(amountBhd));
-    const expiresAtIso = localDateTimeToIso(expiresAt);
-    if (!expiresAtIso) {
-      setError("Expiry must be a valid date and time.");
-      return;
-    }
-    if (new Date(expiresAtIso).getTime() <= Date.now()) {
-      setError("Expiry must be in the future.");
+    if (durationSeconds === null) {
+      setError("Expiry duration must be a whole number between 15 minutes and 120 days, inclusive.");
       return;
     }
 
@@ -58,7 +57,7 @@ export function PaymentLinkCreatePage() {
         amountFils: amount,
         reference: reference.trim() || undefined,
         description: description.trim() || undefined,
-        expiresAt: expiresAtIso,
+        expiresInSeconds: durationSeconds,
       });
       navigate(`/dashboard/payment-links/${link.id}`, { replace: true });
     } catch (err) {
@@ -88,16 +87,9 @@ export function PaymentLinkCreatePage() {
           Description (optional)
           <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
-        <label>
-          Expires at
-          <input
-            type="datetime-local"
-            required
-            value={expiresAt}
-            onChange={(e) => setExpiresAt(e.target.value)}
-          />
-        </label>
-        <button type="submit" className="dash-button" disabled={submitting}>
+        <ExpirationInput option={expirationOption} custom={customDuration} unit={durationUnit} seconds={durationSeconds}
+          onOption={setExpirationOption} onCustom={setCustomDuration} onUnit={setDurationUnit} />
+        <button type="submit" className="dash-button" disabled={submitting || durationSeconds === null}>
           {submitting ? "Creating..." : "Create payment link"}
         </button>
       </form>

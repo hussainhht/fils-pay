@@ -83,10 +83,13 @@
 
 ### 7. Payment Links (`/v1/payment-links` & `/v1/merchants/:merchantId/payment-links`)
 - `POST /v1/merchants/:merchantId/payment-links`:
-  - Body: `{ amountFils, description?, expiresInHours? }`.
-  - Response: `{ id, token, url: "http://.../checkout/:token", amountFils, expiresAt }`.
+  - Body: `{ amountFils, reference?, description?, expiresInSeconds }` OR `{ amountFils, reference?, description?, expiresAt }`; exactly one expiration field is required. `expiresInHours` is not supported.
+  - Creation policy: positive safe-integer fils; duration is an integer from **900 to 10368000 seconds inclusive** (15 minutes to 120 elapsed 24-hour days). The service uses one server-time reference to validate/resolve expiration. The dashboard sends seconds so form age/network delay cannot shorten the lifetime.
+  - Existing `expiresAt` requests remain supported, deliberately tightened to an absolute ISO timestamp with timezone and at most millisecond precision, in the same inclusive server-relative window. Missing, conflicting, malformed, past or out-of-range input returns `400 invalid_expiry`; malformed body/metadata returns `400 invalid_request`, invalid amount returns `400 invalid_amount`. No clamping or client-time allowance.
+  - `201` response fields and persisted `expires_at` are unchanged: returned `expiresAt` is authoritative. Bounds apply only to creation; historical reads and payment admission/recovery keep their existing deadline/status rules. Owner/finance, tenant and impersonation checks remain server-side. The frozen partner tree is unchanged.
+  - Response: merchant DTO `{ id, token, url: "http://.../pay/:token", amountFils, currency, reference, description, status, expiresAt, transactionId, createdAt, paidAt, canceledAt }`.
 - `GET /v1/merchants/:merchantId/payment-links`: List active and historical payment links.
-- `POST /v1/merchants/:merchantId/payment-links/:id/cancel`: Marks link `cancelled`.
+- `DELETE /v1/merchants/:merchantId/payment-links/:id`: Marks a cancelable link `canceled`; `204` success, `404` unknown/other merchant, `409` non-cancelable.
 - **Public Checkout Routes:**
   - `GET /v1/payment-links/:token`: Public endpoint fetching link status and amount for customer display.
   - `POST /v1/payment-links/:token/pay`: Submits card payment for checkout. Enforces single-use reservation lock.

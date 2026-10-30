@@ -341,6 +341,13 @@ test(
     });
     assert.equal(capRes.statusCode, 200, JSON.stringify(capRes.body));
 
+    // Expiration blocks new attempts, but must not strand an already-bound charge.
+    await pool.query(`UPDATE payment_links SET expires_at = now() - interval '1 minute' WHERE id = $1`, [row.id]);
+    assert.equal((await getPublicLink(link.token)).json().status, "processing");
+    const competingPayer = await pay(link.token, APPROVED_CARD);
+    assert.equal(competingPayer.statusCode, 409, competingPayer.body);
+    assert.equal(competingPayer.json().error, "payment_link_processing");
+
     // The client now retries the pay() request with the SAME Idempotency-Key
     // (reserved_at is already old enough for the claim UPDATE to re-admit it).
     const retryRes = await pay(link.token, APPROVED_CARD, idempotencyKey);
@@ -362,3 +369,75 @@ test(
     assert.equal(finalLink.rows[0]!.transaction_id, txnId);
   },
 );
+
+test("direct creation enforces inclusive expiration bounds for duration and legacy instant requests", async (t) => {
+  const owner = await createApprovedMerchantWithApiKey("expiration-boundaries");
+  const now = Date.now();
+  t.mock.method(Date, "now", () => now);
+  const post = (expiration: object) => app.inject({
+    method: "POST", url: `/v1/merchants/${owner.merchantId}/payment-links`,
+    headers: authHeader(owner.rawKey), payload: { amountFils: 1000, ...expiration },
+  });
+  for (const seconds of [900, 120 * 86400]) {
+    for (const expiration of [{ expiresInSeconds: seconds }, { expiresAt: new Date(now + seconds * 1000).toISOString() }]) {
+      const res = await post(expiration);
+      assert.equal(res.statusCode, 201, res.body);
+      assert.equal(Date.parse(res.json().expiresAt), now + seconds * 1000);
+      const stored = await pool.query(`SELECT expires_at FROM payment_links WHERE id = $1`, [res.json().id]);
+      assert.equal(stored.rows[0].expires_at.getTime(), now + seconds * 1000);
+    }
+  }
+  for (const expiration of [
+    {}, { expiresInSeconds: 899 }, { expiresInSeconds: 120 * 86400 + 1 },
+    { expiresAt: new Date(now + 900000 - 1).toISOString() },
+    { expiresAt: new Date(now + 120 * 86400000 + 1).toISOString() },
+    { expiresAt: new Date(now - 1).toISOString() },
+    { expiresAt: new Date(now + 86400000).toISOString(), expiresInSeconds: 900 },
+  ]) {
+    const res = await post(expiration);
+    assert.equal(res.statusCode, 400, res.body);
+    assert.equal(res.json().error, "invalid_expiry");
+  }
+});
+
+test("malformed direct creation requests return 4xx without internal exceptions or coercion", async () => {
+  const owner = await createApprovedMerchantWithApiKey("expiration-types");
+  const post = (payload: unknown) => app.inject({
+    method: "POST", url: `/v1/merchants/${owner.merchantId}/payment-links`,
+    headers: { ...authHeader(owner.rawKey), "content-type": "application/json" }, payload: JSON.stringify(payload),
+  });
+  for (const value of [null, "900", true, [], {}, 900.5, "Infinity"]) {
+    for (const field of ["expiresAt", "expiresInSeconds"]) {
+      const res = await post({ amountFils: 1000, [field]: value });
+      assert.equal(res.statusCode, 400, res.body);
+    }
+  }
+  for (const payload of [null, [], "bad body", { amountFils: 1000 },
+    { amountFils: 0, expiresInSeconds: 900 }, { amountFils: "1000", expiresInSeconds: 900 },
+    { amountFils: 1000, expiresInSeconds: 900, reference: {} },
+    { amountFils: 1000, expiresInSeconds: 900, description: [] },
+    { amountFils: 1000, expiresInSeconds: 900, expiresAt: null }]) {
+    const res = await post(payload);
+    assert.equal(res.statusCode, 400, res.body);
+  }
+  assert.equal((await pool.query(`SELECT count(*)::int AS count FROM payment_links WHERE merchant_id = $1`, [owner.merchantId])).rows[0].count, 0);
+});
+
+test("historical links outside creation lifetime bounds remain listed, readable and payable until their deadlines", async () => {
+  // Run this suite against an isolated migrated test database, never shared/live data.
+  const owner = await createApprovedMerchantWithApiKey("historical-expiration");
+  for (const seconds of [300, 121 * 86400]) {
+    const link = await createLink(owner.rawKey, owner.merchantId);
+    const deadline = new Date(Date.now() + seconds * 1000);
+    await pool.query(`UPDATE payment_links SET created_at = now() - interval '1 minute', expires_at = $2 WHERE id = $1`, [link.id, deadline]);
+    const read = await getPublicLink(link.token);
+    assert.equal(read.statusCode, 200, read.body);
+    assert.equal(read.json().status, "active");
+    assert.equal(read.json().expiresAt, deadline.toISOString());
+    const listed = await app.inject({ method: "GET", url: `/v1/merchants/${owner.merchantId}/payment-links`, headers: authHeader(owner.rawKey) });
+    assert.equal(listed.statusCode, 200, listed.body);
+    assert.equal(listed.json().paymentLinks.find((row: { id: string }) => row.id === link.id).expiresAt, deadline.toISOString());
+    const paid = await pay(link.token, APPROVED_CARD);
+    assert.equal(paid.statusCode, 200, paid.body);
+  }
+});
