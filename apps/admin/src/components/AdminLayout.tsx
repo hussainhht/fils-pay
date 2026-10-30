@@ -3,6 +3,8 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "../auth/AdminAuthContext.js";
 import { describeError, WEB_BASE_URL } from "../api/client.js";
 import { ImpersonationBanner } from "./ImpersonationBanner.js";
+import { Brand } from "../../../ui/Brand.js";
+import { Icon } from "../../../ui/Icon.js";
 
 /** Nav shell for every admin-plane screen: who you are signed in as, the
  *  section links, a logout, and — above all of it — the impersonation
@@ -28,14 +30,16 @@ export function AdminLayout() {
       <a className="fp-skip-link" href="#main-content">Skip to content</a>
       <ImpersonationBanner />
 
+      <div className="fp-workspace">
       <header className="admin-header">
-        <div className="admin-brand">FilsPay Admin</div>
+        <div className="admin-brand"><Brand /><span className="fp-plane-label">Admin</span></div>
+        <p className="fp-nav-caption">Operations console</p>
         <nav className="admin-nav" aria-label="Administration navigation">
-          <NavLink to="/merchants">Merchants</NavLink>
-          <NavLink to="/credits">Credits</NavLink>
-          <NavLink to="/settlement">Settlement ops</NavLink>
-          <NavLink to="/adjustment-imports">Import adjustments</NavLink>
-          <NavLink to="/webhooks">Webhook replay</NavLink>
+          <NavLink to="/merchants"><Icon name="merchants" />Merchants</NavLink>
+          <NavLink to="/credits"><Icon name="credits" />Credits</NavLink>
+          <NavLink to="/settlement"><Icon name="settlement" />Settlement ops</NavLink>
+          <NavLink to="/adjustment-imports"><Icon name="import" />Import adjustments</NavLink>
+          <NavLink to="/webhooks"><Icon name="webhooks" />Webhook replay</NavLink>
         </nav>
         <div className="admin-identity">
           {admin ? (
@@ -44,13 +48,17 @@ export function AdminLayout() {
             </span>
           ) : null}
           <button type="button" onClick={() => void handleSignOut()}>
-            Log out
+            <Icon name="logout" />Log out
           </button>
         </div>
       </header>
 
-      {error ? <p className="admin-error">{error}</p> : null}
-
+      <div className="fp-workspace-content">
+      <div className="fp-workspace-bar">
+        <span className="fp-workspace-name">Operations console</span>
+        <span className="fp-workspace-label">Administration</span>
+      </div>
+      {error ? <p className="admin-error" role="alert">{error}</p> : null}
       {impersonation ? (
         // An explicit "exit view-as-merchant" action is required before
         // admin-plane screens are shown again. This is a UX safeguard so the
@@ -73,6 +81,8 @@ export function AdminLayout() {
           <Outlet />
         </main>
       )}
+      </div>
+      </div>
     </div>
   );
 }
