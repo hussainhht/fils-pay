@@ -6,7 +6,7 @@
  * the outbox payload unchanged.
  */
 
-export type WebhookEventType = "transaction.captured" | "transaction.voided" | "settlement.paid" | "refund.succeeded";
+export type WebhookEventType = "transaction.captured" | "transaction.voided" | "settlement.paid" | "refund.succeeded" | "payment.failed" | "payment_link.expired";
 
 export interface WebhookEnvelope {
   /** = webhook_deliveries.delivery_event_id — the dedup key */
@@ -40,6 +40,19 @@ export function buildEnvelope(deliveryEventId: string, outboxEvent: OutboxEventF
   const createdAt = outboxEvent.createdAt.toISOString();
 
   switch (outboxEvent.eventType) {
+    case "payment.failed":
+      return { id: deliveryEventId, type: "payment.failed", createdAt, data: {
+        merchantId: outboxEvent.payload.merchantId,
+        paymentAttemptId: outboxEvent.aggregateId,
+        ...(outboxEvent.payload.transactionId ? { transactionId: outboxEvent.payload.transactionId } : {}),
+        stage: outboxEvent.payload.stage, amountFils: outboxEvent.payload.amountFils,
+        reason: outboxEvent.payload.reason,
+      } };
+    case "payment_link.expired":
+      return { id: deliveryEventId, type: "payment_link.expired", createdAt, data: {
+        merchantId: outboxEvent.payload.merchantId, paymentLinkId: outboxEvent.aggregateId,
+        amountFils: outboxEvent.payload.amountFils, expiredAt: outboxEvent.payload.expiredAt,
+      } };
     case "transaction.captured":
       return {
         id: deliveryEventId,

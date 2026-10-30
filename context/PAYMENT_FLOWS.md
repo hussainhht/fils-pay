@@ -60,7 +60,7 @@ The transaction lifecycle enforces strict, irreversible state transitions:
      - `amount_fils`: Matches authorized amount.
      - `status`: `'active'`.
      - `expires_at`: `now() + INTERVAL '7 days'`.
-  3. Enqueues outbox event: `transaction.authorized`.
+  3. Records an `authorized` transaction timeline event; there is no current `transaction.authorized` outbox event. Definitive authorize/capture declines enqueue `payment.failed` atomically with their completed idempotency claim; authorization declines have no transaction row. Ambiguous provider errors emit no failure event.
 - **Acquirer Simulator:** Calls `acquirer.authorize(...)` with mock latency (100–400 ms) and simulated failure rate (2%).
 
 ---

@@ -35,7 +35,7 @@ export interface WebhookTransportResponse {
 
 export type WebhookTransport = (req: WebhookTransportRequest) => Promise<WebhookTransportResponse>;
 
-/** Real transport: Node's global fetch with an AbortController-driven
+/** Real transport: native HTTP(S) with an AbortController-driven
  *  timeout, used by index.ts's production wiring. */
 export function createFetchTransport(config: { nodeEnv: string }, resolveAddresses = async (host: string) => lookup(host, { all: true, verbatim: true })): WebhookTransport {
   return async (req: WebhookTransportRequest): Promise<WebhookTransportResponse> => {
@@ -49,7 +49,7 @@ export function createFetchTransport(config: { nodeEnv: string }, resolveAddress
         new Promise<never>((_, reject) => controller.signal.addEventListener("abort", () => reject(new Error("Webhook DNS lookup timed out")), { once: true })),
       ]);
       if (controller.signal.aborted) throw new Error("Webhook request timed out");
-      if (!addresses.length || (config.nodeEnv === "production" && addresses.some(a => isInternalWebhookHost(a.address)))) {
+      if (!addresses.length || (config.nodeEnv !== "test" && addresses.some(a => isInternalWebhookHost(a.address)))) {
         throw new Error("Webhook target resolves to a non-public address");
       }
       // Native HTTP does not follow redirects. Pin the checked DNS result at

@@ -8,6 +8,7 @@ import { signPayload } from "./sign.js";
 import { buildEnvelope } from "./envelope.js";
 import { WEBHOOK_DELIVERY_ID_HEADER, WEBHOOK_SIGNATURE_HEADER } from "./headers.js";
 import type { WebhookTransport } from "./transport.js";
+import { enqueueExpiredPaymentLinks } from "../paymentLinks/expire.js";
 
 /**
  * The dispatcher: LISTEN/NOTIFY-driven, poll-fallback, in-process component
@@ -22,10 +23,11 @@ import type { WebhookTransport } from "./transport.js";
 
 const STEP_A_BATCH_LIMIT = 500;
 const STEP_B_BATCH_LIMIT = 100;
-// add refund.succeeded here when refunds ship, thats all it needs — am
 // YA: adding a type here without a buildEnvelope case throws in Step A and stalls the whole queue. envelope.ts first.
 // MK: settlement.batch_closed taken out of this list in Feb (too noisy). docs still mention it
 const WEBHOOK_ELIGIBLE_EVENT_TYPES: readonly string[] = [
+  "payment.failed",
+  "payment_link.expired",
   "transaction.captured",
   "transaction.voided",
   "refund.succeeded",
@@ -33,9 +35,7 @@ const WEBHOOK_ELIGIBLE_EVENT_TYPES: readonly string[] = [
 ];
 const NOTIFY_CHANNEL = "outbox_events_channel";
 
-// settlement_payout_disbursements is not written here. The row belongs next
-// to the ledger movement in apps/settlement PayoutBatch
-// (internal/settlement/batch.go). That Go path does not insert it yet.
+// Delivery never writes financial records; settlement owns disbursements.
 export type DispatcherConfig = Pick<
   Config,
   | "webhookMaxAttempts"
@@ -54,7 +54,7 @@ export function backoffDelayMs(
 ): number {
   const raw = config.webhookBackoffBaseMs * 2 ** (attemptNumber - 1);
   const capped = Math.min(raw, config.webhookBackoffCapMs);
-  return Math.round(capped * (0.9 + jitter() * 0.2));
+  return Math.min(config.webhookBackoffCapMs, Math.round(capped * (0.9 + jitter() * 0.2)));
 }
 
 interface DueEventRow {
@@ -90,6 +90,7 @@ async function createMissingDeliveries(pool: Pool): Promise<number> {
            ON we.merchant_id = (oe.payload->>'merchantId')::uuid
           AND we.status = 'active'
           AND oe.created_at >= we.created_at
+          AND (oe.event_type <> 'payment_link.expired' OR (oe.payload->>'expiredAt')::timestamptz >= we.created_at)
         WHERE oe.event_type = ANY($1::text[])
           AND NOT EXISTS (
             SELECT 1 FROM webhook_deliveries wd
@@ -148,11 +149,13 @@ async function attemptOneDelivery(
   config: DispatcherConfig,
   row: DueDeliveryRow,
 ): Promise<void> {
-  const key = decodeEncryptionKey(config.webhookSecretEncryptionKey);
-  const secret = decryptSecret(row.secret_ciphertext, key);
-  const { signature } = signPayload(row.payload, secret);
-
-  const result = await transport({
+  let signature: string | null = null;
+  let result;
+  try {
+    const key = decodeEncryptionKey(config.webhookSecretEncryptionKey);
+    const secret = decryptSecret(row.secret_ciphertext, key);
+    signature = signPayload(row.payload, secret).signature;
+    result = await transport({
     url: row.url,
     headers: {
       [WEBHOOK_SIGNATURE_HEADER]: signature,
@@ -161,7 +164,12 @@ async function attemptOneDelivery(
     },
     body: canonicalJson(row.payload),
     timeoutMs: config.webhookRequestTimeoutMs,
-  });
+    });
+  } catch {
+    // Apply the same bounded retry policy to preparation/transport exceptions.
+    // Exception messages can contain endpoint credentials or payload data.
+    result = { statusCode: null, body: "" };
+  }
 
   const isTransportFailure = result.statusCode === null;
   const responseStatusCode = isTransportFailure ? null : result.statusCode;
@@ -243,20 +251,12 @@ async function attemptDueDeliveries(pool: Pool, transport: WebhookTransport, con
     attempted.push(row.id);
     try {
       await attemptOneDelivery(pool, transport, config, row);
-    } catch (err: unknown) {
-      // A single row throwing before/around the transport call (e.g. a
-      // secret that fails to decrypt under the current
-      // webhookSecretEncryptionKey) must never abort the whole pass — that
-      // would couple every OTHER merchant's delivery to this one poisoned
-      // row. Endpoints are never coupled to each other.
-      // Deliberately leave this row's status/attempt_count/next_attempt_at
-      // untouched: it is simply retried next pass, which self-heals if the
-      // failure was transient and otherwise degrades to "this one row never
-      // progresses" rather than "webhook delivery silently stops platform-
-      // wide."
+    } catch {
+      // A failed outcome write leaves the claim lease intact for recovery.
+      // Do not log the raw exception: it may contain sensitive SQL params.
       console.error(
-        "[webhooks/dispatcher] delivery attempt threw before/around transport call, skipping row for this pass",
-        { deliveryId: row.id, endpointId: row.endpoint_id, err },
+        "[webhooks/dispatcher] could not persist delivery outcome; lease retained",
+        { deliveryId: row.id, endpointId: row.endpoint_id },
       );
     }
   }
@@ -275,6 +275,7 @@ export async function runDispatchPass(
   transport: WebhookTransport,
   config: DispatcherConfig,
 ): Promise<{ createdCount: number; attemptedCount: number }> {
+  await enqueueExpiredPaymentLinks(pool);
   const createdCount = await createMissingDeliveries(pool);
   const attemptedCount = await attemptDueDeliveries(pool, transport, config);
   return { createdCount, attemptedCount };

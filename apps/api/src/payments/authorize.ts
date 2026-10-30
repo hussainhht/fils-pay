@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import type { Fils } from "@filspay/money";
+import { enqueueEvent } from "@filspay/events";
 import { withTransaction } from "../db/withTransaction.js";
 import type { AcquirerAuthorizeResult, AcquirerSimulator, SimulatedCardInput } from "../acquirer/types.js";
 import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey, hashRequest, singleFlight } from "./idempotency.js";
@@ -169,6 +170,10 @@ async function applyAuthorization(
         acquirerReference: acquirerResult.acquirerReference,
       };
       await completeIdempotencyKey(client, claimId, { statusCode: 402, body });
+      await enqueueEvent(client, {
+        eventType: "payment.failed", aggregateType: "payment_attempt", aggregateId: claimId,
+        payload: { merchantId: input.merchantId, paymentAttemptId: claimId, stage: "authorize", amountFils: input.amountFils, reason: "card_declined" },
+      });
       return { statusCode: 402, body };
     }
 

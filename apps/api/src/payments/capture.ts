@@ -255,6 +255,11 @@ async function applyCapture(
     if (acquirerResult.outcome === "declined") {
       const body = { error: "card_captured_declined" };
       await completeIdempotencyKey(client, prepared.claimId, { statusCode: 402, body, resourceId: txn.id });
+      await enqueueEvent(client, {
+        eventType: "payment.failed", aggregateType: "payment_attempt", aggregateId: prepared.claimId,
+        payload: { merchantId: input.merchantId, paymentAttemptId: prepared.claimId, transactionId: txn.id,
+          stage: "capture", amountFils: prepared.requestedAmount, reason: "card_declined" },
+      });
       return { statusCode: 402, body };
     }
     if (acquirerResult.outcome === "error") {

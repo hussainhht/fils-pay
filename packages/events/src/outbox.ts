@@ -7,6 +7,8 @@
 /** Event types the outbox can carry. Add a variant here before anything
  *  produces or consumes it. */
 export type EventType =
+  | "payment.failed"
+  | "payment_link.expired"
   | "transaction.captured"
   | "transaction.voided"
   // FH: refund.succeeded is already here, so the dispatcher handles it? (yes per claude)
@@ -18,7 +20,7 @@ export type EventType =
  * transaction.* and refund.succeeded use 'transaction'; settlement.* use
  * 'settlement_batch'.
  */
-export type AggregateType = "transaction" | "settlement_batch";
+export type AggregateType = "transaction" | "settlement_batch" | "payment_attempt" | "payment_link";
 
 export interface OutboxEventRow {
   id: bigint;

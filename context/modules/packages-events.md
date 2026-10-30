@@ -16,26 +16,25 @@
 
 ### 1. `enqueueEvent` Function
 ```typescript
-export async function enqueueEvent<T extends OutboxEvent>(
-  client: PoolClient | Client,
-  eventType: T["eventType"],
-  aggregateId: string,
-  payload: T["payload"]
-): Promise<string>;
+export async function enqueueEvent(
+  client: QueryableClient,
+  event: NewOutboxEvent
+): Promise<OutboxEventRow>;
 ```
-- Inserts a row into `outbox_events` with `status = 'pending'`.
-- Returns the generated `id` (BIGSERIAL).
+- Inserts a row into `outbox_events` with nullable `processed_at`; there is no status column.
+- Returns the inserted row; `id` is bigint. Webhooks track independent delivery state.
 - **Critical Rule:** `client` must be an active PostgreSQL transaction client (`withTransaction`). Enqueuing an event outside a transaction violates the outbox guarantee.
 
 ### 2. Canonical Outbox Event Schemas
 | Event Type | Aggregate ID | Payload Properties | Producing Modules | Consuming Modules |
 |---|---|---|---|---|
-| `transaction.authorized` | Transaction UUID | `{ transactionId, merchantId, amountFils, currency }` | `apps/api` (`authorize.ts`) | `apps/api` (Webhooks) |
+| `payment.failed` | Idempotency claim UUID (`payment_attempt`) | `{ merchantId, paymentAttemptId, transactionId?, stage, amountFils, reason }` | Definitive authorize/capture decline apply transaction | Webhooks only |
+| `payment_link.expired` | Link UUID (`payment_link`) | `{ merchantId, paymentLinkId, amountFils, expiredAt }` | Serialized API expiry scanner transaction | Webhooks only |
 | `transaction.captured` | Transaction UUID | `{ transactionId, merchantId, amountCapturedFils, feeFils }` | `apps/api` (`capture.ts`) | `apps/api` (Webhooks), `apps/reporting` |
 | `transaction.voided` | Transaction UUID | `{ transactionId, merchantId }` | `apps/api` (`void.ts`) | `apps/api` (Webhooks), `apps/reporting` |
-| `refund.created` | Refund UUID | `{ refundId, transactionId, merchantId, amountFils, reason }` | `apps/api` (`processRefund.ts`) | `apps/api` (Webhooks), `apps/reporting` |
+| `refund.succeeded` | Transaction UUID | `{ refundId, merchantId, amountFils, feeReversedFils, refundedTotalFils, newStatus }` | `apps/api` (`processRefund.ts`) | Webhooks, reporting |
 | `settlement.batch_closed` | Batch UUID | `{ batchId, merchantId, batchDate, grossFils, feeFils, netPayoutFils }` | `apps/settlement` (`batch.go`) | `apps/reporting` |
-| `settlement.paid` | Batch UUID | `{ batchId, merchantId, netPayoutFils, paidAt }` | `apps/settlement` (`payout_notify.go`) | `apps/api` (Webhooks) |
+| `settlement.paid` | Batch UUID | `{ batchId, merchantId, batchDate, netPayoutFils }` | `apps/settlement` (`payout_notify.go`) | `apps/api` (Webhooks) |
 
 ---
 

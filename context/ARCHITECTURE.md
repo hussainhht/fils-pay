@@ -138,11 +138,19 @@ Settlement executes daily to aggregate captures, deduct MDR fees, disburse net f
 FilsPay uses the **Transactional Outbox Pattern** to achieve atomic consistency between database updates and external asynchronous notifications:
 
 1. **Atomic Insertion:** Any business mutation inserts a row into `outbox_events` (`event_type`, `aggregate_id`, `payload`, `status = 'pending'`) within the same PostgreSQL transaction.
-2. **Notification Wakeup:** Upon transaction commit, PostgreSQL triggers `pg_notify('outbox_event_created', event_id)`.
+2. **Notification Wakeup:** Upon transaction commit, PostgreSQL triggers the `outbox_events_channel` notification.
 3. **Consumers:**
-   - **Webhook Dispatcher (`apps/api`):** Listens for events, looks up registered `webhook_endpoints`, signs payloads with HMAC-SHA256, and delivers HTTP webhooks with exponential backoff.
+   - **Webhook Dispatcher (`apps/api`):** Tracks independent durable `webhook_deliveries`, signs canonical wire bytes with timestamped HMAC-SHA256, leases sends with `SKIP LOCKED`, and retries with capped exponential backoff. Delivery/replay never mutates finances.
    - **Reporting Consumer (`apps/reporting`):** Advances its cursor in `reporting_outbox_cursor` and materializes events into analytics read models (`merchant_daily_volume`).
 4. **Resilience & Polling:** If the `LISTEN` connection disconnects, a background fallback poll queries for pending rows every 5 seconds, guaranteeing at-least-once delivery.
+
+Webhook update (2026-10-30): definitive authorize/capture declines now publish
+`payment.failed` atomically with the completed idempotency claim. A serialized,
+bounded scanner records `payment_link.expired` for active expired links without
+changing their derived status; reserved links are excluded. Delivery to an
+endpoint requires registration before expiry. Reporting filters its own event
+types and ignores these additions. See `docs/WEBHOOKS.md`; finite retries can
+exhaust, so eventual success requires receiver recovery and authorized replay.
 
 ---
 

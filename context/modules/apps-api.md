@@ -95,13 +95,26 @@
 
 ## 7. Webhook Delivery Engine (`src/webhooks/`)
 
-- **`dispatcher.ts`:**
-  - Connects dedicated client to PostgreSQL: `LISTEN outbox_event_created`.
-  - On notification (or fallback poll every 5s), queries pending `outbox_events`.
-  - Matches event types to `webhook_endpoints`.
-  - Encrypts/decrypts endpoint secrets using AES-256-GCM (`secretCrypto.ts`).
-  - Computes HMAC-SHA256 signature over raw payload bytes (`signature.ts`, `BUG-045`).
-  - Dispatches HTTP POST with exponential backoff (up to 8 attempts).
+- `dispatcher.ts` listens on `outbox_events_channel` and polls every 5 seconds
+  by default. It creates unique event/endpoint deliveries, leases one due row at
+  a time with `SKIP LOCKED`, and retries with capped exponential backoff/jitter.
+  Preparation and transport exceptions count toward the attempt limit without
+  logging raw exceptions. Database outcome failures retain the recovery lease.
+- `sign.ts` signs timestamp plus the canonical JSON bytes actually transmitted.
+  AES-256-GCM secrets are decrypted only for sends. Replays preserve identity.
+- Eligible types: `transaction.captured`, `transaction.voided`,
+  `refund.succeeded`, `settlement.paid`, `payment.failed`, `payment_link.expired`.
+  Authorize/capture definitive declines publish atomically with their completed
+  idempotency claim; ambiguous errors publish no failure event.
+- `paymentLinks/expire.ts` scans active expired links under an advisory scanner
+  lock and link row locks, atomically recording one expiry event. Reserved links
+  are excluded; derived link state is unchanged. No expiry backfill to endpoints
+  registered after the expiry instant.
+- Native HTTP(S) transport pins checked DNS, rejects private targets outside test,
+  follows no redirects, and bounds DNS/request/body time and response memory.
+- Incoming `/v1/acquirer/callbacks` validates field types, UUID and timestamp,
+  authenticates raw bytes with a 300-second freshness window, and only appends
+  a deduplicated fraud-review note. See `docs/WEBHOOKS.md` for contracts/limits.
 
 ---
 
@@ -117,7 +130,7 @@
 
 1. **Row Lock Across Acquirer (BUG-061):** Capture retains DB row lock during external acquirer network I/O.
 2. **CSV Import Precision (BUG-009):** Admin balance adjustment CSV parser assumes 2 decimals.
-3. **Webhook Replay Identity (BUG-068):** Admin replay generates fresh delivery IDs.
+3. **Webhook Replay Identity (BUG-068):** Already fixed: replay retains the original delivery identity.
 4. **Acquirer Callback Signature (BUG-047):** Acquirer callbacks accepted unsigned by default in dev.
 
 ## PMA-01 notification adapter (2026-10-30)

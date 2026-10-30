@@ -43,7 +43,7 @@
 | `merchant_balances` | `apps/settlement` (daemon), `apps/api` (adjustments) | `apps/web` (overview), `apps/api` | Performance cache. Rebuilt from `ledger_entries`. Display adjustments mutate this table directly. |
 | `settlement_batches` | `apps/settlement` (`CloseBatch`, `PayoutBatch`) | `apps/api`, `apps/web`, `apps/reporting` | Closed daily. Re-running closed/paid batches must be idempotent. |
 | `scheme_export_lines` | `apps/settlement` (`CloseBatch`) | Finance exports, `apps/api` (admin view) | Stores 2-decimal scheme export lines alongside 3-decimal fils amounts. |
-| `outbox_events` | `apps/api`, `apps/settlement` | `apps/api` (webhooks), `apps/reporting` (analytics) | PostgreSQL `LISTEN/NOTIFY` channel: `outbox_event_created`. |
+| `outbox_events` | `apps/api`, `apps/settlement` | `apps/api` (webhooks), `apps/reporting` (analytics) | PostgreSQL `LISTEN/NOTIFY` channel: `outbox_events_channel`. |
 | `reporting_outbox_cursor`| `apps/reporting` | `apps/reporting` | Tracks consumer progress (`last_event_id`). Must advance atomically per pass (`BUG-052`). |
 | `admin_audit_log` | `apps/api` (`adminAudit/`) | `apps/admin` | Immutable log of administrative actions, impersonation starts, and credit approvals. |
 
@@ -73,9 +73,9 @@ The transactional outbox decouples asynchronous side effects from synchronous fi
 ```
 
 ### Event Subscription Breakdown
-1. **`transaction.authorized`:**
-   - Publisher: `apps/api/src/payments/authorize.ts`
-   - Subscribers: Webhook Dispatcher $\rightarrow$ fires `transaction.authorized` webhook.
+1. **`payment.failed` / `payment_link.expired` (2026-10-30):**
+   - Publishers: definitive decline apply transactions in `payments/authorize.ts` and `capture.ts`; serialized API `paymentLinks/expire.ts` scanner.
+   - Subscriber: webhook dispatcher only. Reporting explicitly filters these types out. No settlement, money-library, schema or partner-route change.
 2. **`transaction.captured`:**
    - Publisher: `apps/api/src/payments/capture.ts`
    - Subscribers:
@@ -86,10 +86,10 @@ The transactional outbox decouples asynchronous side effects from synchronous fi
    - Subscribers:
      - Webhook Dispatcher $\rightarrow$ fires `transaction.voided` webhook.
      - Reporting Consumer $\rightarrow$ updates `merchant_daily_volume` (increments `voided_count`).
-4. **`refund.created`:**
-   - Publisher: `apps/api/src/refunds/initiateMerchantRefund.ts`
+4. **`refund.succeeded`:**
+   - Publisher: `apps/api/src/payments/processRefund.ts`
    - Subscribers:
-     - Webhook Dispatcher $\rightarrow$ fires `refund.created` webhook.
+     - Webhook Dispatcher $\rightarrow$ fires `refund.succeeded` webhook.
      - Reporting Consumer $\rightarrow$ updates `merchant_daily_volume`.
 5. **`settlement.batch_closed`:**
    - Publisher: `apps/settlement/internal/settlement/batch.go`

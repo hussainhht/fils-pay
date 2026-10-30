@@ -100,13 +100,13 @@ When support or admin operators need to troubleshoot a merchant's dashboard:
 - The IV, ciphertext, and GCM auth tag are stored in `webhook_endpoints.secret_ciphertext`.
 
 ### 2. Outbound Webhook Signing (HMAC-SHA256)
-- Outbound deliveries include the header `X-FilsPay-Signature: t=<timestamp>,v1=<hmac>`.
+- Outbound deliveries include the header `Webhook-Signature: t=<timestamp>,v1=<hmac>` plus stable `Webhook-Delivery-Id`.
 - The signature is calculated as:
   $$\text{HMAC-SHA256}(\text{signing\_secret}, t + "." + \text{raw\_body})$$
 - The signature must be computed over the **exact raw wire bytes**, not a re-serialized JSON string (`BUG-045`).
 
 ### 3. Inbound Acquirer Callbacks
-- Inbound callbacks to `/v1/acquirer/callback` provide `X-Acquirer-Signature`.
+- Inbound callbacks to `/v1/acquirer/callbacks` provide `Acquirer-Callback-Signature`.
 - The signature is computed over the raw request payload using `ACQUIRER_CALLBACK_SIGNING_SECRET`.
 - Verified using `crypto.timingSafeEqual` to prevent timing attacks (`BUG-046`).
 

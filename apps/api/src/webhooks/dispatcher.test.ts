@@ -192,7 +192,7 @@ test("failing endpoint: backoff/exhaustion sequence across repeated runDispatchP
   assert.equal(delivery.status, "pending");
   assert.equal(delivery.attempt_count, 1);
   assert.equal(delivery.response_status_code, 500);
-  const expectedDelay1 = backoffDelayMs(1, config);
+  const expectedDelay1 = backoffDelayMs(1, config, () => 0.5);
   assert.equal(expectedDelay1, 1000);
   const actualDelay1 = delivery.next_attempt_at.getTime() - Date.now();
   assert.ok(Math.abs(actualDelay1 - expectedDelay1) < 3000, `expected ~${expectedDelay1}ms, got ${actualDelay1}ms`);
@@ -212,7 +212,7 @@ test("failing endpoint: backoff/exhaustion sequence across repeated runDispatchP
   delivery = await getDelivery(String(outboxEvent.id), endpoint.id);
   assert.equal(delivery.status, "pending");
   assert.equal(delivery.attempt_count, 2);
-  const expectedDelay2 = backoffDelayMs(2, config);
+  const expectedDelay2 = backoffDelayMs(2, config, () => 0.5);
   assert.equal(expectedDelay2, 2000);
   const actualDelay2 = delivery.next_attempt_at.getTime() - Date.now();
   assert.ok(Math.abs(actualDelay2 - expectedDelay2) < 3000, `expected ~${expectedDelay2}ms, got ${actualDelay2}ms`);
@@ -336,7 +336,7 @@ test("no backfill: an endpoint registered after an event was enqueued never gets
   assert.equal(captured.length, 1);
 });
 
-test("per-row isolation: one poisoned row (undecryptable secret) throwing before the transport call never blocks another merchant's healthy delivery in the same pass, and the poisoned row's state is left unchanged rather than crashing the pass", async () => {
+test("an undecryptable secret has bounded retries and never blocks another merchant's delivery", async () => {
   const poisonedMerchantId = await createMerchant("poisoned");
   const poisonedEndpoint = await createEndpoint(poisonedMerchantId, "http://poisoned.test/webhook");
   const poisonedOutboxEvent = await enqueueCaptured(poisonedMerchantId);
@@ -374,13 +374,10 @@ test("per-row isolation: one poisoned row (undecryptable secret) throwing before
   assert.equal(healthyDelivery.attempt_count, 1);
   assert.equal(healthyDelivery.response_status_code, 200);
 
-  // The poisoned row was created by Step A (its existence itself proves
-  // Step A ran), but Step B's per-row throw must leave it completely
-  // untouched: still pending, zero attempts, never attempted, unmodified
-  // next_attempt_at so it is simply retried next pass.
+  // Preparation failures count against the same bounded retry budget.
   const poisonedDelivery = await getDelivery(String(poisonedOutboxEvent.id), poisonedEndpoint.id);
   assert.equal(poisonedDelivery.status, "pending");
-  assert.equal(poisonedDelivery.attempt_count, 0);
+  assert.equal(poisonedDelivery.attempt_count, 1);
   assert.equal(poisonedDelivery.response_status_code, null);
   assert.equal(poisonedDelivery.signature, null);
 
@@ -390,7 +387,14 @@ test("per-row isolation: one poisoned row (undecryptable secret) throwing before
   await assert.doesNotReject(runDispatchPass(pool, transport, config));
   const poisonedAfterSecondPass = await getDelivery(String(poisonedOutboxEvent.id), poisonedEndpoint.id);
   assert.equal(poisonedAfterSecondPass.status, "pending");
-  assert.equal(poisonedAfterSecondPass.attempt_count, 0);
+  assert.equal(poisonedAfterSecondPass.attempt_count, 1);
+  await forceDueNow(poisonedDelivery.id);
+  await runDispatchPass(pool, transport, config);
+  await forceDueNow(poisonedDelivery.id);
+  await runDispatchPass(pool, transport, config);
+  const exhausted = await getDelivery(String(poisonedOutboxEvent.id), poisonedEndpoint.id);
+  assert.equal(exhausted.status, "exhausted");
+  assert.equal(exhausted.attempt_count, config.webhookMaxAttempts);
 });
 
 test("a disabled endpoint gets no delivery row for a new event", async () => {
