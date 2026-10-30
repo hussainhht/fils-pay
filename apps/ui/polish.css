@@ -1,0 +1,135 @@
+/* Final visual layer: unified neutrals, button variants, status pills, elevation and state polish.
+   Loaded last so it can refine primitives without changing markup structure. */
+
+/* Typography */
+:is(.dash-main, .admin-main) h2 { font-size: 16px; font-weight: 650; letter-spacing: -.2px; }
+:is(.dash-main, .admin-main, .dash-centered, .admin-centered) h1 { font-weight: 680; }
+
+/* Fields */
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(input, select, textarea) {
+  border-color: var(--fp-input-border);
+  border-radius: 8px;
+  box-shadow: var(--fp-shadow-xs);
+}
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(input, textarea)::placeholder { color: #7a8c84; }
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) input:is([type="checkbox"], [type="radio"]) { box-shadow: none; }
+:is(.dash-main, .admin-main, .dash-centered, .admin-centered) :is(input, select, textarea):focus {
+  border-color: var(--fp-primary);
+  box-shadow: var(--fp-ring);
+  outline: none;
+}
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(input, select, textarea):disabled { background: var(--fp-subtle); box-shadow: none; }
+
+/* Buttons: primary (submit / link-button), secondary (default), danger, ghost */
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(button, .dash-button-link) {
+  border-color: var(--fp-input-border);
+  border-radius: 8px;
+  box-shadow: var(--fp-shadow-xs);
+  transition: border-color var(--fp-transition), background-color var(--fp-transition), box-shadow var(--fp-transition), color var(--fp-transition), transform var(--fp-transition);
+}
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(button, .dash-button-link):hover:not(:disabled) {
+  background: var(--fp-subtle);
+  border-color: var(--fp-border-strong);
+  color: var(--fp-text);
+}
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(button, .dash-button-link):active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) button[type="submit"],
+.dash-shell .dash-button-link {
+  border-color: var(--fp-primary);
+  box-shadow: var(--fp-shadow-xs), inset 0 1px 0 rgb(255 255 255 / 14%);
+}
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) button[type="submit"]:hover:not(:disabled),
+.dash-shell a.dash-button-link:hover:not(:disabled) {
+  background: var(--fp-primary-hover);
+  border-color: var(--fp-primary-hover);
+  color: #fff;
+}
+:is(.dash-shell, .admin-shell) button.fp-button-danger {
+  border-color: var(--fp-danger-border);
+  background: var(--fp-surface);
+  color: var(--fp-danger);
+}
+:is(.dash-shell, .admin-shell) button.fp-button-danger:hover:not(:disabled) {
+  background: var(--fp-danger-soft);
+  border-color: var(--fp-danger);
+  color: var(--fp-danger);
+}
+:is(.dash-shell, .admin-shell) button.fp-button-ghost {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--fp-muted);
+}
+:is(.dash-shell, .admin-shell) button.fp-button-ghost:hover:not(:disabled) { background: var(--fp-subtle); border-color: transparent; color: var(--fp-text); }
+:is(.dash-table, .admin-table) button { min-height: 34px; padding: 6px 12px; }
+:is(.dash-table, .admin-table) td:last-child:has(> button) { white-space: nowrap; }
+
+/* Cards, tables and detail lists */
+.fp-table-scroll { border-radius: var(--fp-radius); box-shadow: var(--fp-shadow); scrollbar-width: thin; scrollbar-color: var(--fp-border-strong) transparent; }
+:is(.dash-table, .admin-table) th {
+  background: var(--fp-subtle);
+  border-bottom-color: var(--fp-border);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+:is(.dash-table, .admin-table) tbody tr { transition: background-color var(--fp-transition); }
+:is(.dash-table, .admin-table) tbody tr:hover { background: var(--fp-subtle); }
+:is(.dash-table, .admin-table) td[colspan] { background: var(--fp-surface); }
+:is(.dash-dl, .admin-dl) { box-shadow: var(--fp-shadow); }
+:is(.dash-dl, .admin-dl) :is(dt, dd) { border-bottom-color: var(--fp-border); }
+:is(.dash-dl, .admin-dl) dt { font-size: 13px; }
+:is(.dash-filters, .admin-filters) { box-shadow: var(--fp-shadow); }
+:is(.dash-main, .admin-main) :is(.dash-form, .admin-form, .dash-form-inline, .admin-form-inline) { box-shadow: var(--fp-shadow); }
+.fp-segmented { background: var(--fp-subtle); }
+.admin-shell .fp-segmented button { box-shadow: none; }
+.admin-shell .fp-segmented button[aria-current="true"] { box-shadow: var(--fp-shadow-xs); }
+:is(.dash-centered, .admin-centered) { box-shadow: var(--fp-shadow-lg); border-radius: 14px; }
+
+/* Status pills */
+:is(.dash-status, .dash-badge) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--fp-border);
+  border-radius: 999px;
+  background: var(--fp-subtle);
+  color: var(--fp-muted);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+:is(.dash-status, .dash-badge)::before { content: ""; width: 6px; height: 6px; flex: none; border-radius: 50%; background: currentColor; }
+:is(.dash-status-captured, .dash-status-paid, .dash-status-succeeded, .dash-status-active, .dash-badge-live, .dash-badge-ok) {
+  background: var(--fp-success-soft); border-color: var(--fp-success-border); color: #0b6b4d;
+}
+:is(.dash-status-authorized, .dash-status-partially_captured, .dash-status-pending, .dash-status-reserved, .dash-status-open, .dash-badge-stale, .dash-badge-gap) {
+  background: var(--fp-warning-soft); border-color: var(--fp-warning-border); color: var(--fp-warning);
+}
+:is(.dash-status-failed, .dash-status-chargeback) {
+  background: var(--fp-danger-soft); border-color: var(--fp-danger-border); color: var(--fp-danger);
+}
+
+/* Notices */
+:is(.dash-error, .admin-error, .dash-notice, .admin-notice, .dash-confirm, .admin-confirm) { border-inline-start-width: 4px; font-size: 13px; line-height: 1.5; }
+:is(.dash-error, .admin-error) { background: var(--fp-danger-soft); border-color: var(--fp-danger-border); color: var(--fp-danger); }
+:is(.dash-notice, .admin-notice) { background: var(--fp-success-soft); border-color: var(--fp-success-border); color: var(--fp-primary-hover); }
+:is(.dash-confirm, .admin-confirm) { background: var(--fp-warning-soft); border-color: var(--fp-warning-border); color: var(--fp-warning); }
+.dash-secret { background: var(--fp-warning-soft); border-color: var(--fp-warning-border); }
+
+/* Navigation */
+:is(.dash-header, .admin-header) nav a .fp-icon { opacity: .7; transition: opacity var(--fp-transition), color var(--fp-transition); }
+:is(.dash-header, .admin-header) nav a:hover .fp-icon { opacity: 1; }
+:is(.dash-header, .admin-header) nav a.active .fp-icon { opacity: 1; color: var(--fp-primary); }
+:is(.dash-header, .admin-header) nav a.active { box-shadow: inset 3px 0 var(--fp-primary); }
+
+/* Loading */
+@keyframes fp-pulse { 50% { opacity: .3; } }
+.fp-loading-state::before { animation: fp-pulse 1.2s ease-in-out infinite; }
+.dash-bar { background: linear-gradient(90deg, var(--fp-primary), #2fa57f); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fp-loading-state::before { animation: none; }
+  :is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(button, .dash-button-link):active:not(:disabled) { transform: none; }
+}

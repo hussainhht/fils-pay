@@ -133,7 +133,7 @@ export function WebhookEndpointListPage() {
                   </button>{" "}
                   <button
                     type="button"
-                    className="dash-button"
+                    className="dash-button fp-button-danger"
                     disabled={busyId === endpoint.id}
                     onClick={() => void handleDelete(endpoint)}
                   >

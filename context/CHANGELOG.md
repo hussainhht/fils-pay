@@ -4,6 +4,18 @@
 
 ---
 
+## [1.1.0] — 2026-10-30
+
+### UI polish layer (frontend only)
+- Added `apps/ui/polish.css` (imported last by `apps/ui/console.css`) and new tokens in `apps/ui/tokens.css` (`--fp-input-border`, `--fp-*-soft/-border` status colors, `--fp-ring`, `--fp-shadow-xs/-lg`; `--fp-radius` 8px→10px; thinner 2px focus outline).
+- Unified hardcoded slate neutrals with the green-tinted tokens; added button variants (`fp-button-danger`, `fp-button-ghost`), pill status badges with dot indicator, left-accent notices, uppercase table headers, loading-pulse, nav icon states.
+- `fp-button-danger` applied to: cancel payment link, void, webhook delete, credit reject, KYC reject (class-only edits; no handler/behavior change).
+- Checkout polish lives in `apps/web/src/pages/checkout/CheckoutPage.css` (checkout imports only `tokens.css`).
+- No API, schema, money, or auth changes. Verified: typecheck, web/admin builds, 28 web tests. Not verified: rendered visuals (no browser access).
+- Affected docs: `context/FRONTEND.md` needs no structural change (design-system detail lives in `Evidence/ui_ux_redesign.md`).
+
+---
+
 ## [1.0.0] — 2026-10-30
 
 ### Initial Baseline Generation

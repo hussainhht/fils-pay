@@ -184,6 +184,7 @@ export function CreditsPage() {
                         </button>{" "}
                         <button
                           type="button"
+                          className="fp-button-danger"
                           disabled={busyId === item.id}
                           onClick={() => setPendingReject(item.id)}
                         >

@@ -12,8 +12,18 @@
   --fp-subtle: #f3f6f4;
   --fp-danger: #a3293e;
   --fp-warning: #855516;
-  --fp-radius: 8px;
-  --fp-shadow: 0 2px 8px rgb(19 46 34 / 3%);
+  --fp-input-border: #c9d6cf;
+  --fp-danger-soft: #fdf1f3;
+  --fp-danger-border: #f3c9d0;
+  --fp-warning-soft: #fdf6e3;
+  --fp-warning-border: #ecd48f;
+  --fp-success-soft: #e8f6ef;
+  --fp-success-border: #b7e0cb;
+  --fp-ring: 0 0 0 3px rgb(8 127 91 / 14%);
+  --fp-radius: 10px;
+  --fp-shadow-xs: 0 1px 2px rgb(19 46 34 / 6%);
+  --fp-shadow: 0 1px 3px rgb(19 46 34 / 5%), 0 4px 12px rgb(19 46 34 / 3%);
+  --fp-shadow-lg: 0 12px 40px rgb(19 46 34 / 8%);
   --fp-sidebar-width: 232px;
   --fp-space-page: clamp(24px, 3vw, 44px);
   --fp-transition: 140ms ease;
@@ -23,12 +33,14 @@
   font-synthesis: none;
   line-height: 1.55;
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body { margin: 0; }
 *, *::before, *::after { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
-:focus-visible { outline: 3px solid var(--fp-primary); outline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--fp-primary); outline-offset: 2px; }
 ::selection { background: #c7f1df; color: #064e3b; }
 
 .fp-brand {
