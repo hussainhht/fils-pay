@@ -7,3 +7,4 @@ ops/.env.docker
 npm-debug.log*
 .DS_Store
 .claude/
+.fork-tooling/
