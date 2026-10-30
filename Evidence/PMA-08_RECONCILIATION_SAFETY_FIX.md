@@ -121,3 +121,259 @@ Do not limit `occurred_at` to March: the legacy poster used its run time, potent
 ## Remaining risks and final disposition
 
 Future posting through the current retired entrypoint is blocked and tested: **VERIFIED_FIXED**. Historical correctness remains **STILL_OPEN**, with database investigation **BLOCKED** by the absence of an identified authorized database. Supported reconciliation runtime is unverified at database level; its source is unchanged and available unit tests pass. Archived checkouts/copies and external automation cannot be disabled by changing this repository. No reactivation or historical repair is implied by this closure.
+
+---
+
+## Independent local validation preserved during rebase
+
+The preceding report was committed upstream in `93d4c77`. The following report records the independent local investigation at baseline `1c3f99e`; its environment and command outcomes refer to that run. Both investigations retired the same posting path. The combined tree retains the upstream entrypoint and both retirement test suites. Historical statements about uncommitted files describe those original runs.
+
+# PMA-08 / BUG-033 — Reconciliation safety fix
+
+Date: 2026-10-30 (Asia/Riyadh). Baseline HEAD:
+`1c3f99e0c5478e1ff616898cdfc1cd6f5283172d`, branch `main`.
+Initial worktree: clean. Git required a command-local `safe.directory` override
+because the sandbox user differs from the repository owner; no Git config changed.
+
+## Executive summary and final status
+
+**VERIFIED_FIXED** — prevention of future financial execution through the retired
+`scripts/reconcile_march.ts` entrypoint. Canonical BUG-033 status moved from the
+source-confirmed `confirmed-current` defect to `fix-verified` (P1). The bug report
+and index previously said “Fixed” for a warning-only header; that claim was false.
+Direct execution now prints an explicit retirement error and exits 1. All database
+and posting code is removed. Imports expose only historical pure test helpers.
+There is no environment-variable bypass and no replacement adjustment script.
+
+**STILL_OPEN** — historical financial impact investigation/correction. No database
+was accessed, and no existing entries were changed. This report does not certify
+historical data integrity. Historical correction requires separate approval.
+
+Task-scoped registry counts: `fix-verified` 1; `confirmed-current`,
+`historical-report`, `already-fixed`, `duplicate`, `stale-or-invalid`, `unverified`
+0 each. No newly confirmed independent defect was found; the runbook and false
+retirement status are included under BUG-033, not assigned duplicate bug numbers.
+This is not a reclassification of the rest of the bug registry.
+
+The requested `Evidence/POST_MERGE_AUDIT_REPORT.md` (PMA-08 text) is absent in this
+checkout. Its contents could not be verified. The canonical BUG-033 report,
+`Evidence/implementation/agent-4-settlement.md`, current code, schemas, ADRs, and
+historical finance documents independently establish the defect.
+
+## Root cause and affected paths (baseline line numbers)
+
+The script was retired in comments only. Its executable shebang and guarded
+`main()` invocation remained functional. Given a usable DATABASE_URL, database
+permissions, and matching positive-residue March transactions, it connected and
+posted financial adjustments. `--dry-run` was not parsed and offered no protection.
+
+| Path | Original behavior |
+|---|---|
+| `reconcile_march.ts:18-21` | Imported random UUID generation, `pg.Client`, and money formatting |
+| `monthBounds`, `fetchResidueRows` | UTC `[2026-03-01, 2026-04-01)` query on transaction `occurred_at`; selects positive cumulative `captured_fils` with remainder |
+| `computeResidueFils`, `groupByMerchant` | Converts BIGINT strings to JS numbers; sums `captured_fils % 10` per merchant |
+| `postResidueCorrection` | Fresh `randomUUID()` per merchant on every run; directly inserts debit `merchant_payable` and credit `scheme_rounding_residue` |
+| `main` | Connects, fetches rows, begins a transaction, posts all merchants, commits, logs success; closes client |
+| Bottom CLI guard | Calls `main()` on direct execution; warning header is never enforced |
+
+There was no stable business-operation identifier, posting-existence check,
+idempotency-key lookup, uniqueness conflict handler, or reconciliation lock.
+The constant description was not checked. The source transactions were not marked
+as reconciled or linked to the postings. `transaction_id` and `settlement_batch_id`
+were omitted from inserted ledger rows. No outbox or admin audit row was written.
+Transaction rollback protected against partial failure, not successful reruns.
+Importing at baseline did not invoke `main`, but eagerly loaded DB dependencies;
+the fixed module has neither those dependencies nor any callable poster.
+
+### Why database safeguards do not deduplicate
+
+`db/migrations/0007_ledger_double_entry.sql` defines `ledger_entries.id` as a
+BIGSERIAL primary key. `entry_group_id` is non-unique, intentionally shared by
+multiple legs. Its deferred balance trigger checks only equal debits and credits
+within a group. Both the original pair and a repeated pair balance independently.
+Foreign keys and positive-amount checks also accept both. Migration 0079 prevents
+UPDATE/DELETE, not duplicate INSERT operations. Inspection of ledger references in
+all migration files found no stable reconciliation-operation constraint.
+
+If merchant remainder total is R > 0, N successful runs over unchanged matching
+data debit merchant payable by N*R and credit residue by N*R. Relative to one run,
+the repeated amount is (N-1)*R; even the first run uses the wrong accounting model.
+Concurrent runs can have the same effect. Changed captures between runs produce
+different totals, so equal-amount matching alone cannot detect every repeat.
+
+### Amount, account and period correctness
+
+Modulo 10 is the truncated remainder of one nonnegative integer. It is not proof
+of a correct reconciliation: the script uses cumulative transaction captures,
+not actual frozen scheme lines/capture events; does not reconcile refunds or
+existing residue entries; and converts BIGINT to potentially imprecise JS numbers.
+For example, separate scheme lines of 6 and 6 fils have 12 fils total residue,
+while the transaction aggregate 12 yields 2. The script also debits merchant
+payable rather than crediting card scheme clearing, credits rather than debits
+residue, and dates corrections at runtime rather than the effective March period.
+
+ADR 0002 specifies per-line `gross_fils - amount_fils`, credit
+`card_scheme_clearing`, debit `scheme_rounding_residue`. Current
+`apps/settlement/internal/settlement/batch.go:301-325` implements this for new
+closes. Its batch row lock and closed/paid no-op path are at lines 89-126.
+There is no dependency on the retired script. Historical context and older reports
+claiming no Go residue posting exists are stale at the baseline HEAD.
+
+UTC March excludes Bahrain March 1 00:00–03:00 and includes Bahrain April 1
+00:00–03:00. ADR 0003 explicitly chooses UTC monthly windows, conflicting with
+business-day reconciliation. ADRs 0003/0004/0006 and HANDOVER conflicts remain open
+human policy questions; this fix makes no new financial policy and edits no ADR.
+ADR 0005 remains paused.
+
+## Protective implementation and invocation review
+
+- Removed `fetchResidueRows`, `groupByMerchant`, `postResidueCorrection`, `main`,
+  `ResidueRow`/internal posting types, SQL, DB configuration access and DB imports.
+- Direct CLI invocation only emits a fixed retirement message and sets exit 1.
+  Supplied arguments and environment cannot re-enable posting.
+- Preserved `monthBounds` and `computeResidueFils` unchanged for existing unit and
+  synthetic integration tests. They carry no financial I/O. Historical posting
+  implementation is preserved in Git at the baseline HEAD, not as another runnable
+  archive. The source comment points to that commit and this report.
+- Replaced `docs/RUNBOOK.md` instructions to copy/run the script against production
+  and its false “description check” claim. The runbook now points to frozen scheme
+  exports and separate historical review, with no replacement financial writer.
+- Searched root/workspace package scripts, scripts, ops, Dockerfiles/Compose,
+  documentation and repository automation filenames. No scheduled or package CLI
+  invocation was found; `.github` is absent. Only the existing helper tests import
+  this module. Root test automation discovers tests, not the retired CLI.
+- No external scheduler configuration, previously copied scripts, old checkout,
+  production deployment, or infrastructure outside this repository was available
+  for inspection. The code change cannot disable those independent artifacts.
+
+## Regression evidence and commands
+
+Environment: Windows PowerShell; Node v22.23.2, npm 10.9.8, Go 1.23.1 (installed
+version differs from AGENTS' recommended 1.24; current go.mod declares 1.22).
+Dependencies already installed. `ops/.env.docker` exists; values were not printed
+or used. DATABASE_URL is unset. Docker client cannot access its config/daemon
+from the sandbox. No verified disposable or authorized read-only DB was available.
+
+| Command / inspection | Actual result |
+|---|---|
+| `git status --short`, `rev-parse HEAD`, `branch --show-current` with command-local safe.directory | Clean baseline; HEAD/branch above |
+| Read AGENTS, CLAUDE, routed context, full script, canonical bug, finance history, architecture, ADRs 0001–0003 and decision summaries | Defect statically confirmed; stale documentation identified |
+| `node --import tsx --test scripts/reconcile_march.safety.test.ts` before implementation | 3 failures, 1 pass; DB loader trap fired before evaluation, no legacy financial logic executed |
+| Same safety test after implementation | 4 passes |
+| `node --import tsx --test scripts/reconcile_march.safety.test.ts scripts/reconcile_march.test.ts scripts/expire_holds.test.ts scripts/expire_holds.new.test.ts scripts/lib/sqlFilter.new.test.ts` | 11 passed, 0 failed, 0 skipped |
+| `npm.cmd run typecheck` | Passed all workspace, db and scripts checks |
+| `go test -v ./...` in `apps/settlement` | Exit 0; runnable tests pass, DB-backed tests explicitly skip without DATABASE_URL |
+| March synthetic DB integration, API/reporting DB suites, supported batch DB integration | NOT RUN / not verified against a database |
+| Full app runtime / DB readiness / auth / payment journeys | NOT RUN; outside isolated retirement validation and no verified DB |
+
+The first sandbox tsx attempt failed in Windows `uv_os_get_passwd` before tests;
+the first Go attempt failed on build-cache access. Approved execution outside the
+sandbox succeeded. Go downloaded its declared existing modules; no dependency
+manifest or lock file was changed.
+
+The new safety tests deny `pg` resolution in subprocesses before module evaluation.
+They prove configured/unconfigured direct execution and a repeated `--dry-run`
+attempt exit 1 with the retirement message, no stdout, and no pg resolution. Import
+exits 0 silently and exposes only the two pure functions. Source checks confirm
+the removed DB/posting path, and package/ops checks detect a reintroduced caller.
+This is prevention evidence, not a run of legacy SQL. Existing test assertions were
+not weakened, skipped, or removed.
+
+## Historical data evidence and limitations
+
+- `docs/ONBOARDING.md:86-90`: reports a March run matching 13 lines, 70 fils;
+  refers to output in `scripts/out/`, which is absent from this checkout.
+- `docs/meetings/2026-07-08-finance-eng.md:16-24`: reports a July 3 “dry run” with
+  the same 13 lines / 70 fils and says rerunning is safe. Baseline script has no
+  dry-run facility, so this is evidence warranting investigation, not proof of a
+  committed second run or of which database/version was used.
+- `docs/archive/slack-export-fp-finance-2026-09.txt`: describes an August sweep
+  and a continuing March discrepancy around 4.75 BD. No August variant or referenced
+  run logs are present. Do not attribute the full discrepancy to BUG-033.
+- Canonical BUG-033 mentions a “gap doubled on staging” clue, without raw ledger
+  rows or operation IDs proving it. No verified financial correction is inferred.
+- Migration 0038's header records removal of an older `amount_3dp` migration;
+  it does not establish a sweep run or explain the financial discrepancy.
+- `docs/incidents/postmortem-2026-05.md` concerns payment-link duplicate captures,
+  not this sweep; it supplies no evidence of March reconciliation execution.
+
+A repeated unchanged 70-fil sweep would add another 70-fil merchant debit and
+70-fil residue credit (not 140 fils of independent economic loss). The logs count
+source transactions, not necessarily ledger groups or legs. Actual amount,
+merchants, dates, affected environment and number of committed runs are unknown.
+Historical statements are leads, not a database audit.
+
+### Read-only detection query (provided, NOT executed)
+
+Use only after verifying an authorized target and read-only access. Match on the
+description prefix rather than March posting dates because baseline used runtime
+timestamps. First inspect every candidate group, including malformed or partial
+matches; then compare the complete ledger, batch links, scheme statements and
+operator records. No data-changing SQL is supplied.
+
+```sql
+BEGIN TRANSACTION READ ONLY;
+SET LOCAL statement_timeout = '10s';
+
+WITH candidates AS (
+  SELECT merchant_id, entry_group_id,
+         min(created_at) AS first_created_at,
+         min(occurred_at) AS effective_at,
+         count(*) AS leg_count,
+         bool_and(transaction_id IS NULL AND settlement_batch_id IS NULL) AS unlinked,
+         count(*) FILTER (WHERE account_id = 'merchant_payable'
+                           AND direction = 'debit') AS payable_legs,
+         count(*) FILTER (WHERE account_id = 'scheme_rounding_residue'
+                           AND direction = 'credit') AS residue_legs,
+         sum(amount_fils) FILTER (WHERE account_id = 'merchant_payable'
+                                   AND direction = 'debit') AS payable_debit_fils,
+         sum(amount_fils) FILTER (WHERE account_id = 'scheme_rounding_residue'
+                                   AND direction = 'credit') AS residue_credit_fils
+    FROM ledger_entries
+   WHERE description LIKE 'March 2026 scheme rounding residue sweep%'
+   GROUP BY merchant_id, entry_group_id
+)
+SELECT *, count(*) OVER (
+           PARTITION BY merchant_id, payable_debit_fils, residue_credit_fils,
+                        leg_count, payable_legs, residue_legs, unlinked
+         ) AS matching_group_count
+  FROM candidates
+ ORDER BY merchant_id, first_created_at, entry_group_id;
+
+ROLLBACK;
+```
+
+The legacy signature is two unlinked legs, one payable debit and one residue
+credit of the same positive amount. `matching_group_count > 1` flags possible
+duplicates, not authorization to reverse anything. Different totals on reruns,
+modified descriptions, copies for other months, or extra legs sharing the group
+are not fully characterized by this query. A zero-row result cannot certify
+historical integrity. Full group inspection must also read any legs outside the
+description filter before deciding the economic effect.
+
+Any correction requires separately approved investigation of source statements,
+complete group identities, authoritative amounts/accounts/effective dates,
+finance review, an audited append-only correction design, and isolated validation.
+No amount or correction policy is chosen here.
+
+## Files changed and final review
+
+- `scripts/reconcile_march.ts`: fail-closed retirement, historical pure helpers.
+- `scripts/reconcile_march.safety.test.ts`: isolated prevention regressions.
+- `docs/RUNBOOK.md`: remove dangerous retired-script instructions.
+- `Evidence/bugs/bug-033-march-sweep-not-idempotent.md`, `Evidence/bugs/Readme.md`:
+  correct current BUG-033 status; retain original vulnerability evidence.
+- This evidence report.
+- `context/modules/scripts-and-ops.md`, `context/DEPENDENCY_MAP.md`,
+  `context/ARCHITECTURE.md`, `context/DECISIONS.md`, `context/KNOWN_ISSUES.md`,
+  `context/TESTING.md`, `context/CHANGELOG.md`: retirement behavior, dependencies,
+  source/document contradictions, actual checks and limitations.
+
+No ledger records, balances, schema, migrations, money implementation, partner
+contract, or supported settlement source changed. No SQL was executed, no DB
+connection was initiated, and no financial operation was performed by this task.
+Final code, test and documentation diffs reviewed: only the 13 files listed above
+changed (11 tracked modifications and 2 new files). `git diff --check` passed with
+exit 0; Git emitted only an LF-normalization advisory for the script. Final script
+test rerun: 11 passed, 0 failed, 0 skipped. Final full typecheck rerun: exit 0.
+No commit, merge, branch change or push performed.
