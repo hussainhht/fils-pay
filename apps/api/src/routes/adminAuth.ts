@@ -12,7 +12,8 @@ import {
   type AdminRole,
 } from "../adminAuth/sessions.js";
 import { withTransaction } from "../db/withTransaction.js";
-import { BadRequestError, GoneError, TooManyRequestsError, UnauthorizedError } from "../lib/errors.js";
+import { endImpersonation } from "../admin/impersonation.js";
+import { BadRequestError, GoneError, NotFoundError, TooManyRequestsError, UnauthorizedError } from "../lib/errors.js";
 
 /**
  * A pre-computed argon2id hash of a fixed, never-used dummy password, at the
@@ -197,14 +198,31 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
       if (!auth) {
         throw new UnauthorizedError("unauthenticated");
       }
+      const grants = await app.db.query<{ id: string }>(
+        `SELECT id FROM admin_impersonation_grants
+          WHERE admin_user_id = $1
+            AND ended_at IS NULL
+            AND revoked_at IS NULL
+            AND expires_at > now()`,
+        [auth.adminUserId],
+      );
+      for (const grant of grants.rows) {
+        try {
+          await endImpersonation(app.db, { adminUserId: auth.adminUserId, grantId: grant.id });
+        } catch (err) {
+          if (!(err instanceof NotFoundError)) throw err;
+        }
+      }
       await revokeAdminSession(app.db, auth.adminSessionId);
-      reply.setCookie(app.config.adminCookieName, "", {
+      const clearCookie = {
         httpOnly: true,
         path: "/",
-        sameSite: "lax",
+        sameSite: "lax" as const,
         secure: app.config.cookieSecure,
         maxAge: 0,
-      });
+      };
+      reply.setCookie(app.config.adminCookieName, "", clearCookie);
+      reply.setCookie(app.config.impersonationCookieName, "", clearCookie);
       reply.code(204).send();
     },
   );

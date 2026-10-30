@@ -14,8 +14,8 @@ import { runConsumerPass } from "../consumer/runConsumerPass.js";
  * arrive, so a pass eventually returns zero rows.
  */
 export async function runCatchUp(pool: Pool, config: ReportingConfig): Promise<void> {
-  // MK: safe to run while the worker is live -- each pass is one tx, the watermark protects it.
-  // am: did exactly that 2026-09-14 per RUNBOOK, rollup looked high after? prob the dashboard cache
+  // Safe beside a live worker: each pass locks the same cursor row and
+  // commits the rollup writes with the watermark, or rolls both back.
   let totalProcessed = 0;
   for (;;) {
     const { processedCount } = await runConsumerPass(pool, config);

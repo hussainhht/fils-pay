@@ -1,5 +1,7 @@
 # BUG-037 — Settlement Batch Closure Freezes Arbitrary Dates Permanently
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/batch.go — CloseBatch refuses today and any future Bahrain date.
+
 ## 1. Summary
 
 Finance or super_admin can close today, or a future date.

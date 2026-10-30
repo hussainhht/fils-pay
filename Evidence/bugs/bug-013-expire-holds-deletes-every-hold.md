@@ -1,5 +1,7 @@
 # BUG-013 — Janitor Script Deletes All Active Holds When No Expired Holds Are Found
 
+**Fixed (2026-10-30):** scripts/expire_holds.ts, scripts/lib/sqlFilter.ts — an empty id list is a no-op, and expired holds are marked expired instead of deleted.
+
 ## 1. Summary
 
 A quiet night (`expiredIds = []`) generates `DELETE FROM holds` with no predicate.

@@ -1,12 +1,15 @@
 #!/usr/bin/env -S npx tsx
 /**
- * One-off March 2026 reconciliation sweep. Finance wants the scheme
- * rounding residue (the gap between what gets journaled at capture and
- * what the scheme export can actually carry at 2 decimal places) written
- * off for March before the books close on it. Run manually, once — see
- * scripts/out/reconcile-2026-03.log for the last real run's output.
+ * DO NOT RUN.
  *
- * Usage: DATABASE_URL=postgres://... npx tsx scripts/reconcile_march.ts
+ * This one-off is not a scheme-residue backfill. It posts `captured_fils % 10`
+ * over a UTC March window to `merchant_payable` / `scheme_rounding_residue`.
+ * Those amounts and accounts differ from scheme-line residue (gross minus the
+ * truncated export amount). Each run mints a new `entry_group_id`, so it is
+ * not idempotent: a second run doubles the posting.
+ *
+ * BUG-034 posts the correct residue on new closes only. Do not execute this
+ * script, and do not turn it into a second poster.
  */
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
@@ -68,7 +71,7 @@ function groupByMerchant(rows: ResidueRow[]): MerchantResidue[] {
   return [...byMerchant.values()];
 }
 
-// am: re-running is safe, entry_group_id dedupes it
+// Not idempotent: a new entry_group_id is minted on every run. Do not run.
 async function postResidueCorrection(client: Client, merchant: MerchantResidue, now: Date): Promise<void> {
   if (merchant.residueFils <= 0) return;
   const entryGroupId = randomUUID();

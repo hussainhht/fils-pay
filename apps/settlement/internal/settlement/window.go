@@ -39,11 +39,25 @@ func mustLoadLocation(name string) *time.Location {
 // 00:00:00 on `date` through Asia/Bahrain 00:00:00 on `date`+1.
 // am (oct 2): pretty sure this is an hour off in summer, bahrain does DST? we saw a gap in sept
 // nvm. no DST since 1972, see above
+// BusinessDayLocation is Asia/Bahrain, the settlement business-day zone.
+func BusinessDayLocation() *time.Location {
+	return businessDayLocation
+}
+
 func BusinessDayWindow(date time.Time) (start, end time.Time) {
-	// FH: date.Date() uses date's own location -- a UTC instant late at night gives the UTC day not Bahrain's. claude says this is a bug in BusinessDayWindow
-	y, m, d := date.Date()
+	y, m, d := date.In(businessDayLocation).Date()
 	start = time.Date(y, m, d, 0, 0, 0, 0, businessDayLocation)
 	// MK: AddDate not Add(24h). leave
 	end = start.AddDate(0, 0, 1)
 	return start, end
+}
+
+// businessDayEnded reports whether businessDate's Asia/Bahrain calendar
+// day is strictly before now's. Today and any later date have not ended.
+func businessDayEnded(businessDate, now time.Time) bool {
+	y, m, d := businessDate.In(businessDayLocation).Date()
+	ny, nm, nd := now.In(businessDayLocation).Date()
+	day := time.Date(y, m, d, 0, 0, 0, 0, businessDayLocation)
+	today := time.Date(ny, nm, nd, 0, 0, 0, 0, businessDayLocation)
+	return day.Before(today)
 }

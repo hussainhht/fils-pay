@@ -1,4 +1,6 @@
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
+import { useLayoutEffect } from "react";
+import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router-dom";
+import { documentTitleForPath } from "./documentTitle.js";
 import { CheckoutPage } from "./pages/checkout/CheckoutPage.js";
 import { DashboardAuthProvider } from "./auth/DashboardAuthContext.js";
 import { RequireDashboardAuth } from "./auth/RequireDashboardAuth.js";
@@ -18,10 +20,26 @@ import { SettlementBatchDetailPage } from "./pages/settlement/SettlementBatchDet
 import { ReconciliationPage } from "./pages/settlement/ReconciliationPage.js";
 import { OverviewPage } from "./pages/overview/OverviewPage.js";
 
+function DocumentTitle() {
+  const { pathname } = useLocation();
+  useLayoutEffect(() => {
+    document.title = documentTitleForPath(pathname);
+  }, [pathname]);
+  return null;
+}
+
 // MK: /refunds route removed until FP-212
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/dashboard" replace /> },
-  { path: "/pay/:token", element: <CheckoutPage /> },
+  {
+    path: "/pay/:token",
+    element: (
+      <>
+        <DocumentTitle />
+        <CheckoutPage />
+      </>
+    ),
+  },
 
   {
     // The session provider wraps the dashboard subtree only — never
@@ -30,6 +48,7 @@ export const router = createBrowserRouter([
     // needs `refresh()` after OTP) but outside the guard.
     element: (
       <DashboardAuthProvider>
+        <DocumentTitle />
         <Outlet />
       </DashboardAuthProvider>
     ),

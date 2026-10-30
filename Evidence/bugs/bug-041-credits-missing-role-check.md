@@ -1,5 +1,7 @@
 # BUG-041 — Credit Adjustment Creation Endpoint Lacks Administrator Role Check
 
+**Fixed (2026-10-30):** apps/api/src/routes/adminCredits.ts — creating a credit requires finance or super_admin.
+
 ## 1. Summary
 
 Any logged-in admin, including `support`, can create a credit.

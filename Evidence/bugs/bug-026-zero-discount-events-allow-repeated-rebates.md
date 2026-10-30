@@ -1,5 +1,7 @@
 # BUG-026 — Zero-Discount Capture Events Allow Retries to Post Repeated Rebate Adjustments
 
+**Fixed (2026-10-30):** apps/api/src/payments/discountAdjustment.ts — each capture event is marked processed, including a zero rebate, so a retry cannot post it again.
+
 ## 1. Summary
 
 Discount idempotency compares capture-event count with positive adjustment-row count. Zero-fee or zero-rounded-discount events create no marker, while every later invocation selects only the newest event's fee.

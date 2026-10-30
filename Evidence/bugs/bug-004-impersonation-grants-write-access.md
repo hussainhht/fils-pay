@@ -1,5 +1,7 @@
 # BUG-004 — Admin Merchant Impersonation Grants Write Access
 
+**Fixed (2026-10-30):** apps/api/src/auth/requireMerchantAuth.ts — a live impersonation grant is the merchant actor (role stays support) and API-key issue/revoke is refused while that grant is present. Capture and void stay on the existing impersonation role gate.
+
 ## 1. Summary
 
 An impersonating super_admin has a full owner session: capture, void, API keys, webhooks, refunds-once-wired.

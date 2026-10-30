@@ -2,7 +2,7 @@ import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, merchantA
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { verifyPassword } from "../auth/passwords.js";
 import { issueChallenge, verifyOtpCode } from "../auth/otp.js";
-import { requireSession } from "../auth/middleware.js";
+import { requireDashboardIdentity, requireSession } from "../auth/middleware.js";
 import { sendOtpCode } from "../auth/notifier.js";
 import {
   createPendingSession,
@@ -258,8 +258,41 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     "/me",
-    { preHandler: requireSession },
+    { preHandler: requireDashboardIdentity },
     async (request: FastifyRequest) => {
+      const grant = request.dashboardImpersonation;
+      if (grant) {
+        const granted = await app.db.query<{
+          email: string;
+          merchant_id: string;
+          display_name: string;
+          onboarding_status: string;
+          refunds_enabled: boolean | null;
+        }>(
+          `SELECT au.email, m.id AS merchant_id, m.display_name, m.onboarding_status, m.refunds_enabled
+             FROM merchants m
+             JOIN admin_users au ON au.id = $2
+            WHERE m.id = $1 AND au.status = 'active'`,
+          [grant.merchantId, grant.adminUserId],
+        );
+        const grantedRow = granted.rows[0];
+        if (!grantedRow) {
+          throw new UnauthorizedError("unauthenticated");
+        }
+        return {
+          merchantUserId: grant.grantId,
+          email: grantedRow.email,
+          role: grant.merchantRole,
+          merchant: {
+            id: grantedRow.merchant_id,
+            displayName: grantedRow.display_name,
+            onboardingStatus: grantedRow.onboarding_status,
+            refundsEnabled: app.config.featureRefunds && grantedRow.refunds_enabled !== false,
+          },
+          impersonation: { grantId: grant.grantId, adminUserId: grant.adminUserId },
+        };
+      }
+
       const auth = request.auth;
       if (!auth) {
         throw new UnauthorizedError("unauthenticated");

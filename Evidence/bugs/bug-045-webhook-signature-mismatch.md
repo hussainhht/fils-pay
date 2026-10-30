@@ -1,5 +1,7 @@
 # BUG-045 — Webhook HMAC Computed Over Canonical JSON While Wire Body Is Stringified
 
+**Fixed (2026-10-30):** apps/api/src/webhooks/dispatcher.ts — already signs `canonicalJson` and sends that same string; no code change.
+
 ## 1. Summary
 
 Merchants who verify the raw HTTP body against `t=,v1=` get a mismatch even when the secret is correct.

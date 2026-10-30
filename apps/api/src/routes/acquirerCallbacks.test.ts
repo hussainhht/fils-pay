@@ -121,10 +121,7 @@ test("POST /v1/acquirer/callbacks rejects a tampered signature", async () => {
 
 // dev-mode behaviour (empty secret). prod rejects — MK
 // am: the test app config sets a secret though? line ~40
-test("POST /v1/acquirer/callbacks accepts a callback sent without a signature header", async () => {
-  // Documents current behavior for the acquirer sandbox's pre-signing
-  // tooling: with no header there is nothing to verify, so the callback is
-  // processed rather than rejected.
+test("POST /v1/acquirer/callbacks rejects a callback sent without a signature header outside development", async () => {
   const transactionId = await createTransaction();
   const callbackId = `acqcb_${randomUUID()}`;
 
@@ -134,9 +131,9 @@ test("POST /v1/acquirer/callbacks accepts a callback sent without a signature he
     payload: callbackBody(transactionId, callbackId),
   });
 
-  assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.json(), { received: true });
-  assert.equal(await noteCount(callbackId), "1");
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.json().error, "invalid_signature");
+  assert.equal(await noteCount(callbackId), "0");
 });
 
 test("POST /v1/acquirer/callbacks returns 404 for an unknown transaction id", async () => {

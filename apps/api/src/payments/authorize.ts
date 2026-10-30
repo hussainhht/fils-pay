@@ -1,11 +1,11 @@
 import type { Pool } from "pg";
 import type { Fils } from "@filspay/money";
 import { withTransaction } from "../db/withTransaction.js";
-import type { AcquirerSimulator, SimulatedCardInput } from "../acquirer/types.js";
-import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey, hashRequest } from "./idempotency.js";
+import type { AcquirerAuthorizeResult, AcquirerSimulator, SimulatedCardInput } from "../acquirer/types.js";
+import { claimIdempotencyKey, completeIdempotencyKey, failIdempotencyKey, hashRequest, singleFlight } from "./idempotency.js";
 import { recordTransactionEvent } from "../transactions/events.js";
 import { serializeTransaction, type TransactionRow } from "../transactions/serialize.js";
-import { ConflictError, UnprocessableEntityError } from "../lib/errors.js";
+import { UnprocessableEntityError } from "../lib/errors.js";
 
 // YA: part of the idempotency scope, never rename it
 const ENDPOINT = "transactions.authorize";
@@ -34,13 +34,18 @@ export interface AuthorizeResult {
   body: unknown;
 }
 
+interface IdempotencyStateRow {
+  status: "in_progress" | "completed" | "failed";
+  response_status_code: number | null;
+  response_body: unknown;
+}
+
 /**
- * `POST /v1/transactions` business logic. One `withTransaction`: claim
- * idempotency -> check merchant approval -> call the acquirer -> on
- * approval, insert the transaction + hold + 'authorized' event. A decline or
- * acquirer error never produces a `transactions` row (the status CHECK has
- * no 'declined' value) — the only durable trace of such an attempt is its
- * idempotency_keys row.
+ * `POST /v1/transactions` business logic. The idempotency claim commits
+ * before the acquirer call, and the apply transaction writes the row only
+ * after the acquirer returns. A decline or acquirer error never produces a
+ * `transactions` row (the status CHECK has no 'declined' value) — the only
+ * durable trace of such an attempt is its idempotency_keys row.
  */
 export async function authorizeTransaction(
   pool: Pool,
@@ -54,7 +59,7 @@ export async function authorizeTransaction(
     reference: input.reference ?? null,
   });
 
-  return withTransaction(pool, async (client) => {
+  const prepared = await withTransaction(pool, async (client) => {
     const claim = await claimIdempotencyKey(client, {
       merchantId: input.merchantId,
       endpoint: ENDPOINT,
@@ -63,40 +68,68 @@ export async function authorizeTransaction(
     });
 
     if (claim.outcome === "conflict_hash_mismatch") {
-      // Nothing to complete — this claim attempt itself is rejected.
       throw new UnprocessableEntityError("idempotency_key_reused");
     }
-    if (claim.outcome === "conflict_in_progress") {
-      throw new ConflictError("request_in_progress");
-    }
     if (claim.outcome === "replay") {
-      return { statusCode: claim.row.responseStatusCode ?? 200, body: claim.row.responseBody };
+      return { kind: "done" as const, result: { statusCode: claim.row.responseStatusCode ?? 200, body: claim.row.responseBody } };
     }
-    // 'fresh' / 'retry_after_failure' — continue.
-
-    const merchantResult = await client.query<{ onboarding_status: string; status: string; mdr_bps: number }>(
-      `SELECT onboarding_status, status, mdr_bps FROM merchants WHERE id = $1`,
-      [input.merchantId],
-    );
-    const merchant = merchantResult.rows[0];
-    // FH: should test_mode merchants be blocked here? Claude said yes and gave this:
-    //   if (merchant.test_mode) {
-    //     return { statusCode: 403, body: { error: "test_mode_merchant" } };
-    //   }
-    // am: NO. test mode merchants have to authorize, thats the whole point of sandbox. ignore
-    if (!merchant || merchant.onboarding_status !== "approved" || merchant.status !== "active") {
-      const body = { error: "merchant_not_approved" };
-      await completeIdempotencyKey(client, claim.row.id, { statusCode: 403, body });
-      return { statusCode: 403, body };
+    if (claim.outcome !== "conflict_in_progress") {
+      const merchantResult = await client.query<{ onboarding_status: string; status: string; mdr_bps: number }>(
+        `SELECT onboarding_status, status, mdr_bps FROM merchants WHERE id = $1`,
+        [input.merchantId],
+      );
+      const merchant = merchantResult.rows[0];
+      // FH: should test_mode merchants be blocked here? Claude said yes and gave this:
+      //   if (merchant.test_mode) {
+      //     return { statusCode: 403, body: { error: "test_mode_merchant" } };
+      //   }
+      // am: NO. test mode merchants have to authorize, thats the whole point of sandbox. ignore
+      if (!merchant || merchant.onboarding_status !== "approved" || merchant.status !== "active") {
+        const body = { error: "merchant_not_approved" };
+        await completeIdempotencyKey(client, claim.row.id, { statusCode: 403, body });
+        return { kind: "done" as const, result: { statusCode: 403, body } };
+      }
     }
+    return { kind: "proceed" as const, claimId: claim.row.id, attemptCount: claim.row.attemptCount };
+  });
 
-    const acquirerResult = await acquirer.authorize({
+  if (prepared.kind === "done") return prepared.result;
+
+  const acquirerResult = await singleFlight(`authorize:${prepared.claimId}:${prepared.attemptCount}`, () =>
+    acquirer.authorize({
       merchantId: input.merchantId,
       amountFils: input.amountFils,
       currency: "BHD",
       card: input.card,
-      idempotencyKey: `${claim.row.id}:${claim.row.attemptCount}`,
-    });
+      idempotencyKey: `${prepared.claimId}:${prepared.attemptCount}`,
+    }),
+  );
+
+  return applyAuthorization(pool, input, actor, prepared.claimId, acquirerResult);
+}
+
+async function applyAuthorization(
+  pool: Pool,
+  input: AuthorizeInput,
+  actor: { type: "merchant_session" | "merchant_api_key" | "system"; id?: string | null },
+  claimId: string,
+  acquirerResult: AcquirerAuthorizeResult,
+): Promise<AuthorizeResult> {
+  return withTransaction(pool, async (client) => {
+    const stateResult = await client.query<IdempotencyStateRow>(
+      `SELECT status, response_status_code, response_body FROM idempotency_keys WHERE id = $1 FOR UPDATE`,
+      [claimId],
+    );
+    const state = stateResult.rows[0];
+    if (!state) {
+      throw new Error("authorizeTransaction: idempotency claim disappeared before apply");
+    }
+    if (state.status === "completed") {
+      return { statusCode: state.response_status_code ?? 200, body: state.response_body };
+    }
+    if (state.status === "failed") {
+      return { statusCode: state.response_status_code ?? 502, body: state.response_body };
+    }
 
     if (acquirerResult.outcome === "approved") {
       const insertResult = await client.query<TransactionRow>(
@@ -124,11 +157,8 @@ export async function authorizeTransaction(
         actor,
       });
 
-      // No outbox event: nothing consumes 'transaction.authorized', so
-      // packages/events doesn't define it.
-
       const body = serializeTransaction(txnRow);
-      await completeIdempotencyKey(client, claim.row.id, { statusCode: 201, body, resourceId: txnRow.id });
+      await completeIdempotencyKey(client, claimId, { statusCode: 201, body, resourceId: txnRow.id });
       return { statusCode: 201, body };
     }
 
@@ -138,13 +168,12 @@ export async function authorizeTransaction(
         declineReason: acquirerResult.declineReason,
         acquirerReference: acquirerResult.acquirerReference,
       };
-      await completeIdempotencyKey(client, claim.row.id, { statusCode: 402, body });
+      await completeIdempotencyKey(client, claimId, { statusCode: 402, body });
       return { statusCode: 402, body };
     }
 
-    // outcome === 'error'
     const body = { error: "acquirer_unavailable" };
-    await failIdempotencyKey(client, claim.row.id, { statusCode: 502, body });
+    await failIdempotencyKey(client, claimId, { statusCode: 502, body });
     return { statusCode: 502, body };
   });
 }

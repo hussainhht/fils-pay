@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import { addFils, toFils, ZERO_FILS, type Fils } from "@filspay/money";
 import { insertAdminAuditLog } from "../adminAudit/log.js";
 import { withTransaction } from "../db/withTransaction.js";
+import { getEffectiveMdrBps } from "../fees/feeSchedule.js";
 import { ConflictError, NotFoundError } from "../lib/errors.js";
 import { assertDistinctApprover } from "./creditApproval.js";
 import { calculateCreditFeeReversal, creditRequiresSecondApprover } from "./creditThreshold.js";
@@ -135,6 +136,34 @@ interface PostableCredit {
   effectiveDate: string;
 }
 
+/** End of the Asia/Bahrain business day named by `YYYY-MM-DD`. */
+function asOfBahrainEffectiveDate(effectiveDate: string): Date {
+  return new Date(`${effectiveDate}T23:59:59.999+03:00`);
+}
+
+/** Rejects a credit whose accounting date is already inside a closed or paid batch. */
+async function assertSettlementPeriodOpen(
+  client: PoolClient,
+  merchantId: string,
+  effectiveDate: string,
+): Promise<void> {
+  const closed = await client.query(
+    `SELECT 1
+       FROM settlement_batches
+      WHERE merchant_id = $1
+        AND status IN ('closed', 'paid')
+        AND batch_date >= $2::date
+      LIMIT 1`,
+    [merchantId, effectiveDate],
+  );
+  if (closed.rows.length > 0) {
+    throw new ConflictError(
+      "settlement_period_closed",
+      "effectiveDate falls in a closed settlement period",
+    );
+  }
+}
+
 /**
  * Journals a credit and flips its request row to `posted`, inside the
  * caller's transaction.
@@ -143,6 +172,7 @@ interface PostableCredit {
  * part of the create-or-approve decision that authorised it.
  */
 async function postCreditToLedger(client: PoolClient, credit: PostableCredit): Promise<string> {
+  await assertSettlementPeriodOpen(client, credit.merchantId, credit.effectiveDate);
   const entryGroupId = randomUUID();
   const postedAmountFils = addFils(credit.baseAmountFils, credit.feeReversalFils);
 
@@ -218,10 +248,18 @@ export async function createCreditRequest(
       throw new NotFoundError("merchant_not_found");
     }
 
-    // Never operator-supplied: the reversal is the merchant's own contracted
-    // rate applied to the amount they asked to credit.
+    await assertSettlementPeriodOpen(client, input.merchantId, draft.effectiveDate);
+
+    // The reversal uses the schedule in force on the credit's effective date,
+    // falling back to merchants.mdr_bps when no schedule row applies.
+    const mdrBps = await getEffectiveMdrBps(
+      client,
+      input.merchantId,
+      asOfBahrainEffectiveDate(draft.effectiveDate),
+      merchant.mdr_bps,
+    );
     const feeReversalFils = draft.reverseFee
-      ? calculateCreditFeeReversal(draft.baseAmountFils, merchant.mdr_bps)
+      ? calculateCreditFeeReversal(draft.baseAmountFils, mdrBps)
       : ZERO_FILS;
     // FH: threshold compares base + reversal, so a 50.000 BD credit with a fee reversal needs a second approver
     // MK: no — base only. fee reversal is mechanical. intended.

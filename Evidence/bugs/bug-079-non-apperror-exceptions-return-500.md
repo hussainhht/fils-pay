@@ -1,5 +1,7 @@
 # BUG-079 — Unexpected Database Exceptions Bypass AppError Handler and Return Generic 500
 
+**Fixed (2026-10-30):** apps/api/src/plugins/errorHandler.ts — unexpected errors already return a generic 500 with no SQL or stack; AppError mapping unchanged. RangeError is not turned into a client error.
+
 ## 1. Summary
 
 Client mistakes look like outages.

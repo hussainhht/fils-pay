@@ -68,16 +68,21 @@ test("returns the most recently entered schedule when rows were entered as they 
   assert.equal(current?.createdAt.toISOString(), "2026-07-01T00:00:00.000Z");
 });
 
-// am: this test is the reason i asked above. it asserts the backfilled row wins
-test("returns the most recently entered schedule even when an older period was backfilled later", async () => {
+test("returns the schedule in force, not a later backfill of an earlier period or a future row", async () => {
   const merchantId = await insertMerchant(250);
-  // A renegotiation entered on the day it took effect, then a backdated
-  // correction to an earlier period entered two weeks afterwards.
+  const asOf = new Date("2026-10-30T12:00:00Z");
   await insertSchedule(merchantId, 225, "2026-08-01T00:00:00Z", "2026-08-01T00:00:00Z");
   await insertSchedule(merchantId, 245, "2026-03-01T00:00:00Z", "2026-08-15T00:00:00Z");
+  await insertSchedule(merchantId, 300, "2027-01-01T00:00:00Z", "2026-10-01T00:00:00Z");
 
-  const current = await getCurrentFeeScheduleForDisplay(pool, merchantId);
-  assert.equal(current?.mdrBps, 245);
-  assert.equal(current?.effectiveFrom.toISOString(), "2026-03-01T00:00:00.000Z");
-  assert.equal(current?.createdAt.toISOString(), "2026-08-15T00:00:00.000Z");
+  const current = await getCurrentFeeScheduleForDisplay(pool, merchantId, asOf);
+  assert.equal(current?.mdrBps, 225);
+  assert.equal(current?.effectiveFrom.toISOString(), "2026-08-01T00:00:00.000Z");
+  assert.equal(current?.createdAt.toISOString(), "2026-08-01T00:00:00.000Z");
+});
+
+test("returns null when the only schedule is not yet effective", async () => {
+  const merchantId = await insertMerchant(250);
+  await insertSchedule(merchantId, 180, "2027-01-01T00:00:00Z", "2026-01-01T00:00:00Z");
+  assert.equal(await getCurrentFeeScheduleForDisplay(pool, merchantId, new Date("2026-10-30T12:00:00Z")), null);
 });

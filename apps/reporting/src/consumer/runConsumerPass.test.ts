@@ -9,7 +9,7 @@
  */
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { test } from "node:test";
+import { describe, test } from "node:test";
 import { Pool } from "pg";
 import { enqueueEvent } from "@filspay/events";
 import { runConsumerPass, CONSUMER_NAME } from "./runConsumerPass.js";
@@ -42,6 +42,7 @@ async function getCursor(): Promise<bigint> {
   return result.rows[0] ? BigInt(result.rows[0].last_processed_id) : 0n;
 }
 
+describe("runConsumerPass", { concurrency: false }, () => {
 test("runConsumerPass: end-to-end over real events with the producers' exact payload shapes populates merchant_daily_volume and advances the watermark", async () => {
   const merchantId = await createMerchant("e2e-volume");
   const txnId = randomUUID();
@@ -168,4 +169,5 @@ test("runConsumerPass: atomicity — an apply failure partway through a multi-ev
 
   const cursorFinal = await getCursor();
   assert.ok(cursorFinal >= goodEvent.id, "watermark now past the previously-blocked good event");
+});
 });

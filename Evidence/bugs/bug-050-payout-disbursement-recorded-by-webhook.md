@@ -1,5 +1,7 @@
 # BUG-050 — Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch
 
+**Fixed (2026-10-30):** migration 0083 (unique settlement_batch_id on settlement_payout_disbursements); ON CONFLICT (settlement_batch_id) DO NOTHING in batch.go insertPayoutDisbursement and allocate.go split disbursement insert.
+
 ## 1. Summary
 
 A money-side-effect (we recorded a bank disbursement) is triggered by **attempting** to tell the merchant.

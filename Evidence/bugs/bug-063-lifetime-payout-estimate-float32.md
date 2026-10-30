@@ -1,5 +1,7 @@
 # BUG-063 — Merchant Lifetime Payout Monitoring Accumulates in Float32 Column
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/payout_estimate.go and db/migrations/0080_bigint_counters.sql — the lifetime payout estimate accumulates in integer fils on a BIGINT column.
+
 ## 1. Summary
 
 Payouts are added as `float32` / REAL.

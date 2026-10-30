@@ -1,5 +1,7 @@
 # BUG-036 — Daily Settlement Close Runs at 03:15 Bahrain Time Instead of Midnight
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/window.go and apps/settlement/internal/scheduler/daemon.go — the business-day date is read in Asia/Bahrain, and the daemon uses Bahrain now.
+
 ## 1. Summary
 
 Until 03:00 Bahrain (00:00 UTC), "today" in UTC is still yesterday.

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { toFils, type Fils } from "@filspay/money";
 import { requireAdminRole, requireAdminSession } from "../adminAuth/middleware.js";
-import { applyBalanceCorrection } from "../admin/balanceAdjustments.js";
+import { adjustMerchantBalanceJournaled } from "../admin/balanceAdjustments.js";
 import { UUID_RE } from "../admin/merchants.js";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "../lib/errors.js";
 
@@ -48,12 +48,8 @@ function parseBalanceAdjustmentBody(body: unknown): { deltaFils: Fils; reason: s
  */
 export async function adminBalanceAdjustmentRoutes(app: FastifyInstance): Promise<void> {
   /**
-   * "Adjust balance." A direct correction to a merchant's cached payable
-   * balance, for the cases where support has confirmed (by phone, by
-   * statement, by a manual cross-check) that the number on screen is wrong
-   * and needs to be right immediately, without waiting on a settlement cycle
-   * to catch up. finance/super_admin only — this moves the figure the
-   * merchant dashboard shows as their balance.
+   * "Adjust balance." Posts a balanced ledger pair and moves the cached
+   * payable by the same delta. finance/super_admin only.
    */
   app.post<{ Params: MerchantIdParams; Body: unknown }>(
     "/:id/balance-adjustments",
@@ -64,7 +60,7 @@ export async function adminBalanceAdjustmentRoutes(app: FastifyInstance): Promis
       assertUuidParam(request.params.id, "merchant_not_found");
 
       const { deltaFils, reason } = parseBalanceAdjustmentBody(request.body);
-      const result = await applyBalanceCorrection(app.db, {
+      const result = await adjustMerchantBalanceJournaled(app.db, {
         merchantId: request.params.id,
         adminUserId: adminAuth.adminUserId,
         deltaFils,

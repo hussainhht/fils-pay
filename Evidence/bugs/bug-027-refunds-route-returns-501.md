@@ -1,6 +1,6 @@
 # BUG-027 — POST /v1/refunds Route Returns 501 Not Implemented (Unfinished Feature)
 
-**Still open. Hosted runtime (2026-10-30):** captured transaction `fd905fb1-09f9-44d3-9cef-b2cba455c0b6` (`hosted-test`, `1.000 BHD`) has no refund control on the detail page. `POST /v1/refunds` for that id returned 501 `{ "error": "not_implemented" }`.
+**Fixed (2026-10-30):** `FEATURE_REFUNDS=true` in `ops/docker-compose.yml` (code default stays false); `POST /v1/refunds` already calls `initiateMerchantRefund` when the flag is on; `CloseBatch` in `apps/settlement/internal/settlement/batch.go` subtracts succeeded unbatched refunds.
 
 ## 1. Summary
 

@@ -1,5 +1,7 @@
 # BUG-053 — Transaction CSV Export Pagination Drops Rows Sharing Identical Timestamp
 
+**Fixed (2026-10-30):** apps/api/src/transactions/exportCsv.ts — streamTransactionsExportCsv pages on (occurred_at, id) using Postgres timestamp text. The HTTP builder stays a single composite-free full read.
+
 ## 1. Summary
 
 All but one row with the same `occurred_at` vanish on the next page.

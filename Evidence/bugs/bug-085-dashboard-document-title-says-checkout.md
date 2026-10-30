@@ -1,6 +1,8 @@
 # BUG-085 — Merchant Dashboard Document Title Says Checkout
 
-**Open. Hosted runtime (2026-10-30):** every merchant screen, including login, transactions, settlement, and the public checkout, has `document.title` `FilsPay Checkout`.
+**Fixed (2026-10-30):** `apps/web/index.html` and `apps/web/src/router.tsx` — login and dashboard routes set the title FilsPay Dashboard; `/pay/:token` keeps FilsPay Checkout.
+
+**Hosted runtime before the fix (2026-10-30):** every merchant screen, including login, transactions, settlement, and the public checkout, had `document.title` `FilsPay Checkout`.
 
 ## 1. Summary
 

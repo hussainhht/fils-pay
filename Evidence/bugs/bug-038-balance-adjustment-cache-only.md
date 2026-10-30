@@ -1,5 +1,7 @@
 # BUG-038 — Admin Balance Adjustment Modifies Cache and Audit Only Bypassing Ledger
 
+**Fixed (2026-10-30):** `apps/api/src/routes/adminBalanceAdjustments.ts` calls `adjustMerchantBalanceJournaled`, which posts the ledger pair and then moves the cache.
+
 ## 1. Summary
 
 The production route changes `merchant_balances.cached_payable_fils` and writes an audit row.

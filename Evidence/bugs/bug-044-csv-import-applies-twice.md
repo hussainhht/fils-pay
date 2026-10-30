@@ -1,5 +1,7 @@
 # BUG-044 — Adjustment CSV Import Lacks Deduplication Posting Duplicate Ledger Entries
 
+**Fixed (2026-10-30):** apps/api/src/admin/adjustmentImport.ts, db/migrations/0082_adjustment_import_idempotency.sql — a hash of the parsed rows is unique, so the same rows are not posted twice.
+
 ## 1. Summary
 
 Each `POST /v1/admin/adjustment-imports` parses the file and posts a ledger group per row.

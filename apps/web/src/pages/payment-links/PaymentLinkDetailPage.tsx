@@ -1,5 +1,5 @@
 import { PageHeading } from "../../../../ui/PageHeading.js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { cancelPaymentLink, listPaymentLinks } from "../../api/paymentLinks.js";
 import { describeError } from "../../api/client.js";
@@ -7,8 +7,10 @@ import { useDashboardAuth } from "../../auth/DashboardAuthContext.js";
 import { RequireRole } from "../../auth/RequireRole.js";
 import { bhd, dash, dateTime } from "../../format.js";
 import type { PaymentLinkDto } from "../../types.js";
+import { findPaymentLinkById } from "./findPaymentLink.js";
 
-/** The list endpoint's own maximum page size. */
+/** The list endpoint's own maximum page size. Pages after this one are loaded
+ *  with `nextCursor` — the lookup does not stop at the first page. */
 const LOOKUP_LIMIT = 100;
 
 type LoadState =
@@ -18,36 +20,43 @@ type LoadState =
   | { kind: "loaded"; link: PaymentLinkDto };
 
 /**
- * There is no merchant-authenticated `GET .../payment-links/:id` — the API
- * has the merchant-scoped *list* and the *public* single-token read, and nothing
- * in between. So this page reads the first page of the unfiltered list
- * (newest-first, capped at the endpoint's own 100-row maximum) and finds the
- * row by id.
- *
- * That is correct for a merchant with a normal number of links and genuinely
- * degrades for one whose direct-linked link has aged past row 100 — it will
- * render "not found" for a link that exists. It is left this way deliberately
- * rather than papered over with cursor-walking loops: the real fix is a
- * one-row backend route (`SELECT * ... WHERE id = $1 AND merchant_id = $2`,
- * 404 on no match).
+ * There is no merchant-authenticated `GET .../payment-links/:id`. This page
+ * follows the list's keyset cursor until the id is found or the pages end,
+ * so a link older than the first 100 rows can still be opened, copied, and
+ * canceled.
  */
 export function PaymentLinkDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const idRef = useRef(id);
+  idRef.current = id;
   const { me } = useDashboardAuth();
   const merchantId = me?.merchant.id;
 
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [loadedFor, setLoadedFor] = useState(id);
   const [actionError, setActionError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  if (id !== loadedFor) {
+    setLoadedFor(id);
+    setState({ kind: "loading" });
+    setActionError(null);
+    setCopied(false);
+    setSubmitting(false);
+  }
+
   const load = useCallback(async () => {
     if (!merchantId || !id) return;
+    const requestedId = id;
     try {
-      const result = await listPaymentLinks(merchantId, { limit: LOOKUP_LIMIT });
-      const found = result.paymentLinks.find((link) => link.id === id);
+      const found = await findPaymentLinkById(requestedId, (cursor) =>
+        listPaymentLinks(merchantId, { limit: LOOKUP_LIMIT, cursor }),
+      );
+      if (idRef.current !== requestedId) return;
       setState(found ? { kind: "loaded", link: found } : { kind: "not_found" });
     } catch (err) {
+      if (idRef.current !== requestedId) return;
       setState({ kind: "error", message: describeError(err) });
     }
   }, [merchantId, id]);
@@ -57,7 +66,7 @@ export function PaymentLinkDetailPage() {
   }, [load]);
 
   async function handleCancel(): Promise<void> {
-    if (!merchantId || !id) return;
+    if (!merchantId || !id || state.kind !== "loaded" || state.link.id !== id) return;
     if (!window.confirm("Cancel this payment link? It can no longer be paid.")) return;
     setSubmitting(true);
     setActionError(null);
@@ -98,7 +107,7 @@ export function PaymentLinkDetailPage() {
       <section>
         <PageHeading title="Payment link not found" />
         <p>
-          This link is not among your {LOOKUP_LIMIT} most recent payment links.{" "}
+          No payment link with this id exists on your account.{" "}
           <Link to="/dashboard/payment-links">Back to payment links</Link>
         </p>
       </section>

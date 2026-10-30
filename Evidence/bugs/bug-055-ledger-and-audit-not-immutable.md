@@ -1,5 +1,7 @@
 # BUG-055 — Double-Entry Ledger and Audit Tables Lack Immutability Database Triggers
 
+**Fixed (2026-10-30):** db/migrations/0079_ledger_audit_immutability.sql — ledger updates and deletes are rejected; audit updates are allowed only for outcome and metadata so markAdminAuditOutcome still completes.
+
 ## 1. Summary
 
 Money history and admin audit are mutable.

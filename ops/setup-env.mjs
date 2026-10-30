@@ -11,6 +11,7 @@ try {
     `WEBHOOK_SECRET_ENCRYPTION_KEY=${randomBytes(32).toString("base64")}`,
     `SETTLEMENT_INTERNAL_TOKEN=${randomBytes(32).toString("hex")}`,
     `ACQUIRER_CALLBACK_SIGNING_SECRET=${randomBytes(32).toString("hex")}`,
+    "FEATURE_REFUNDS=true",
     "",
   ].join("\n"), { flag: "wx", mode: 0o600 });
   console.log("Created ops/.env.docker with fresh local development values.");

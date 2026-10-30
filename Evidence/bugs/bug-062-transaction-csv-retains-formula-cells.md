@@ -1,5 +1,7 @@
 # BUG-062 — Transaction CSV Export Retains Formula Prefixes Enabling Spreadsheet Injection
 
+**Fixed (2026-10-30):** apps/api/src/transactions/exportCsv.ts — reference cells starting with =, +, -, @, or tab are prefixed with an apostrophe before CSV escaping.
+
 ## 1. Summary
 
 CSV escaping handles commas, quotes and linefeeds but does not neutralize formula prefixes in a caller-controlled transaction reference.

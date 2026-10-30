@@ -1,5 +1,7 @@
 # BUG-031 — Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/platform_volume.go and db/migrations/0080_bigint_counters.sql — the platform volume counter is int64/BIGINT and increments in SQL.
+
 ## 1. Summary
 
 INT4 max is 2_147_483_647 fils (~2.15M BD).

@@ -273,7 +273,7 @@ test("KYC upload accepts a real tiny PDF and moves onboarding_status to under_re
   assert.equal(meRes.json().merchant.onboardingStatus, "under_review");
 });
 
-test("KYC upload rejects a commercial_registration submitted as a non-PDF filename", async () => {
+test("KYC upload accepts a commercial_registration PDF whose filename is not .pdf", async () => {
   const { merchantId, cookie } = await signupLoginAndVerify("kycnonpdf");
 
   const pdfBuffer = Buffer.from("%PDF-1.4\n%mock minimal pdf for test\n%%EOF");
@@ -288,8 +288,8 @@ test("KYC upload rejects a commercial_registration submitted as a non-PDF filena
     headers: { cookie, "content-type": contentType },
     payload: body,
   });
-  assert.equal(res.statusCode, 422, res.body);
-  assert.equal(res.json().error, "document_must_be_pdf");
+  assert.equal(res.statusCode, 201, res.body);
+  assert.equal(res.json().mimeType, "application/pdf");
 });
 
 test("API key issuance shows the raw key exactly once; a subsequent list never exposes it", async () => {

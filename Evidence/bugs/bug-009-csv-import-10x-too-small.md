@@ -1,5 +1,7 @@
 # BUG-009 — Adjustment CSV Parser Treats BHD as 2-Decimal Currency Reducing Values by 10x
 
+**Fixed (2026-10-30):** apps/api/src/admin/adjustmentCsvParsing.ts — amounts go through parseBhdToFils, so 4.75 BD is 4750 fils.
+
 ## 1. Summary
 
 `4.75` becomes `475` fils (0.475 BD), not `4 750`.

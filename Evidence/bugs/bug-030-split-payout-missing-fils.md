@@ -1,5 +1,7 @@
 # BUG-030 — Split Payouts Drop Fractional Fils Due to Independent Banker Rounding
 
+**Fixed (2026-10-30):** apps/settlement/internal/splits/allocate.go — largest-remainder shares sum to the net, and the parent is debited by that full net.
+
 ## 1. Summary
 
 Bankers rounding per child does not conserve the total.

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, test } from "node:test";
 import { Pool } from "pg";
-import { buildTransactionsExportCsv } from "./exportCsv.js";
+import { buildTransactionsExportCsv, streamTransactionsExportCsv } from "./exportCsv.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -192,4 +192,81 @@ test("a reference containing a comma or a quote is CSV-escaped", async () => {
   const dataLine = csv.split("\n")[1]!;
 
   assert.ok(dataLine.includes('"inv-1,""urgent"""'));
+});
+
+test("a formula-prefixed reference is emitted as a literal cell", async () => {
+  const merchantId = await createMerchant();
+  const references = ["=1+1", "+1+1", "-1+1", "@SUM(A1)", "\t=1+1"];
+  for (const [index, reference] of references.entries()) {
+    await insertTransaction(merchantId, {
+      status: "captured",
+      amountFils: 1000,
+      capturedFils: 1000,
+      reference,
+      occurredAt: `2026-04-0${index + 1}T00:00:00Z`,
+    });
+  }
+
+  const csv = await buildTransactionsExportCsv(pool, { merchantId });
+  const lines = csv.split("\n").slice(1);
+  assert.deepEqual(
+    lines.map((line) => line.split(",")[4]),
+    references.map((reference) => `'${reference}`),
+  );
+});
+
+test("streamTransactionsExportCsv keeps rows that share a timestamp, including sub-millisecond ties", async () => {
+  const merchantId = await createMerchant();
+  const shared = "2026-05-01T10:00:00.000000Z";
+  await insertTransaction(merchantId, {
+    status: "captured",
+    amountFils: 1000,
+    capturedFils: 1000,
+    reference: "tie-a",
+    occurredAt: shared,
+  });
+  await insertTransaction(merchantId, {
+    status: "captured",
+    amountFils: 1000,
+    capturedFils: 1000,
+    reference: "tie-a2",
+    occurredAt: shared,
+  });
+  await insertTransaction(merchantId, {
+    status: "captured",
+    amountFils: 1000,
+    capturedFils: 1000,
+    reference: "tie-b",
+    occurredAt: shared,
+  });
+  await insertTransaction(merchantId, {
+    status: "captured",
+    amountFils: 1000,
+    capturedFils: 1000,
+    reference: "tie-c",
+    occurredAt: shared,
+  });
+  await pool.query(
+    `UPDATE transactions SET occurred_at = '2026-05-01 10:00:00.000001+00' WHERE merchant_id = $1 AND reference = 'tie-b'`,
+    [merchantId],
+  );
+  await pool.query(
+    `UPDATE transactions SET occurred_at = '2026-05-01 10:00:00.000002+00' WHERE merchant_id = $1 AND reference = 'tie-c'`,
+    [merchantId],
+  );
+
+  const full = await buildTransactionsExportCsv(pool, { merchantId });
+  assert.equal(full.split("\n").length, 5);
+
+  let streamed = "";
+  await streamTransactionsExportCsv(pool, { merchantId }, (chunk) => {
+    streamed += chunk;
+  }, 1);
+  const references = streamed
+    .trim()
+    .split("\n")
+    .slice(1)
+    .map((line) => line.split(",")[4]);
+  assert.deepEqual(references.slice().sort(), ["tie-a", "tie-a2", "tie-b", "tie-c"]);
+  assert.ok(references.indexOf("tie-b") < references.indexOf("tie-c"));
 });

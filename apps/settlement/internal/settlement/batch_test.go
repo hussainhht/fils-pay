@@ -2,6 +2,7 @@ package settlement
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -362,6 +363,32 @@ func TestCloseBatch_SchemeExportLineTruncation(t *testing.T) {
 	if exportedAmount != 4740 {
 		t.Errorf("scheme_export_lines.amount_fils = %d, want 4740 (4747 truncated to the nearest 10 fils)", exportedAmount)
 	}
+
+	var amount string
+	err = pool.QueryRow(context.Background(), `
+		SELECT amount::text FROM scheme_export_lines WHERE settlement_batch_id = $1
+	`, result.BatchID).Scan(&amount)
+	if err != nil {
+		t.Fatalf("query scheme amount: %v", err)
+	}
+	if amount != "4.74" {
+		t.Errorf("scheme amount = %q, want 4.74 (truncated fils, not rounded up)", amount)
+	}
+
+	var residueDebit, residueCredit int64
+	err = pool.QueryRow(context.Background(), `
+		SELECT
+		  COALESCE(SUM(amount_fils) FILTER (WHERE account_id = 'scheme_rounding_residue' AND direction = 'debit'), 0),
+		  COALESCE(SUM(amount_fils) FILTER (WHERE account_id = 'card_scheme_clearing' AND direction = 'credit' AND description = 'scheme rounding residue'), 0)
+		  FROM ledger_entries
+		 WHERE settlement_batch_id = $1
+	`, result.BatchID).Scan(&residueDebit, &residueCredit)
+	if err != nil {
+		t.Fatalf("query scheme residue: %v", err)
+	}
+	if residueDebit != 7 || residueCredit != 7 {
+		t.Errorf("scheme residue debit/credit = %d/%d, want 7/7", residueDebit, residueCredit)
+	}
 }
 
 // TestCloseAndPayout_MerchantBalancesIncremental verifies
@@ -426,6 +453,20 @@ func TestCloseAndPayout_MerchantBalancesIncremental(t *testing.T) {
 	}
 	if payoutLegCount != 2 {
 		t.Errorf("expected exactly 2 ledger_entries legs for the payout, got %d", payoutLegCount)
+	}
+
+	var disbursementCount int
+	var disbursed int64
+	err = pool.QueryRow(context.Background(), `
+		SELECT count(*), COALESCE(SUM(amount_fils), 0)
+		  FROM settlement_payout_disbursements
+		 WHERE settlement_batch_id = $1
+	`, closeResult.BatchID).Scan(&disbursementCount, &disbursed)
+	if err != nil {
+		t.Fatalf("query disbursement: %v", err)
+	}
+	if disbursementCount != 1 || money.Fils(disbursed) != closeResult.NetPayoutFils {
+		t.Errorf("disbursement count/amount = %d/%d, want 1/%d", disbursementCount, disbursed, closeResult.NetPayoutFils)
 	}
 
 	var batchStatus string
@@ -504,5 +545,207 @@ func TestCloseBatchNetPayoutIsWholeFils(t *testing.T) {
 	}
 	if storedText != strconv.FormatInt(int64(result.NetPayoutFils), 10) {
 		t.Errorf("stored net_payout_fils = %q, want %d (the figure CloseBatch returned)", storedText, result.NetPayoutFils)
+	}
+	wantNet := money.Fils(13333) - money.ApplyRateFils(13333, mdrBps)
+	if result.NetPayoutFils != wantNet {
+		t.Errorf("NetPayoutFils = %d, want gross-fee %d", result.NetPayoutFils, wantNet)
+	}
+}
+
+func TestShouldAbortDailyPassOnlyForUnfinishedDay(t *testing.T) {
+	if !shouldAbortDailyPass(ErrBusinessDayNotComplete) {
+		t.Fatal("an unfinished business day must stop the pass")
+	}
+	if shouldAbortDailyPass(ErrMerchantNotEligible) {
+		t.Fatal("an ineligible merchant must not stop the pass")
+	}
+	if shouldAbortDailyPass(errors.New("lock timeout")) {
+		t.Fatal("a merchant failure must not stop the pass")
+	}
+}
+
+func readPlatformProcessedFils(t *testing.T, pool *pgxpool.Pool) int64 {
+	t.Helper()
+	var n int64
+	err := pool.QueryRow(context.Background(), `SELECT total_processed_fils FROM platform_stats WHERE id = 1`).Scan(&n)
+	if err != nil {
+		t.Fatalf("readPlatformProcessedFils: %v", err)
+	}
+	return n
+}
+
+func insertSucceededRefund(t *testing.T, pool *pgxpool.Pool, txnID, merchantID uuid.UUID, amountFils, feeReversedFils money.Fils, occurredAt time.Time) uuid.UUID {
+	t.Helper()
+	var id uuid.UUID
+	err := pool.QueryRow(context.Background(), `
+		INSERT INTO refunds (transaction_id, merchant_id, amount_fils, fee_reversed_fils, status, acquirer_reference, created_by_type, created_by_id, occurred_at)
+		VALUES ($1, $2, $3, $4, 'succeeded', $5, 'merchant_api_key', $6, $7)
+		RETURNING id
+	`, txnID, merchantID, int64(amountFils), int64(feeReversedFils), "ref-acq-"+uuid.New().String(), uuid.New(), occurredAt).Scan(&id)
+	if err != nil {
+		t.Fatalf("insertSucceededRefund: %v", err)
+	}
+	return id
+}
+
+func TestCloseBatch_RefundsReduceNetAndAreClaimedOnce(t *testing.T) {
+	pool := mustPool(t)
+	const mdrBps = 250
+	merchantID := insertActiveMerchant(t, pool, mdrBps)
+	businessDate := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+	start, _ := BusinessDayWindow(businessDate)
+
+	txnID, captureFee := insertCaptureEvent(t, pool, merchantID, mdrBps, 10000, start.Add(time.Hour))
+	if captureFee != money.ApplyRateFils(10000, mdrBps) {
+		t.Fatalf("capture fee = %d, want %d", captureFee, money.ApplyRateFils(10000, mdrBps))
+	}
+
+	refundAt := start.Add(2 * time.Hour)
+	insertSucceededRefund(t, pool, txnID, merchantID, 3333, 83, refundAt)
+	insertSucceededRefund(t, pool, txnID, merchantID, 3333, 83, refundAt.Add(time.Minute))
+	insertSucceededRefund(t, pool, txnID, merchantID, 3334, 84, refundAt.Add(2*time.Minute))
+
+	nextDay := businessDate.AddDate(0, 0, 1)
+	nextStart, _ := BusinessDayWindow(nextDay)
+	nextDayRefundID := insertSucceededRefund(t, pool, txnID, merchantID, 100, 3, nextStart.Add(time.Hour))
+
+	platformBefore := readPlatformProcessedFils(t, pool)
+	result, err := CloseBatch(context.Background(), pool, merchantID, businessDate)
+	if err != nil {
+		t.Fatalf("CloseBatch: %v", err)
+	}
+	platformAfter := readPlatformProcessedFils(t, pool)
+	if platformAfter-platformBefore != 10000 {
+		t.Errorf("platform_stats delta = %d, want 10000 (capture gross only)", platformAfter-platformBefore)
+	}
+
+	if result.GrossFils != 0 || result.FeeFils != 0 || result.NetPayoutFils != 0 {
+		t.Errorf("CloseBatch figures = gross %d fee %d net %d, want all zero after full refund", result.GrossFils, result.FeeFils, result.NetPayoutFils)
+	}
+	if result.EventCount != 1 {
+		t.Errorf("EventCount = %d, want 1 (capture events only)", result.EventCount)
+	}
+
+	lineCount := countRows(t, pool, `SELECT count(*) FROM scheme_export_lines WHERE settlement_batch_id = $1`, result.BatchID)
+	if lineCount != 1 {
+		t.Errorf("scheme_export_lines count = %d, want 1", lineCount)
+	}
+	var schemeAmount int64
+	err = pool.QueryRow(context.Background(), `SELECT amount_fils FROM scheme_export_lines WHERE settlement_batch_id = $1`, result.BatchID).Scan(&schemeAmount)
+	if err != nil {
+		t.Fatalf("query scheme_export_lines: %v", err)
+	}
+	if schemeAmount != 10000 {
+		t.Errorf("scheme_export_lines.amount_fils = %d, want 10000 (capture gross, not net of refunds)", schemeAmount)
+	}
+
+	inWindowOnBatch := countRows(t, pool, `SELECT count(*) FROM refunds WHERE settlement_batch_id = $1`, result.BatchID)
+	if inWindowOnBatch != 3 {
+		t.Errorf("in-window refunds on batch = %d, want 3", inWindowOnBatch)
+	}
+	var nextDayBatchID *uuid.UUID
+	err = pool.QueryRow(context.Background(), `SELECT settlement_batch_id FROM refunds WHERE id = $1`, nextDayRefundID).Scan(&nextDayBatchID)
+	if err != nil {
+		t.Fatalf("query next-day refund batch: %v", err)
+	}
+	if nextDayBatchID != nil {
+		t.Errorf("next-day refund settlement_batch_id = %v, want NULL", nextDayBatchID)
+	}
+
+	second, err := CloseBatch(context.Background(), pool, merchantID, businessDate)
+	if err != nil {
+		t.Fatalf("second CloseBatch: %v", err)
+	}
+	if !second.AlreadyClosed {
+		t.Fatal("second CloseBatch must report AlreadyClosed")
+	}
+	if second.NetPayoutFils != result.NetPayoutFils {
+		t.Errorf("second CloseBatch net = %d, want %d", second.NetPayoutFils, result.NetPayoutFils)
+	}
+	inWindowAfterReclose := countRows(t, pool, `SELECT count(*) FROM refunds WHERE settlement_batch_id = $1`, result.BatchID)
+	if inWindowAfterReclose != 3 {
+		t.Errorf("in-window refunds on batch after re-close = %d, want 3 unchanged", inWindowAfterReclose)
+	}
+}
+
+func TestCloseBatch_RefundAfterPaidLandsOnNextDay(t *testing.T) {
+	pool := mustPool(t)
+	const mdrBps = 250
+	merchantID := insertActiveMerchant(t, pool, mdrBps)
+	day1 := time.Date(2026, 3, 11, 0, 0, 0, 0, time.UTC)
+	day1Start, _ := BusinessDayWindow(day1)
+
+	insertCaptureEvent(t, pool, merchantID, mdrBps, 10000, day1Start.Add(time.Hour))
+
+	closeDay1, err := CloseBatch(context.Background(), pool, merchantID, day1)
+	if err != nil {
+		t.Fatalf("CloseBatch day 1: %v", err)
+	}
+	day1Gross, day1Fee, day1Net := closeDay1.GrossFils, closeDay1.FeeFils, closeDay1.NetPayoutFils
+
+	if _, err := PayoutBatch(context.Background(), pool, closeDay1.BatchID); err != nil {
+		t.Fatalf("PayoutBatch day 1: %v", err)
+	}
+
+	day2 := day1.AddDate(0, 0, 1)
+	day2Start, _ := BusinessDayWindow(day2)
+	var captureTxnID uuid.UUID
+	err = pool.QueryRow(context.Background(), `
+		SELECT transaction_id FROM transaction_events WHERE settlement_batch_id = $1 LIMIT 1
+	`, closeDay1.BatchID).Scan(&captureTxnID)
+	if err != nil {
+		t.Fatalf("lookup capture transaction: %v", err)
+	}
+	insertSucceededRefund(t, pool, captureTxnID, merchantID, 1000, 25, day2Start.Add(2*time.Hour))
+
+	platformBeforeDay2 := readPlatformProcessedFils(t, pool)
+	closeDay2, err := CloseBatch(context.Background(), pool, merchantID, day2)
+	if err != nil {
+		t.Fatalf("CloseBatch day 2: %v", err)
+	}
+	platformAfterDay2 := readPlatformProcessedFils(t, pool)
+	if platformAfterDay2-platformBeforeDay2 != 0 {
+		t.Errorf("platform_stats delta on day 2 close = %d, want 0", platformAfterDay2-platformBeforeDay2)
+	}
+
+	if closeDay2.GrossFils != -1000 || closeDay2.FeeFils != -25 || closeDay2.NetPayoutFils != -975 {
+		t.Errorf("day 2 figures = gross %d fee %d net %d, want -1000/-25/-975", closeDay2.GrossFils, closeDay2.FeeFils, closeDay2.NetPayoutFils)
+	}
+
+	var storedGross, storedFee, storedNet int64
+	err = pool.QueryRow(context.Background(), `
+		SELECT gross_fils, fee_fils, net_payout_fils FROM settlement_batches WHERE id = $1
+	`, closeDay1.BatchID).Scan(&storedGross, &storedFee, &storedNet)
+	if err != nil {
+		t.Fatalf("read day 1 batch: %v", err)
+	}
+	if money.Fils(storedGross) != day1Gross || money.Fils(storedFee) != day1Fee || money.Fils(storedNet) != day1Net {
+		t.Errorf("day 1 stored figures changed: gross %d fee %d net %d, want %d/%d/%d", storedGross, storedFee, storedNet, day1Gross, day1Fee, day1Net)
+	}
+
+	refundsOnDay2 := countRows(t, pool, `SELECT count(*) FROM refunds WHERE settlement_batch_id = $1`, closeDay2.BatchID)
+	if refundsOnDay2 != 1 {
+		t.Errorf("refunds on day 2 batch = %d, want 1", refundsOnDay2)
+	}
+
+	day2SchemeLines := countRows(t, pool, `SELECT count(*) FROM scheme_export_lines WHERE settlement_batch_id = $1`, closeDay2.BatchID)
+	if day2SchemeLines != 0 {
+		t.Errorf("day 2 scheme_export_lines count = %d, want 0", day2SchemeLines)
+	}
+
+	secondDay2, err := CloseBatch(context.Background(), pool, merchantID, day2)
+	if err != nil {
+		t.Fatalf("second CloseBatch day 2: %v", err)
+	}
+	if !secondDay2.AlreadyClosed || secondDay2.NetPayoutFils != closeDay2.NetPayoutFils {
+		t.Errorf("second day 2 close = AlreadyClosed %v net %d, want AlreadyClosed true net %d", secondDay2.AlreadyClosed, secondDay2.NetPayoutFils, closeDay2.NetPayoutFils)
+	}
+
+	if _, err := PayoutBatch(context.Background(), pool, closeDay2.BatchID); err != nil {
+		t.Fatalf("PayoutBatch day 2: %v", err)
+	}
+	disbursementCount := countRows(t, pool, `SELECT count(*) FROM settlement_payout_disbursements WHERE settlement_batch_id = $1`, closeDay2.BatchID)
+	if disbursementCount != 0 {
+		t.Errorf("day 2 disbursement rows = %d, want 0 (non-positive net)", disbursementCount)
 	}
 }

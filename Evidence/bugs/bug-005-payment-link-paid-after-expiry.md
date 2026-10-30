@@ -1,5 +1,7 @@
 # BUG-005 — Payment Link Can Be Paid After Expiry via Client submittedAt Spoofing
 
+**Fixed (2026-10-30):** apps/api/src/paymentLinks/pay.ts — public pay ignores submittedAt and evaluates expiry with the server clock.
+
 ## 1. Summary
 
 Expiry is evaluated against attacker-controlled `submittedAt`, not server time.

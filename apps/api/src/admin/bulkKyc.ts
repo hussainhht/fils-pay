@@ -1,7 +1,8 @@
 import type { Pool } from "pg";
-import { recordKycReviewInTx } from "../onboarding/review.js";
 import { insertAdminAuditLog } from "../adminAudit/log.js";
 import { withTransaction } from "../db/withTransaction.js";
+import { NotFoundError } from "../lib/errors.js";
+import { recordKycReviewInTx } from "../onboarding/review.js";
 
 export interface BulkApproveMerchantsKycInput {
   merchantIds: string[];
@@ -25,16 +26,32 @@ export async function bulkApproveMerchantsKyc(
   input: BulkApproveMerchantsKycInput,
 ): Promise<BulkApproveMerchantsKycResult> {
   return withTransaction(pool, async (client) => {
-    const result = await client.query<{ id: string }>(
-      `SELECT id FROM merchants WHERE id = ANY($1::uuid[]) AND onboarding_status = 'under_review' FOR UPDATE`,
+    const admin = await client.query<{ email: string }>(
+      `SELECT email FROM admin_users WHERE id = $1`,
+      [input.adminUserId],
+    );
+    if (!admin.rows[0]?.email) {
+      throw new NotFoundError("admin_not_found");
+    }
+
+    const eligible = await client.query<{ id: string }>(
+      `SELECT id
+         FROM merchants
+        WHERE id = ANY($1::uuid[])
+          AND onboarding_status = 'under_review'
+        FOR UPDATE`,
       [input.merchantIds],
     );
-    const approvedMerchantIds = result.rows.map((row) => row.id);
-    for (const merchantId of approvedMerchantIds) {
+    const approvedMerchantIds: string[] = [];
+    for (const row of eligible.rows) {
       await recordKycReviewInTx(client, {
-        merchantId, outcome: "approved", reviewerIdentifier: input.reviewerIdentifier,
-        reviewerAdminUserId: input.adminUserId, notes: input.notes,
+        merchantId: row.id,
+        outcome: "approved",
+        reviewerIdentifier: input.reviewerIdentifier,
+        reviewerAdminUserId: input.adminUserId,
+        notes: input.notes,
       });
+      approvedMerchantIds.push(row.id);
     }
 
     await insertAdminAuditLog(client, {

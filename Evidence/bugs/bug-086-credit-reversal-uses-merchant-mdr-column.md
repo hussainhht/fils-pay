@@ -1,5 +1,7 @@
 # BUG-086 — Credit Fee Reversal Uses the Merchant MDR Column, Not the Effective Schedule
 
+**Fixed (2026-10-30):** apps/api/src/admin/credits.ts — the fee reversal passes getEffectiveMdrBps for the credit's effective date into the existing calculator.
+
 **Open. Hosted runtime (2026-10-30):** Alpha Retail’s credit form says it will reverse MDR at `2.50%`. The fee schedule in force that day is `225` bps (`2.25%`), effective `2026-08-01`. The `2.45%` “current negotiated rate” on the same page is [BUG-071](bug-071-fee-display-wrong-schedule.md).
 
 ## 1. Summary

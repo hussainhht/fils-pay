@@ -268,6 +268,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     loginMaxFailuresPerAccount: parseIntEnv(env.LOGIN_MAX_FAILURES_PER_ACCOUNT, 5),
     loginMaxFailuresPerIp: parseIntEnv(env.LOGIN_MAX_FAILURES_PER_IP, 50),
     otpMaxChallengesPerUser: parseIntEnv(env.OTP_MAX_CHALLENGES_PER_USER, 5),
-    acquirerCallbackRequireSignature: nodeEnv === "production" || parseBoolEnv(env.ACQUIRER_CALLBACK_REQUIRE_SIGNATURE, false),
+    // Unsigned callbacks are accepted only in explicit development. Test and
+    // production reject a missing signature; the flag can still turn the
+    // check on for a local dev process.
+    acquirerCallbackRequireSignature:
+      nodeEnv === "development" ? parseBoolEnv(env.ACQUIRER_CALLBACK_REQUIRE_SIGNATURE, false) : true,
   };
 }

@@ -20,7 +20,6 @@ interface CursorRow {
  * then reads it. Never throws on a missing row — a worker's first pass
  * against a fresh database always starts from 0.
  */
-// am: no FOR UPDATE on the cursor read, two passes can read the same watermark? nvm the `running` flag in listener.ts guards it
 export async function readCursor(client: QueryableClient, consumerName: string): Promise<ConsumerCursor> {
   await client.query(
     `INSERT INTO reporting_outbox_cursor (consumer_name, last_processed_id)
@@ -29,9 +28,15 @@ export async function readCursor(client: QueryableClient, consumerName: string):
     [consumerName],
   );
 
-  const result = (await client.query(`SELECT last_processed_id FROM reporting_outbox_cursor WHERE consumer_name = $1`, [
-    consumerName,
-  ])) as { rows: CursorRow[] };
+  // Held until the caller's transaction commits, so a second pass (worker
+  // and catch-up) cannot read this watermark and apply the same events.
+  const result = (await client.query(
+    `SELECT last_processed_id
+       FROM reporting_outbox_cursor
+      WHERE consumer_name = $1
+      FOR UPDATE`,
+    [consumerName],
+  )) as { rows: CursorRow[] };
 
   const row = result.rows[0];
   return { lastProcessedId: row ? BigInt(row.last_processed_id) : 0n };
@@ -51,9 +56,8 @@ export async function advanceCursor(
   );
 }
 
-/** Resets this consumer's watermark to 0 — used only by the `rebuild`
- *  subcommand (cli/rebuild.ts) before replaying the entire outbox history. */
-// MK: rebuild only. never call from the worker.
+/** Resets this consumer's watermark to 0. Rebuild does not call this; it
+ *  publishes the locked horizon after replay instead. */
 export async function resetCursor(client: QueryableClient, consumerName: string): Promise<void> {
   await client.query(
     `INSERT INTO reporting_outbox_cursor (consumer_name, last_processed_id, updated_at)

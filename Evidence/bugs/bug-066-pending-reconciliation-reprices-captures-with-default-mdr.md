@@ -1,5 +1,7 @@
 # BUG-066 — Pending Reconciliation Replaces Actual Capture Fees with Default MDR Estimator
 
+**Fixed (2026-10-30):** `apps/api/src/settlement/query.ts` — pending net subtracts `metadata.feeFils` stored on the capture event instead of repricing with the merchant MDR column.
+
 ## 1. Summary
 
 Pending reconciliation reads only each event amount, then estimates fees from the merchant's current default MDR and discount using Math.round. It discards event fee metadata and does not resolve the effective schedule or tier used by capture.

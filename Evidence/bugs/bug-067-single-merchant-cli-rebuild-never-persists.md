@@ -1,5 +1,7 @@
 # BUG-067 — Single-Merchant Balance Rebuild CLI Calculates Balance but Never Persists
 
+**Fixed (2026-10-30):** apps/settlement/internal/ledger/rebuild.go — RebuildMerchantBalance writes that merchant's cached balance.
+
 ## 1. Summary
 
 The --merchant branch calls RebuildMerchantBalance, which only SELECTs the ledger sum, prints the computed value and returns. Only RebuildAllBalances performs the cache upsert.

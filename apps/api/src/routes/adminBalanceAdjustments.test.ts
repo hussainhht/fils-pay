@@ -96,7 +96,7 @@ async function createMerchant(withBalanceFils: number | null): Promise<string> {
 
 const PATH = (merchantId: string) => `/v1/admin/merchants/${merchantId}/balance-adjustments`;
 
-/** before/after are the cached balance; the ledger is untouched by this endpoint (asserted further down). */
+/** before/after are the cached balance; the same delta is posted to the ledger. */
 test("a valid adjustment returns 200 with the correct before/after", async () => {
   const admin = await signedInAdmin("finance");
   const merchantId = await createMerchant(100_000);
@@ -120,6 +120,12 @@ test("a valid adjustment returns 200 with the correct before/after", async () =>
     [merchantId],
   );
   assert.equal(Number(after.rows[0]!.cached_payable_fils), 150_000);
+
+  const ledger = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM ledger_entries WHERE merchant_id = $1 AND description = 'manual balance adjustment'`,
+    [merchantId],
+  );
+  assert.equal(Number(ledger.rows[0]!.count), 2);
 });
 
 test("a negative adjustment is accepted", async () => {

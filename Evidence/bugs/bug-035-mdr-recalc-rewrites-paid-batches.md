@@ -1,5 +1,7 @@
 # BUG-035 — MDR Recalculation Rewrites Batches That Are Already Paid Out
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/recalculate_mdr.go — MDR recalculation selects only status = 'closed'.
+
 ## 1. Summary
 
 Paid batch totals are mutable.

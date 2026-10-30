@@ -27,10 +27,10 @@ export function expiryReferenceTime(_submittedAt?: string): Date { return new Da
 
 /**
  * A durable claim binds the link to one payer's key and request before any
- * acquirer operation. Timeout permits only that same request to resume.
- * Authorize/capture use their existing persistent idempotency records, so
- * retries across any committed phase reuse the transaction and capture.
- * No transaction or payment-link row lock spans the external calls.
+ * acquirer operation. Only that same request may resume. A different payer
+ * cannot reclaim the row by waiting out the reservation timeout.
+ * Authorize/capture reuse their persisted operation ids, so an ambiguous
+ * capture is resumed rather than voided or captured again.
  */
 export async function payPaymentLink(
   pool: Pool, acquirer: AcquirerSimulator,
@@ -40,14 +40,15 @@ export async function payPaymentLink(
   const requestHash = hashRequest({ card: input.card });
   const reservationId = randomUUID();
   const claimed = await pool.query<LinkRow>(
-    `UPDATE payment_links SET status = 'reserved', reserved_at = now(), reservation_id = $2,
+    `UPDATE payment_links SET status = 'reserved', reserved_at = now(),
+        reservation_id = COALESCE(reservation_id, $2::uuid),
         payment_key_hash = $3, payment_request_hash = $4
       WHERE token = $1 AND (
         (status = 'active' AND expires_at > now()) OR
-        (status = 'reserved' AND payment_key_hash = $3 AND payment_request_hash = $4
-          AND reserved_at < now() - make_interval(secs => $5::int)))
+        (status = 'reserved' AND payment_key_hash = $3 AND payment_request_hash = $4)
+      )
       RETURNING *`,
-    [input.token, reservationId, keyHash, requestHash, config.paymentLinkReservationTimeoutSeconds],
+    [input.token, reservationId, keyHash, requestHash],
   );
   const link = claimed.rows[0];
   if (!link) {
@@ -72,9 +73,10 @@ export async function payPaymentLink(
     reference: link.reference ?? undefined,
     idempotencyKey: `paylink:${link.id}:${input.idempotencyKey}:authorize`, actor: { type: "system" },
   });
+  const ownedReservation = link.reservation_id ?? reservationId;
   if (auth.statusCode !== 201) {
     // A transport failure is ambiguous; retain the binding for same-key recovery.
-    if (auth.statusCode < 500) await releaseReservation(pool, link.id, reservationId);
+    if (auth.statusCode < 500) await releaseReservation(pool, link.id, ownedReservation);
     return { statusCode: auth.statusCode, body: { stage: "authorize", ...auth.body as object } };
   }
   const transactionId = (auth.body as { id: string }).id;
@@ -87,7 +89,7 @@ export async function payPaymentLink(
       // Definitive decline: release the local simulator hold before admitting
       // another payer. Unknown outcomes stay bound for retry/reconciliation.
       const voided = await voidTransaction(pool, { transactionId, merchantId: link.merchant_id, actor: { type: "system", id: link.id } });
-      if (voided.statusCode === 200) await releaseReservation(pool, link.id, reservationId);
+      if (voided.statusCode === 200) await releaseReservation(pool, link.id, ownedReservation);
     }
     return { statusCode: capture.statusCode, body: { stage: "capture", ...capture.body as object } };
   }

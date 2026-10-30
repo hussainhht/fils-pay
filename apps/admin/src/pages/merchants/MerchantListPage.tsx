@@ -43,6 +43,7 @@ export function MerchantListPage() {
           cursor: cursor ?? undefined,
         });
         const page = result.merchants ?? [];
+        if (!cursor) setSelectedIds(new Set());
         setMerchants((previous) => (cursor ? [...previous, ...page] : page));
         setNextCursor(result.nextCursor ?? null);
       } catch (err) {
@@ -76,9 +77,9 @@ export function MerchantListPage() {
    *  table, i.e. exactly what the operator can see under the active
    *  search/status filters. */
   function toggleSelectAllLoaded(): void {
-    setSelectedIds((previous) =>
-      previous.size === merchants.length ? new Set() : new Set(merchants.map((m) => m.id)),
-    );
+    const everyVisibleSelected =
+      merchants.length > 0 && merchants.every((merchant) => selectedIds.has(merchant.id));
+    setSelectedIds(everyVisibleSelected ? new Set() : new Set(merchants.map((merchant) => merchant.id)));
   }
 
   // only approves the under_review ones (filtered) — am
@@ -88,7 +89,13 @@ export function MerchantListPage() {
     setError(null);
     setBulkNotice(null);
     try {
-      const result = await bulkApproveKyc([...selectedIds]);
+      const visibleIds = merchants.filter((merchant) => selectedIds.has(merchant.id)).map((merchant) => merchant.id);
+      if (visibleIds.length === 0) {
+        setSelectedIds(new Set());
+        setBulkBusy(false);
+        return;
+      }
+      const result = await bulkApproveKyc(visibleIds);
       setBulkNotice(`Approved KYC for ${result.approvedCount} merchant(s).`);
       setSelectedIds(new Set());
       await load(null);
@@ -99,7 +106,8 @@ export function MerchantListPage() {
     }
   }
 
-  const allLoadedSelected = merchants.length > 0 && selectedIds.size === merchants.length;
+  const visibleSelectedIds = merchants.filter((merchant) => selectedIds.has(merchant.id));
+  const allLoadedSelected = merchants.length > 0 && visibleSelectedIds.length === merchants.length;
 
   return (
     <section>
@@ -141,9 +149,9 @@ export function MerchantListPage() {
       {error ? <p className="admin-error">{error}</p> : null}
       {bulkNotice ? <p className="admin-muted">{bulkNotice}</p> : null}
 
-      {selectedIds.size > 0 ? (
+      {visibleSelectedIds.length > 0 ? (
         <div className="admin-form admin-form-inline">
-          <span>{selectedIds.size} selected</span>
+          <span>{visibleSelectedIds.length} selected</span>
           <RequireRole allow={["finance", "super_admin"]}>
             <button type="button" disabled={bulkBusy} onClick={() => void approveSelected()}>
               Bulk approve KYC

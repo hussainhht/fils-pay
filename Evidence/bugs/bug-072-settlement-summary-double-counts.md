@@ -1,5 +1,7 @@
 # BUG-072 — Settlement Summary Query Multiplies Cumulative Captures by Capture Event Count
 
+**Fixed (2026-10-30):** apps/api/src/settlement/query.ts — capture rows are grouped by transaction before captured_fils is summed.
+
 ## 1. Summary
 
 Settlement summary query CTE joins transactions with transaction_events for captures. It performs COUNT(DISTINCT id) but SUM(captured_fils) without deduplication, causing transactions with multiple partial captures to multiply their cumulative captured amounts across the reporting window.

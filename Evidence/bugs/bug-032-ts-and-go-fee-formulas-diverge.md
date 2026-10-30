@@ -1,5 +1,7 @@
 # BUG-032 — TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge
 
+**Fixed (2026-10-30):** apps/api/src/v1/fees/calculateFee.ts — TypeScript capture fees discount the amount, then apply MDR. Go settlement was not edited.
+
 ## 1. Summary
 
 Two different formulas.

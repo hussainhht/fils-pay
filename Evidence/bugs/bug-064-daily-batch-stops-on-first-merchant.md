@@ -1,5 +1,7 @@
 # BUG-064 — Daily Settlement Batch Loop Aborts on First Merchant Failure Blocking Rest
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/batch.go — a merchant failure is recorded and the daily loop continues. Closing today or a future date still stops the pass.
+
 ## 1. Summary
 
 `ErrMerchantNotEligible` is skipped.

@@ -1,5 +1,7 @@
 # BUG-034 — Scheme Export Rounds Amounts While Ledger Truncates Creating Persistent Surplus
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/batch.go — scheme amount is stored from truncated fils, and gross minus truncated is posted to scheme_rounding_residue.
+
 **Still open. Hosted runtime (2026-10-30):** closed batch `317d557d-aa82-47ab-a372-220e31701ef9` (Alpha Retail, `2026-08-31`) shows captured `150.031 BHD` and scheme amount `150.030 BHD` on `alpha-retail-txn-0001`. The same one-fil shortfall appears on the other lines. Batch totals still match the database: gross `7326.913`, fee `183.174`, net `7143.739`.
 
 ## 1. Summary

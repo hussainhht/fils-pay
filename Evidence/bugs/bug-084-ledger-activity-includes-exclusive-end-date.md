@@ -1,5 +1,7 @@
 # BUG-084 — Recent Ledger Activity Query Includes Entire Exclusive End Date
 
+**Fixed (2026-10-30):** apps/api/src/analytics/query.ts — recent ledger activity compares Asia/Bahrain dates with an inclusive start and an exclusive end.
+
 ## 1. Summary
 
 The shared analytics parser defines to as exclusive, but the ledger activity SQL compares Bahrain dates with inclusive BETWEEN.

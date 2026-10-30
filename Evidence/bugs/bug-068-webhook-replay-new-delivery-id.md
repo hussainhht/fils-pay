@@ -1,5 +1,7 @@
 # BUG-068 — Webhook Replay Mints New Delivery ID Causing Receivers to Treat as New Event
 
+**Fixed (2026-10-30):** apps/api/src/webhooks/replay.ts — already reuses delivery_event_id; routes/webhooks.test.ts no longer expects a new id.
+
 ## 1. Summary
 
 Receivers that dedupe on `Webhook-Delivery-Id` or body `id` treat a replay as a brand-new event.

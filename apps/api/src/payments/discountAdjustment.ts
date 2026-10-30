@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
-import { applyRateFils, toFils } from "@filspay/money";
+import { compareFils, parseBhdToFils, subtractFils, toFils } from "@filspay/money";
 import { withTransaction } from "../db/withTransaction.js";
+import { calculateDiscountedMdrFee } from "../v1/fees/calculateFee.js";
 import { BadRequestError } from "../lib/errors.js";
 
 
@@ -10,77 +11,87 @@ import { BadRequestError } from "../lib/errors.js";
  * pricing dashboard) into fils for the ledger adjustment.
  */
 export function parsePromotionalDiscountFils(raw: string): number {
-  const parsed = parseFloat(raw);
-  if (!Number.isFinite(parsed) || parsed < 0) {
+  let fils;
+  try {
+    fils = parseBhdToFils(raw);
+  } catch (err) {
+    throw new BadRequestError(
+      "invalid_discount",
+      err instanceof Error ? err.message : `could not parse discount amount "${raw}"`,
+    );
+  }
+  if (fils < 0) {
     throw new BadRequestError("invalid_discount", `could not parse discount amount "${raw}"`);
   }
-  return Math.round(parsed * 100);
+  return fils;
 }
 
 /**
- * Applies a merchant's negotiated processing discount against the MDR fee
- * capture.ts already charged, per the merchant's pricing agreement: the
- * discount applies to our processing fee, after it's calculated — see the
- * partner-pricing addendum. capture.ts's own response doesn't carry the
- * fee it just charged, so this reads it back from the transaction_events
- * row capture.ts already wrote (its `metadata.feeFils`), then reverses the
- * merchant's share via a same-day ledger adjustment.
- *
- * A merchant with negotiated_discount_bps = 0 (the default for anyone
- * without a negotiated rate) is a no-op: this
- * function reads the merchant row, sees a zero discount rate, and inserts
- * nothing.
+ * Each capture event is adjusted at most once, including a zero rebate.
+ * New captures already journal discount-then-MDR (`feeModel`), so this
+ * posts nothing for them. An older event that stored the full MDR fee is
+ * rebated down to that same fee, once, and only for the caller's merchant.
  */
 export async function applyCaptureDiscountAdjustment(
   pool: Pool,
   input: { merchantId: string; transactionId: string },
 ): Promise<void> {
   return withTransaction(pool, async (client) => {
-    const merchantRow = await client.query<{ negotiated_discount_bps: number }>(
-      `SELECT negotiated_discount_bps FROM merchants WHERE id = $1`,
+    const merchantRow = await client.query<{ negotiated_discount_bps: number; mdr_bps: number }>(
+      `SELECT negotiated_discount_bps, mdr_bps FROM merchants WHERE id = $1`,
       [input.merchantId],
     );
     const discountBps = merchantRow.rows[0]?.negotiated_discount_bps ?? 0;
     if (discountBps === 0) return;
+    const mdrBps = merchantRow.rows[0]?.mdr_bps ?? 0;
 
-    // Exactly one adjustment per capture event. A replayed (idempotent)
-    // capture returns its cached 200 without writing a new
-    // transaction_events row, so the caller re-enters this path with
-    // nothing new to adjust — reversing the same fee a second time would
-    // credit the merchant twice for one capture. The row lock serializes
-    // this count against a concurrent capture's own adjustment.
-    await client.query(`SELECT id FROM transactions WHERE id = $1 FOR UPDATE`, [input.transactionId]);
-    const countRow = await client.query<{ capture_events: string; adjustments: string }>(
-      `SELECT (SELECT count(*) FROM transaction_events
-                WHERE transaction_id = $1 AND event_type IN ('captured', 'partially_captured')) AS capture_events,
-              (SELECT count(*) FROM ledger_entries
-                WHERE transaction_id = $1 AND direction = 'credit'
-                  AND description = 'capture: negotiated discount adjustment') AS adjustments`,
-      [input.transactionId],
+    const owned = await client.query(
+      `SELECT id FROM transactions WHERE id = $1 AND merchant_id = $2 FOR UPDATE`,
+      [input.transactionId, input.merchantId],
     );
-    const counts = countRow.rows[0];
-    if (counts && Number(counts.adjustments) >= Number(counts.capture_events)) return;
+    if (!owned.rows[0]) return;
 
-    const eventRow = await client.query<{ metadata: { feeFils?: number } }>(
-      `SELECT metadata FROM transaction_events
-        WHERE transaction_id = $1 AND event_type IN ('captured', 'partially_captured')
-        ORDER BY occurred_at DESC, id DESC LIMIT 1`,
-      [input.transactionId],
-    );
-    const feeBeforeDiscount = toFils(eventRow.rows[0]?.metadata?.feeFils ?? 0);
-    if (feeBeforeDiscount <= 0) return;
+    for (;;) {
+      const eventRow = await client.query<{
+        id: string;
+        amount_fils: string | null;
+        metadata: { feeFils?: number; feeModel?: string };
+      }>(
+        `SELECT te.id, te.amount_fils, te.metadata
+           FROM transaction_events te
+           JOIN transactions t ON t.id = te.transaction_id AND t.merchant_id = $2
+          WHERE te.transaction_id = $1
+            AND te.event_type IN ('captured', 'partially_captured')
+            AND COALESCE(te.metadata->>'discountAdjusted', '') <> 'true'
+          ORDER BY te.occurred_at, te.id
+          LIMIT 1
+          FOR UPDATE OF te`,
+        [input.transactionId, input.merchantId],
+      );
+      const event = eventRow.rows[0];
+      if (!event) return;
 
-    const discountFils = applyRateFils(feeBeforeDiscount, discountBps);
-    if (discountFils <= 0) return;
-
-    const entryGroupId = randomUUID();
-    await client.query(
-      `INSERT INTO ledger_entries
-         (entry_group_id, merchant_id, transaction_id, account_id, direction, amount_fils, occurred_at, description)
-       VALUES
-         ($1, $2, $3, 'platform_fee_revenue', 'debit',  $4, now(), 'capture: negotiated discount adjustment'),
-         ($1, $2, $3, 'merchant_payable',     'credit', $4, now(), 'capture: negotiated discount adjustment')`,
-      [entryGroupId, input.merchantId, input.transactionId, discountFils],
-    );
+      const charged = toFils(Number(event.metadata?.feeFils ?? 0));
+      const alreadyNet = event.metadata?.feeModel === "discounted_amount";
+      const target = calculateDiscountedMdrFee(toFils(Number(event.amount_fils ?? 0)), mdrBps, discountBps);
+      const rebate = alreadyNet || compareFils(charged, target) <= 0 ? toFils(0) : subtractFils(charged, target);
+      if (rebate > 0) {
+        const entryGroupId = randomUUID();
+        await client.query(
+          `INSERT INTO ledger_entries
+             (entry_group_id, merchant_id, transaction_id, account_id, direction, amount_fils, occurred_at, description)
+           VALUES
+             ($1, $2, $3, 'platform_fee_revenue', 'debit',  $4, now(), 'capture: negotiated discount adjustment'),
+             ($1, $2, $3, 'merchant_payable',     'credit', $4, now(), 'capture: negotiated discount adjustment')`,
+          [entryGroupId, input.merchantId, input.transactionId, rebate],
+        );
+      }
+      await client.query(
+        `UPDATE transaction_events
+            SET metadata = metadata || jsonb_build_object('discountAdjusted', true)
+          WHERE id = $1`,
+        [event.id],
+      );
+    }
   });
 }
