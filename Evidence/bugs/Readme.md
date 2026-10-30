@@ -40,11 +40,11 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 
 | Status | Count |
 |---|---|
-| Fixed | 81 |
+| Fixed | 83 |
 | Fixed (fresh DB) | 1 |
 | Fixed (local boot) | 1 |
-| Partial | 3 |
-| Open | 4 |
+| Partial | 2 |
+| Open | 3 |
 
 <!-- implementation-status:end -->
 
@@ -78,7 +78,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-024** | Void Operation Does Not Reverse External Acquirer Authorization Hold | `High` | STATICALLY CONFIRMED | Open | Payments and payment links | [BUG-024](bug-024-void-does-not-reverse-authorization.md) |
 | **BUG-025** | Capture Ignores Hold Expiry and Succeeds Against Expired Authorizations | `High` | STATICALLY CONFIRMED | Fixed | Payments and payment links | [BUG-025](bug-025-capture-ignores-hold-expiry.md) |
 | **BUG-026** | Zero-Discount Capture Events Allow Retries to Post Repeated Rebate Adjustments | `High` | STATICALLY CONFIRMED | Fixed | Payments and payment links | [BUG-026](bug-026-zero-discount-events-allow-repeated-rebates.md) |
-| **BUG-027** | POST /v1/refunds Route Returns 501 Not Implemented (Unfinished Feature) | `High` | STATICALLY CONFIRMED | Open | Refunds | [BUG-027](bug-027-refunds-route-returns-501.md) |
+| **BUG-027** | POST /v1/refunds Route Returns 501 Not Implemented (Unfinished Feature) | `High` | STATICALLY CONFIRMED | Fixed | Refunds | [BUG-027](bug-027-refunds-route-returns-501.md) |
 | **BUG-028** | Refund with Null Reason Violates DB Constraint Leaving Idempotency Key Stuck | `High` | RUNTIME REPRODUCED | Fixed | Refunds | [BUG-028](bug-028-refund-null-reason-sticks-idempotency-key.md) |
 | **BUG-029** | Insecure PRNG (Math.random) Used for OTP Generation and Payment Link Tokens | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-029](bug-029-otp-and-payment-link-insecure-rng.md) |
 | **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-030](bug-030-split-payout-missing-fils.md) |
@@ -101,7 +101,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-047** | Acquirer Callbacks Accepted Unsigned by Default in Configuration | `High` | RUNTIME REPRODUCED | Fixed | Webhooks | [BUG-047](bug-047-acquirer-callback-signature-optional.md) |
 | **BUG-048** | Duplicate Acquirer Callbacks Append Duplicate Transaction Notes | `High` | RUNTIME REPRODUCED | Fixed | Webhooks | [BUG-048](bug-048-duplicate-acquirer-callback-notes.md) |
 | **BUG-049** | Duplicate settlement.paid Notifications Dispatched by Concurrent Triggers | `High` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-049](bug-049-duplicate-payout-notifications.md) |
-| **BUG-050** | Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch | `High` | RUNTIME REPRODUCED | Partial | Webhooks | [BUG-050](bug-050-payout-disbursement-recorded-by-webhook.md) |
+| **BUG-050** | Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch | `High` | RUNTIME REPRODUCED | Fixed | Webhooks | [BUG-050](bug-050-payout-disbursement-recorded-by-webhook.md) |
 | **BUG-051** | Webhook URL Registration Lacks Private Network and Localhost Validation (SSRF) | `High` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-051](bug-051-webhook-url-ssrf.md) |
 | **BUG-052** | Reporting Consumer Double-Applies Events on Restart Due to Non-Atomic Watermark | `High` | STATICALLY CONFIRMED | Fixed | Reporting and analytics | [BUG-052](bug-052-reporting-consumer-double-applies.md) |
 | **BUG-053** | Transaction CSV Export Pagination Drops Rows Sharing Identical Timestamp | `High` | STATICALLY CONFIRMED | Fixed | Reporting and analytics | [BUG-053](bug-053-large-export-pagination-drops-rows.md) |
@@ -189,7 +189,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | :---: | --- | :---: | :---: | --- | :---: |
 | **BUG-007** | Refund Headroom Capped at Authorized Amount Instead of Captured Amount | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-007-refund-more-than-captured.md](bug-007-refund-more-than-captured.md) |
 | **BUG-008** | Concurrent Refunds Both Succeed Allowing Double Money Out | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-008-concurrent-refund-double-money-out.md](bug-008-concurrent-refund-double-money-out.md) |
-| **BUG-027** | POST /v1/refunds Route Returns 501 Not Implemented (Unfinished Feature) | `High` | STATICALLY CONFIRMED | Open | [bug-027-refunds-route-returns-501.md](bug-027-refunds-route-returns-501.md) |
+| **BUG-027** | POST /v1/refunds Route Returns 501 Not Implemented (Unfinished Feature) | `High` | STATICALLY CONFIRMED | Fixed | [bug-027-refunds-route-returns-501.md](bug-027-refunds-route-returns-501.md) |
 | **BUG-028** | Refund with Null Reason Violates DB Constraint Leaving Idempotency Key Stuck | `High` | RUNTIME REPRODUCED | Fixed | [bug-028-refund-null-reason-sticks-idempotency-key.md](bug-028-refund-null-reason-sticks-idempotency-key.md) |
 
 ### Ledger and financial calculations (9)
@@ -245,7 +245,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-047** | Acquirer Callbacks Accepted Unsigned by Default in Configuration | `High` | RUNTIME REPRODUCED | Fixed | [bug-047-acquirer-callback-signature-optional.md](bug-047-acquirer-callback-signature-optional.md) |
 | **BUG-048** | Duplicate Acquirer Callbacks Append Duplicate Transaction Notes | `High` | RUNTIME REPRODUCED | Fixed | [bug-048-duplicate-acquirer-callback-notes.md](bug-048-duplicate-acquirer-callback-notes.md) |
 | **BUG-049** | Duplicate settlement.paid Notifications Dispatched by Concurrent Triggers | `High` | STATICALLY CONFIRMED | Fixed | [bug-049-duplicate-payout-notifications.md](bug-049-duplicate-payout-notifications.md) |
-| **BUG-050** | Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch | `High` | RUNTIME REPRODUCED | Partial | [bug-050-payout-disbursement-recorded-by-webhook.md](bug-050-payout-disbursement-recorded-by-webhook.md) |
+| **BUG-050** | Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch | `High` | RUNTIME REPRODUCED | Fixed | [bug-050-payout-disbursement-recorded-by-webhook.md](bug-050-payout-disbursement-recorded-by-webhook.md) |
 | **BUG-051** | Webhook URL Registration Lacks Private Network and Localhost Validation (SSRF) | `High` | STATICALLY CONFIRMED | Fixed | [bug-051-webhook-url-ssrf.md](bug-051-webhook-url-ssrf.md) |
 | **BUG-068** | Webhook Replay Mints New Delivery ID Causing Receivers to Treat as New Event | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-068-webhook-replay-new-delivery-id.md](bug-068-webhook-replay-new-delivery-id.md) |
 | **BUG-069** | Webhook Dispatcher Queue Lacks Row Claim Mechanism Causing Duplicate Dispatch | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-069-webhook-delivery-no-claim.md](bug-069-webhook-delivery-no-claim.md) |

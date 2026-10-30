@@ -247,8 +247,9 @@ export async function listBatchTransactions(
 
 /**
  * gapFils = ledgerMerchantPayableNetFils - settlementNetPayoutFils -
- * pendingUnbatchedFils. Refund legs are included both in the ledger figure
- * and in pending, so a period with refunds still explains to zero.
+ * pendingUnbatchedFils. Ledger net includes refund debits and credits;
+ * pending net subtracts unbatched succeeded refunds, so a period with
+ * refunds still explains to zero.
  */
 export interface ReconciliationReport {
   periodFrom: string;
@@ -275,7 +276,9 @@ function bahrainLocalMidnightUtc(dateStr: string): Date {
  * @param input.to    exclusive business date (YYYY-MM-DD)
  * @returns explained === true iff gapFils === 0. Payout debits are left out of
  *          the ledger net because closed and paid batch nets are subtracted
- *          separately. Pending net uses the fee stored on each capture event.
+ *          separately. Pending net is capture amount minus fee from event
+ *          metadata, minus unbatched succeeded refunds (amount minus stored
+ *          fee reversal).
  */
 export async function getReconciliationReport(
   pool: Pool,
@@ -284,7 +287,7 @@ export async function getReconciliationReport(
   const windowStart = bahrainLocalMidnightUtc(input.from);
   const windowEnd = bahrainLocalMidnightUtc(input.to);
 
-  const [ledgerResult, settlementResult, pendingResult] = await Promise.all([
+  const [ledgerResult, settlementResult, pendingResult, refundPendingResult] = await Promise.all([
     pool.query<{ net: string }>(
       `SELECT COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_fils ELSE -amount_fils END), 0) AS net
          FROM ledger_entries
@@ -309,6 +312,15 @@ export async function getReconciliationReport(
           AND te.occurred_at >= $2 AND te.occurred_at < $3`,
       [input.merchantId, windowStart, windowEnd],
     ),
+    pool.query<{ amount_fils: string | number; fee_reversed_fils: string | number }>(
+      `SELECT amount_fils, fee_reversed_fils
+         FROM refunds
+        WHERE merchant_id = $1
+          AND status = 'succeeded'
+          AND settlement_batch_id IS NULL
+          AND occurred_at >= $2 AND occurred_at < $3`,
+      [input.merchantId, windowStart, windowEnd],
+    ),
   ]);
 
   let pendingUnbatchedFils = 0;
@@ -316,6 +328,11 @@ export async function getReconciliationReport(
     const amountFils = Number(row.amount_fils);
     const feeFils = row.fee_fils === null ? 0 : Number(row.fee_fils);
     pendingUnbatchedFils += amountFils - feeFils;
+  }
+  for (const row of refundPendingResult.rows) {
+    const amountFils = Number(row.amount_fils);
+    const feeReversedFils = Number(row.fee_reversed_fils);
+    pendingUnbatchedFils -= amountFils - feeReversedFils;
   }
 
   const ledgerMerchantPayableNetFils = Number(ledgerResult.rows[0]?.net ?? 0);

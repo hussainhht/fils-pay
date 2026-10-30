@@ -1,6 +1,6 @@
 # BUG-050 — Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch
 
-**Partially fixed (2026-10-30):** apps/settlement/internal/settlement/batch.go and apps/settlement/internal/splits/allocate.go — both payout paths insert the disbursement in the same transaction as the ledger movement. The dispatcher no longer inserts it on delivery. No unique index: 0057's index is not unique, and existing duplicate rows were not reconciled.
+**Fixed (2026-10-30):** migration 0083 (unique settlement_batch_id on settlement_payout_disbursements); ON CONFLICT (settlement_batch_id) DO NOTHING in batch.go insertPayoutDisbursement and allocate.go split disbursement insert.
 
 ## 1. Summary
 

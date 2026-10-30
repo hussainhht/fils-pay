@@ -1,6 +1,6 @@
 # BUG-073 — Transaction Search Uses Unindexed Leading Wildcard ILIKE Causing Full-Table Scan
 
-**Skipped (2026-10-30):** EXPLAIN uses idx_transactions_merchant_occurred, then filters the leading-wildcard ILIKE. No equality/prefix rewrite and no new index.
+**Rechecked (2026-10-30):** Predicate unchanged; fresh EXPLAIN still uses Bitmap Index Scan on `idx_transactions_merchant_occurred` then filters the leading-wildcard ILIKE — no `pg_trgm` index added because the merchant/date index still bounds the scan.
 
 ## 1. Summary
 

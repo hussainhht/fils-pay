@@ -8,6 +8,8 @@ import { sha256Hex } from "../lib/crypto.js";
 import { processRefund } from "./processRefund.js";
 import { toFils } from "@filspay/money";
 import { buildEnvelope } from "../webhooks/envelope.js";
+import { signPayload, verifySignature } from "../webhooks/sign.js";
+import { getReconciliationReport } from "../settlement/query.js";
 import { applyEvent } from "../../../reporting/src/consumer/applyEvent.js";
 import { withTransaction } from "../db/withTransaction.js";
 const pool=new Pool({connectionString:process.env.DATABASE_URL,max:6});
@@ -55,6 +57,27 @@ test("both route forms enforce tenant ownership, hold, feature flag and idempote
  const k=randomUUID();const r=await request(`/v1/merchants/${a.merchantId}/refunds`,a.key,a.id,k);assert.equal(r.statusCode,200,r.body);assert.deepEqual((await request(`/v1/merchants/${a.merchantId}/refunds`,a.key,a.id,k)).json(),r.json());
  await pool.query("UPDATE merchants SET refunds_enabled=false WHERE id=$1",[a.merchantId]);assert.equal((await request("/v1/refunds",a.key,a.id)).statusCode,403);
  const off=buildApp({...config,featureRefunds:false},pool);try{assert.equal((await off.inject({method:"POST",url:"/v1/refunds",headers:{authorization:`Bearer ${b.key}`},payload:{transactionId:b.id}})).statusCode,501);}finally{await off.close();}
+});
+test("POST /v1/refunds partial then remainder reconciles ledger, events, report and webhook signature",async()=>{
+ const f=await fixture(10000);
+ const post=(amountFils:number|undefined,idem:string)=>app.inject({method:"POST",url:"/v1/refunds",headers:{authorization:`Bearer ${f.key}`,"idempotency-key":idem},payload:amountFils===undefined?{transactionId:f.id}:{transactionId:f.id,amountFils}});
+ const k=randomUUID();const first=await post(4000,k);assert.equal(first.statusCode,200,first.body);assert.deepEqual((await post(4000,k)).json(),first.json());
+ assert.equal((await post(undefined,randomUUID())).statusCode,200);
+ const legs=(await pool.query("SELECT direction,amount_fils FROM ledger_entries WHERE transaction_id=$1 AND description LIKE 'refund:%'",[f.id])).rows;
+ let deb=0,cred=0;for(const row of legs){const n=Number(row.amount_fils);row.direction==="debit"?deb+=n:cred+=n;}
+ assert.equal(deb,cred);
+ const t=(await pool.query("SELECT status,refunded_fils FROM transactions WHERE id=$1",[f.id])).rows[0];assert.equal(t.status,"refunded");assert.equal(Number(t.refunded_fils),10000);
+ const ev=await app.inject({method:"GET",url:`/v1/transactions/${f.id}/events`,headers:{authorization:`Bearer ${f.key}`}});assert.equal(ev.statusCode,200,ev.body);
+ const types=(ev.json() as Array<{eventType:string}>).map(e=>e.eventType);assert.ok(types.includes("refund_partial"));assert.ok(types.includes("refunded"));
+ const day=(await pool.query("SELECT to_char(occurred_at AT TIME ZONE 'Asia/Bahrain','YYYY-MM-DD') AS d FROM refunds WHERE transaction_id=$1 ORDER BY occurred_at DESC LIMIT 1",[f.id])).rows[0].d as string;
+ const to=(await pool.query("SELECT to_char((to_date($1,'YYYY-MM-DD')+interval '1 day')::date,'YYYY-MM-DD') AS d",[day])).rows[0].d as string;
+ const report=await getReconciliationReport(pool,{merchantId:f.merchantId,from:day,to});
+ assert.equal(report.gapFils,0);assert.equal(report.explained,true);
+ const {ledgerMerchantPayableNetFils,settlementNetPayoutFils,pendingUnbatchedFils}=report;
+ if(pendingUnbatchedFils!==0){assert.equal(pendingUnbatchedFils,ledgerMerchantPayableNetFils);assert.equal(settlementNetPayoutFils,0);}else{assert.equal(ledgerMerchantPayableNetFils,0);assert.equal(settlementNetPayoutFils,0);assert.equal(pendingUnbatchedFils,0);}
+ const row=(await pool.query("SELECT * FROM outbox_events WHERE event_type='refund.succeeded' AND aggregate_id=$1 ORDER BY created_at DESC LIMIT 1",[f.id])).rows[0];assert.ok(row);
+ const env=buildEnvelope(randomUUID(),{eventType:row.event_type,aggregateId:row.aggregate_id,payload:row.payload,createdAt:row.created_at});
+ const {signature}=signPayload(env,"whsec_fork_refund_proof");assert.deepEqual(verifySignature(env,signature,"whsec_fork_refund_proof"),{valid:true});
 });
 test("refund webhook payload, API refunded total and Bahrain daily reporting are connected",async()=>{
  const f=await fixture();const r=await refund(f,1000);assert.equal(r.statusCode,200);

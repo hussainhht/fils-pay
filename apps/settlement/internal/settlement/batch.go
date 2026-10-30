@@ -225,15 +225,50 @@ func CloseBatch(ctx context.Context, db *pgxpool.Pool, merchantID uuid.UUID, bus
 		batchGross += grossForTxn
 		batchFee += feeForTxn
 	}
-	netPayout := NetPayableFils(batchGross, batchFee)
 
 	// Record this batch's contribution to the platform-wide lifetime
 	// processed-volume counter, in the same transaction that freezes this
 	// batch's own totals — so the counter and the batch it describes
-	// commit or roll back together.
+	// commit or roll back together. Capture gross only; refunds must not
+	// shrink platform volume.
 	if err := RecordPlatformProcessedVolume(ctx, tx, int64(batchGross)); err != nil {
 		return BatchResult{}, fmt.Errorf("settlement: CloseBatch: record platform volume: %w", err)
 	}
+
+	// Step 9: lock succeeded unbatched refunds in the same Bahrain window
+	// and subtract them from the batch totals about to be frozen. Stored
+	// fee_reversed_fils is used as-is — MDR is not recomputed on refunds.
+	refundRows, err := tx.Query(ctx, `
+		SELECT id, amount_fils, fee_reversed_fils
+		  FROM refunds
+		 WHERE status = 'succeeded'
+		   AND settlement_batch_id IS NULL
+		   AND merchant_id = $1
+		   AND occurred_at >= $2 AND occurred_at < $3
+		 FOR UPDATE
+	`, merchantID, start, end)
+	if err != nil {
+		return BatchResult{}, fmt.Errorf("settlement: CloseBatch: select eligible refunds: %w", err)
+	}
+	var refundIDs []uuid.UUID
+	for refundRows.Next() {
+		var refundID uuid.UUID
+		var amountFils, feeReversedFils int64
+		if err := refundRows.Scan(&refundID, &amountFils, &feeReversedFils); err != nil {
+			refundRows.Close()
+			return BatchResult{}, fmt.Errorf("settlement: CloseBatch: scan eligible refund: %w", err)
+		}
+		refundIDs = append(refundIDs, refundID)
+		batchGross -= money.Fils(amountFils)
+		batchFee -= money.Fils(feeReversedFils)
+	}
+	if err := refundRows.Err(); err != nil {
+		refundRows.Close()
+		return BatchResult{}, fmt.Errorf("settlement: CloseBatch: iterate eligible refunds: %w", err)
+	}
+	refundRows.Close()
+
+	netPayout := NetPayableFils(batchGross, batchFee)
 
 	// Step 10: freeze the batch totals.
 	_, err = tx.Exec(ctx, `
@@ -253,6 +288,15 @@ func CloseBatch(ctx context.Context, db *pgxpool.Pool, merchantID uuid.UUID, bus
 		`, eventIDs, batchID)
 		if err != nil {
 			return BatchResult{}, fmt.Errorf("settlement: CloseBatch: mark events batched: %w", err)
+		}
+	}
+
+	if len(refundIDs) > 0 {
+		_, err = tx.Exec(ctx, `
+			UPDATE refunds SET settlement_batch_id = $2 WHERE id = ANY($1)
+		`, refundIDs, batchID)
+		if err != nil {
+			return BatchResult{}, fmt.Errorf("settlement: CloseBatch: mark refunds batched: %w", err)
 		}
 	}
 
@@ -533,9 +577,8 @@ func recordMerchantBatchFailure(report *DailyBatchReport, merchantID, batchID uu
 
 // insertPayoutDisbursement records the bank-instruction row for a payout
 // in the same transaction as that payout's ledger movement. A non-positive
-// net has no disbursement. Uniqueness of settlement_batch_id is not
-// enforced here: migration 0057's index is not unique, and existing
-// duplicate rows are not reconciled by this insert.
+// net still inserts nothing. Uniqueness of settlement_batch_id is enforced
+// by migration 0083; ON CONFLICT DO NOTHING makes re-pay idempotent.
 func insertPayoutDisbursement(ctx context.Context, tx pgx.Tx, batchID uuid.UUID, netPayout int64) error {
 	if netPayout <= 0 {
 		return nil
@@ -543,6 +586,7 @@ func insertPayoutDisbursement(ctx context.Context, tx pgx.Tx, batchID uuid.UUID,
 	_, err := tx.Exec(ctx, `
 		INSERT INTO settlement_payout_disbursements (settlement_batch_id, amount_fils, disbursement_reference)
 		VALUES ($1, $2, 'disb_' || gen_random_uuid()::text)
+		ON CONFLICT (settlement_batch_id) DO NOTHING
 	`, batchID, netPayout)
 	return err
 }
