@@ -10,13 +10,6 @@ type Step =
   | { kind: "credentials" }
   | { kind: "otp"; challenge: AdminLoginResponse };
 
-/**
- * Two-step admin login: email + password creates a *pending* session
- * and issues an OTP challenge; the OTP step is what actually authenticates
- * it. Neither step is told which half of a bad credential pair was wrong —
- * the API answers a single generic `invalid_credentials`, and this screen
- * repeats it verbatim rather than guessing at something more specific.
- */
 export function LoginPage() {
   const { status, refresh } = useAdminAuth();
   const navigate = useNavigate();
@@ -44,6 +37,12 @@ export function LoginPage() {
     setError(null);
     try {
       const challenge = await login({ email, password });
+      if (!challenge.otpRequired) {
+        setPassword("");
+        await refresh();
+        navigate(redirectTo, { replace: true });
+        return;
+      }
       setStep({ kind: "otp", challenge });
       setPassword("");
       setUseRecovery(false);
@@ -110,18 +109,9 @@ export function LoginPage() {
         </form>
       ) : (
         <form onSubmit={(e) => void handleOtp(e)} className="admin-form">
-          {isTotp && <p>Enter the 6-digit code from Microsoft Authenticator or another standard authenticator app. Codes refresh every 30 seconds.</p>}
-          {!isTotp && <p>
-            A one-time code was issued for <strong>{email}</strong>. It expires at{" "}
-            {new Date(step.challenge.otpExpiresAt).toLocaleTimeString()}.
-          </p>}
-          {step.challenge.devOtpCode ? (
-            <p className="admin-muted">
-              Development code: <code>{step.challenge.devOtpCode}</code>
-            </p>
-          ) : null}
+          <p>Enter the 6-digit code from your authenticator app.</p>
           <label>
-            {useRecovery ? "Unused recovery code" : isTotp ? "Authenticator code" : "One-time code"}
+            {useRecovery ? "Unused recovery code" : "Authenticator code"}
             <input
               type="text"
               inputMode={useRecovery ? "text" : "numeric"}

@@ -23,7 +23,6 @@ export interface AuthenticatorRow {
 }
 
 export async function readAuthenticator(client: Pool | PoolClient, config: Config, plane: AuthPlane, userId: string, lock = false): Promise<AuthenticatorRow | null> {
-  if (!config.featureTotp) return null;
   const result = await client.query<AuthenticatorRow>(
     `SELECT * FROM ${authenticatorTables[plane].factors} WHERE user_id = $1${lock ? " FOR UPDATE" : ""}`, [userId],
   );

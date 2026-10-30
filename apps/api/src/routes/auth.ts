@@ -3,9 +3,8 @@ import { readAuthenticator, verifyAuthenticatorFactor } from "../auth/totp.js";
 import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, merchantAccountKey } from "../auth/loginLimits.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { verifyPassword } from "../auth/passwords.js";
-import { issueChallenge, verifyOtpCode } from "../auth/otp.js";
+import { issueChallenge } from "../auth/otp.js";
 import { requireDashboardIdentity, requireSession } from "../auth/middleware.js";
-import { sendOtpCode } from "../auth/notifier.js";
 import {
   createPendingSession,
   lookupPendingSession,
@@ -13,7 +12,7 @@ import {
   revokeSession,
 } from "../auth/sessions.js";
 import { withTransaction } from "../db/withTransaction.js";
-import { BadRequestError, GoneError, TooManyRequestsError, UnauthorizedError } from "../lib/errors.js";
+import { AppError, BadRequestError, GoneError, TooManyRequestsError, UnauthorizedError } from "../lib/errors.js";
 
 /**
  * A pre-computed argon2id hash of a fixed, never-used dummy password, at
@@ -45,12 +44,7 @@ interface MerchantUserRow {
   password_hash: string;
 }
 
-/**
- * Merchant login is two-step: POST /login checks merchantId+email+password
- * and issues a pending session cookie bound to an OTP challenge; POST
- * /otp/verify promotes it. A pending session authenticates nothing until
- * promoted.
- */
+/** Password sign-in requires an authenticator only for enrolled accounts. */
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   await app.register(authenticatorRoutes, { plane: "merchant" });
   /** POST /v1/auth/login — step 1. */
@@ -80,48 +74,34 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
 
     await clearLoginAttempt(app.db, attemptId);
-    const { code, expiresAt, rawToken, challengeId, verificationMethod } = await withTransaction(app.db, async (client) => {
+    const result = await withTransaction(app.db, async (client) => {
+      // Serialize with enrollment so a new factor cannot be bypassed by a concurrent login.
+      await client.query(`SELECT id FROM merchant_users WHERE id = $1 FOR UPDATE`, [user.id]);
+      const factor = await readAuthenticator(client, app.config, "merchant", user.id, true);
+      if (factor?.enabled_at && !app.config.featureTotp) throw new AppError(503, "authenticator_unavailable");
+      if (!factor?.enabled_at) {
+        const pending = await createPendingSession(client, { merchantUserId: user.id, otpChallengeId: null,
+          ttlMinutes: app.config.pendingSessionTtlMinutes, ipAddress: request.ip,
+          userAgent: (request.headers["user-agent"] as string | undefined) ?? null });
+        const session = await promoteSession(client, pending.id, app.config.sessionTtlHours);
+        return { session, otpRequired: false as const };
+      }
       await assertChallengeAllowed(client, reply, app.config, { plane: "merchant", userId: user.id });
-      const challenge = await issueChallenge(client, {
-        merchantUserId: user.id,
-        ttlMinutes: app.config.otpTtlMinutes,
-        codeLength: app.config.otpCodeLength,
-        maxAttempts: app.config.otpMaxAttempts,
-      });
-      const session = await createPendingSession(client, {
-        merchantUserId: user.id,
-        otpChallengeId: challenge.id,
-        ttlMinutes: app.config.pendingSessionTtlMinutes,
-        ipAddress: request.ip,
-        userAgent: (request.headers["user-agent"] as string | undefined) ?? null,
-      });
-      const factor = await readAuthenticator(client, app.config, "merchant", user.id);
-      return { code: challenge.code, expiresAt: challenge.expiresAt, rawToken: session.rawToken, challengeId: challenge.id,
-        verificationMethod: factor?.enabled_at ? "totp" as const : "email" as const };
+      const challenge = await issueChallenge(client, { merchantUserId: user.id, ttlMinutes: app.config.otpTtlMinutes,
+        codeLength: app.config.otpCodeLength, maxAttempts: app.config.otpMaxAttempts });
+      const session = await createPendingSession(client, { merchantUserId: user.id, otpChallengeId: challenge.id,
+        ttlMinutes: app.config.pendingSessionTtlMinutes, ipAddress: request.ip,
+        userAgent: (request.headers["user-agent"] as string | undefined) ?? null });
+      return { session, otpRequired: true as const, expiresAt: challenge.expiresAt };
     });
 
-    if (verificationMethod === "email") {
-      await sendOtpCode(request.log, app.config, { merchantUserId: user.id, email: user.email }, { id: challengeId, code, expiresAt });
-    }
-
-    reply.setCookie(app.config.cookieName, rawToken, {
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax",
-      secure: app.config.cookieSecure,
-      maxAge: app.config.pendingSessionTtlMinutes * 60,
+    reply.setCookie(app.config.cookieName, result.session.rawToken, {
+      httpOnly: true, path: "/", sameSite: "lax", secure: app.config.cookieSecure,
+      maxAge: result.otpRequired ? app.config.pendingSessionTtlMinutes * 60 : app.config.sessionTtlHours * 3_600,
     });
-
-    const responseBody: Record<string, unknown> = {
-      otpRequired: true,
-      verificationMethod,
-      otpExpiresAt: expiresAt.toISOString(),
-    };
-    // Development exposure is guarded at both configuration and response boundaries.
-    if (verificationMethod === "email" && app.config.nodeEnv !== "production" && app.config.otpDevExpose) {
-      responseBody.devOtpCode = code;
-    }
-    reply.code(200).send(responseBody);
+    reply.code(200).send(result.otpRequired
+      ? { otpRequired: true, verificationMethod: "totp", otpExpiresAt: result.expiresAt.toISOString() }
+      : { otpRequired: false, authenticated: true });
   });
 
   app.post<{ Body: OtpVerifyBody }>(
@@ -163,7 +143,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           return { error: new TooManyRequestsError("too_many_attempts") } as const;
         }
         const factorValid = await verifyAuthenticatorFactor(client, app.config, "merchant", pending.merchantUserId, code);
-        if (!(factorValid ?? verifyOtpCode(code, challenge.code_salt, challenge.code_hash))) {
+        if (factorValid !== true) {
           await client.query(`UPDATE otp_challenges SET attempt_count = attempt_count + 1 WHERE id = $1`, [challenge.id]);
           // Return the failure so the attempt increment commits before the
           // HTTP error is thrown outside the transaction.
@@ -196,77 +176,6 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       });
     },
   );
-
-  /**
-   * Re-issues the OTP for a pending session. Throttled to one per 30s. The
-   * new challenge inherits the previous challenge's attempt_count so a
-   * resend never resets the guess budget.
-   */
-  app.post("/otp/resend", async (request: FastifyRequest, reply: FastifyReply) => {
-    const rawToken = request.cookies[app.config.cookieName];
-    if (!rawToken) {
-      throw new UnauthorizedError("no_pending_session");
-    }
-    const resend = await withTransaction(app.db, async (client) => {
-      const pending = await lookupPendingSession(client, rawToken, true);
-      if (!pending || !pending.otpChallengeId) throw new UnauthorizedError("no_pending_session");
-      if ((await readAuthenticator(client, app.config, "merchant", pending.merchantUserId))?.enabled_at) {
-        throw new BadRequestError("authenticator_code_required", "Use your authenticator or an unused recovery code.");
-      }
-      const existing = await client.query<{
-        id: string; created_at: Date; attempt_count: number; max_attempts: number;
-        consumed_at: Date | null; expires_at: Date;
-      }>(
-        `SELECT id, created_at, attempt_count, max_attempts, consumed_at, expires_at
-           FROM otp_challenges WHERE id = $1 FOR UPDATE`,
-        [pending.otpChallengeId],
-      );
-      const existingChallenge = existing.rows[0];
-      // An expired code can be replaced while the pending session remains
-      // valid; resend must still carry its attempts rather than reset them.
-      if (!existingChallenge || existingChallenge.consumed_at !== null) {
-        throw new GoneError("otp_expired");
-      }
-      if (existingChallenge.attempt_count >= existingChallenge.max_attempts) {
-        await revokeSession(client, pending.sessionId);
-        return { error: new TooManyRequestsError("too_many_attempts") } as const;
-      }
-      if (Date.now() - existingChallenge.created_at.getTime() < 30_000) {
-        reply.header("Retry-After", "30");
-        throw new TooManyRequestsError("resend_too_soon");
-      }
-      await assertChallengeAllowed(client, reply, app.config, { plane: "merchant", userId: pending.merchantUserId });
-      await client.query(`UPDATE otp_challenges SET consumed_at = now() WHERE id = $1`, [existingChallenge.id]);
-      const challenge = await issueChallenge(client, {
-        merchantUserId: pending.merchantUserId,
-        ttlMinutes: app.config.otpTtlMinutes,
-        codeLength: app.config.otpCodeLength,
-        maxAttempts: existingChallenge.max_attempts,
-        attemptCount: existingChallenge.attempt_count,
-      });
-      await client.query(`UPDATE otp_challenges SET attempt_count = $2 WHERE id = $1`, [challenge.id, existingChallenge.attempt_count]);
-      await client.query(`UPDATE sessions SET otp_challenge_id = $1 WHERE id = $2`, [
-        challenge.id,
-        pending.sessionId,
-      ]);
-      const user = await client.query<{ email: string }>(`SELECT email FROM merchant_users WHERE id = $1`, [pending.merchantUserId]);
-      return { challenge, pending, email: user.rows[0]?.email ?? "" } as const;
-    });
-    if ("error" in resend) throw resend.error;
-    const { code, expiresAt } = resend.challenge;
-    await sendOtpCode(
-      request.log,
-      app.config,
-      { merchantUserId: resend.pending.merchantUserId, email: resend.email },
-      resend.challenge,
-    );
-
-    const responseBody: Record<string, unknown> = { otpRequired: true, otpExpiresAt: expiresAt.toISOString() };
-    if (app.config.nodeEnv !== "production" && app.config.otpDevExpose) {
-      responseBody.devOtpCode = code;
-    }
-    reply.code(200).send(responseBody);
-  });
 
   app.get(
     "/me",

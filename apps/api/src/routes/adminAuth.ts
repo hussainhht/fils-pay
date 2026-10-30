@@ -3,8 +3,7 @@ import { readAuthenticator, verifyAuthenticatorFactor } from "../auth/totp.js";
 import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, adminAccountKey } from "../auth/loginLimits.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { verifyPassword } from "../adminAuth/passwords.js";
-import { issueAdminChallenge, verifyOtpCode } from "../adminAuth/otp.js";
-import { sendAdminOtpCode } from "../adminAuth/notifier.js";
+import { issueAdminChallenge } from "../adminAuth/otp.js";
 import { requireAdminSession } from "../adminAuth/middleware.js";
 import {
   createPendingAdminSession,
@@ -15,7 +14,7 @@ import {
 } from "../adminAuth/sessions.js";
 import { withTransaction } from "../db/withTransaction.js";
 import { endImpersonation } from "../admin/impersonation.js";
-import { BadRequestError, GoneError, NotFoundError, TooManyRequestsError, UnauthorizedError } from "../lib/errors.js";
+import { AppError, BadRequestError, GoneError, NotFoundError, TooManyRequestsError, UnauthorizedError } from "../lib/errors.js";
 
 /**
  * A pre-computed argon2id hash of a fixed, never-used dummy password, at the
@@ -43,17 +42,7 @@ interface AdminUserRow {
   password_hash: string;
 }
 
-/**
- * Registered with prefix '/v1/admin/auth'. Structurally identical to the
- * merchant login (password -> OTP -> authenticated session), with one
- * simplification the schema makes possible: `admin_users.email` is globally
- * unique, so unlike merchant login there is no tenant id to disambiguate
- * with — the lookup is unambiguous by construction.
- *
- * Admin login requires OTP deliberately: this is the plane where the most
- * dangerous operations live, so it must not have a weaker login factor than
- * an ordinary merchant dashboard user.
- */
+/** Password sign-in requires an authenticator only for enrolled accounts. */
 export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
   await app.register(authenticatorRoutes, { plane: "admin" });
   app.post<{ Body: LoginBody }>("/login", async (request, reply) => {
@@ -78,47 +67,34 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
     }
 
     await clearLoginAttempt(app.db, attemptId);
-    const { code, expiresAt, rawToken, challengeId, verificationMethod } = await withTransaction(app.db, async (client) => {
+    const result = await withTransaction(app.db, async (client) => {
+      // Serialize with enrollment so a new factor cannot be bypassed by a concurrent login.
+      await client.query(`SELECT id FROM admin_users WHERE id = $1 FOR UPDATE`, [user.id]);
+      const factor = await readAuthenticator(client, app.config, "admin", user.id, true);
+      if (factor?.enabled_at && !app.config.featureTotp) throw new AppError(503, "authenticator_unavailable");
+      if (!factor?.enabled_at) {
+        const pending = await createPendingAdminSession(client, { adminUserId: user.id, otpChallengeId: null,
+          ttlMinutes: app.config.adminPendingSessionTtlMinutes, ipAddress: request.ip,
+          userAgent: (request.headers["user-agent"] as string | undefined) ?? null });
+        const session = await promoteAdminSession(client, pending.id, app.config.adminSessionTtlHours);
+        return { session, otpRequired: false as const };
+      }
       await assertChallengeAllowed(client, reply, app.config, { plane: "admin", userId: user.id });
-      const challenge = await issueAdminChallenge(client, {
-        adminUserId: user.id,
-        ttlMinutes: app.config.adminOtpTtlMinutes,
-        codeLength: app.config.adminOtpCodeLength,
-        maxAttempts: app.config.adminOtpMaxAttempts,
-      });
-      const session = await createPendingAdminSession(client, {
-        adminUserId: user.id,
-        otpChallengeId: challenge.id,
-        ttlMinutes: app.config.adminPendingSessionTtlMinutes,
-        ipAddress: request.ip,
-        userAgent: (request.headers["user-agent"] as string | undefined) ?? null,
-      });
-      const factor = await readAuthenticator(client, app.config, "admin", user.id);
-      return { code: challenge.code, expiresAt: challenge.expiresAt, rawToken: session.rawToken, challengeId: challenge.id,
-        verificationMethod: factor?.enabled_at ? "totp" as const : "email" as const };
+      const challenge = await issueAdminChallenge(client, { adminUserId: user.id, ttlMinutes: app.config.adminOtpTtlMinutes,
+        codeLength: app.config.adminOtpCodeLength, maxAttempts: app.config.adminOtpMaxAttempts });
+      const session = await createPendingAdminSession(client, { adminUserId: user.id, otpChallengeId: challenge.id,
+        ttlMinutes: app.config.adminPendingSessionTtlMinutes, ipAddress: request.ip,
+        userAgent: (request.headers["user-agent"] as string | undefined) ?? null });
+      return { session, otpRequired: true as const, expiresAt: challenge.expiresAt };
     });
 
-    if (verificationMethod === "email") {
-      await sendAdminOtpCode(request.log, app.config, { adminUserId: user.id, email: user.email }, { id: challengeId, code, expiresAt });
-    }
-
-    reply.setCookie(app.config.adminCookieName, rawToken, {
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax",
-      secure: app.config.cookieSecure,
-      maxAge: app.config.adminPendingSessionTtlMinutes * 60,
+    reply.setCookie(app.config.adminCookieName, result.session.rawToken, {
+      httpOnly: true, path: "/", sameSite: "lax", secure: app.config.cookieSecure,
+      maxAge: result.otpRequired ? app.config.adminPendingSessionTtlMinutes * 60 : app.config.adminSessionTtlHours * 3_600,
     });
-
-    const responseBody: Record<string, unknown> = {
-      otpRequired: true,
-      verificationMethod,
-      otpExpiresAt: expiresAt.toISOString(),
-    };
-    if (verificationMethod === "email" && app.config.nodeEnv !== "production" && app.config.otpDevExpose) {
-      responseBody.devOtpCode = code;
-    }
-    reply.code(200).send(responseBody);
+    reply.code(200).send(result.otpRequired
+      ? { otpRequired: true, verificationMethod: "totp", otpExpiresAt: result.expiresAt.toISOString() }
+      : { otpRequired: false, authenticated: true });
   });
 
   app.post<{ Body: OtpVerifyBody }>("/otp/verify", async (request, reply) => {
@@ -156,7 +132,7 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
         return { error: new TooManyRequestsError("too_many_attempts") } as const;
       }
       const factorValid = await verifyAuthenticatorFactor(client, app.config, "admin", pending.adminUserId, code);
-      if (!(factorValid ?? verifyOtpCode(code, challenge.code_salt, challenge.code_hash))) {
+      if (factorValid !== true) {
         await client.query(`UPDATE admin_otp_challenges SET attempt_count = attempt_count + 1 WHERE id = $1`, [challenge.id]);
         return { error: new UnauthorizedError("invalid_code") } as const;
       }

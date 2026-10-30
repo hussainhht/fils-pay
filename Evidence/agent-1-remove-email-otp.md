@@ -1,0 +1,13 @@
+﻿# Email OTP removal
+
+- Baseline HEAD: `18ab7ca37a99aac28b4ebd1f4d9c1a2960dda970`. The worktree was clean at the initial status check; `.api-run.log` changed externally during the task and was left untouched.
+- Environment: Windows, Node 22.19.0, npm 10.9.3, Go 1.24.2. Docker command unavailable, `DATABASE_URL` unset, `ops/.env.docker` absent; no Postgres connection, migration, seed, service start or live payment attempted.
+- User requested removing email OTP in both login planes while keeping authenticator codes, explicitly allowing password-only login for unenrolled accounts. Before: email challenge required when no authenticator existed. After: password-only session for unenrolled users; enrolled users need authenticator/recovery verification. Old email challenges cannot authenticate; disabled TOTP fails closed for existing enrollment. Login and enrollment serialize on the user row. Migration 0085 must be applied before running this version, even with TOTP disabled.
+- Changed login handlers, session parameter types, factor lookup, enrollment locking, configuration defaults, portal login pages and types, and the merchant auth client. Added `apps/api/src/routes/passwordAuthenticator.new.test.ts`; updated `ops/README.md` and relevant context documents.
+- `npx.cmd tsx --test apps/api/src/routes/passwordAuthenticator.new.test.ts`: 6 pass, mocked database with real handlers and crypto. Baseline failure was not separately run. Does not verify actual Postgres locks.
+- `npm.cmd run typecheck`: passed after the code changes. `git diff --check`: passed.
+- `npm.cmd run test -w @filspay/web`: 67 pass. `npm.cmd run test -w @filspay/admin`: no test script.
+- `npx.cmd tsx --test apps/api/src/routes/otpDelivery.new.test.ts`: 2 pass, 25 fail because tests assume removed email OTP or use email OTP to establish authenticator fixtures. Their authenticator security coverage needs to be ported; tests were not skipped or weakened.
+- `npm.cmd run test -w @filspay/api`: attempted; database-dependent files failed because DATABASE_URL was unset; interrupted after repeated missing-database failures, so no complete suite result.
+- Runtime, database migration, auth concurrency, real authenticator app/browser flows, tenant and role separation, and end-to-end payment flows were not verified. Existing email OTP-dependent tests and Postgres integration tests must be updated and rerun before the change is considered verified.
+- Bug registry: no BUG-001 through BUG-086 status changes; this is a requested policy change rather than a confirmed registry defect. Historical PMA-01 email delivery no longer applies to sign-in. ADR 0003/0004/0006 and HANDOVER conflicts remain open human questions.

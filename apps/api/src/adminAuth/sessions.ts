@@ -27,7 +27,7 @@ export async function createPendingAdminSession(
   client: PoolClient,
   params: {
     adminUserId: string;
-    otpChallengeId: string;
+    otpChallengeId: string | null;
     ttlMinutes: number;
     ipAddress?: string | null;
     userAgent?: string | null;

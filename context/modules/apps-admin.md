@@ -1,5 +1,10 @@
 # Module: `apps/admin` (Operations Console)
 
+## Sign-in update (2026-10-30)
+
+Password-only login is allowed before authenticator enrollment; enrolled users enter authenticator or recovery codes. Earlier mandatory email OTP descriptions below are superseded.
+
+
 > **Scope:** Architecture, administrative routing, KYC review workflows, two-person credit approvals, balance adjustments, and settlement triggers.
 
 ---

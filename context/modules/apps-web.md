@@ -1,5 +1,10 @@
 # Module: `apps/web` (Merchant Portal & Hosted Checkout)
 
+## Sign-in update (2026-10-30)
+
+Password-only login is allowed before authenticator enrollment; enrolled users enter authenticator or recovery codes. Email OTP and resend UI are removed. Earlier two-step descriptions below are superseded.
+
+
 > **Scope:** Architecture, page components, routing, authentication flows, hosted checkout, and API client for the merchant frontend.
 
 ---

@@ -54,10 +54,9 @@ export type MerchantRole = "owner" | "finance" | "support";
 
 export interface DashboardLoginResponse {
   otpRequired: boolean;
-  verificationMethod?: "email" | "totp";
-  otpExpiresAt: string;
+  verificationMethod?: "totp";
+  otpExpiresAt?: string;
   /** Present only when config.otpDevExpose is on — never in production. */
-  devOtpCode?: string;
 }
 
 export interface DashboardOtpVerifyResponse {

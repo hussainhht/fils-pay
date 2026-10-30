@@ -1,5 +1,10 @@
 # Context System Changelog — FilsPay
 
+## 2026-10-30 ? Remove email OTP from login
+
+- Baseline `18ab7ca37a99aac28b4ebd1f4d9c1a2960dda970`: both planes now allow password-only login before authenticator enrollment and require authenticator or recovery codes once enrolled. Email resend and verification are removed; migration 0085 is mandatory. Updated auth, API, frontend, dependencies, testing and known-issues context. See `Evidence/agent-1-remove-email-otp.md` for results and limits.
+
+
 ## 2026-10-30 — Capacity execution retry
 
 - HEAD `616d29be71202b88fac03e44ed9e04213caa4f7b`: Docker still unavailable; capped runtime measurement could not start. Existing localhost data/services were not used.

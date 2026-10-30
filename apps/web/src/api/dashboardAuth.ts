@@ -13,10 +13,8 @@ import type {
  *
  * `login` requires an explicit `merchantId` because merchant_users.email is
  * unique *per merchant*, not globally, so an email alone cannot identify a
- * user. A success here only creates a *pending* session; nothing is
- * authenticated until `verifyOtp`.
+ * user. Enrolled accounts require a separate authenticator verification.
  */
-/** Step 1 of 2. The session is pending until verifyOtp succeeds. */
 export function login(input: {
   merchantId: string;
   email: string;
@@ -25,16 +23,8 @@ export function login(input: {
   return request("/v1/auth/login", { method: "POST", body: JSON.stringify(input) });
 }
 
-// MK: devOtpCode only shows up when NODE_ENV != production
 export function verifyOtp(input: { code: string }): Promise<DashboardOtpVerifyResponse> {
   return request("/v1/auth/otp/verify", { method: "POST", body: JSON.stringify(input) });
-}
-
-/** Answers `200` with a fresh challenge (and `devOtpCode` in dev), or `429
- *  resend_too_soon` — the server owns the cadence rule, so there is
- *  deliberately no client-side timer duplicating it. */
-export function resendOtp(): Promise<DashboardLoginResponse> {
-  return request("/v1/auth/otp/resend", { method: "POST" });
 }
 
 /** `204`. */

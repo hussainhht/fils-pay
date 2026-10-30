@@ -1,5 +1,10 @@
 # Module: `apps/api` (Fastify Gateway & Application Backend)
 
+## Authentication policy update (2026-10-30)
+
+Login authenticates unenrolled users after password verification and requires authenticator/recovery verification for enrolled users. Email challenge delivery/resend is removed from login. Migration 0085 is required even with the feature disabled to detect enrolled users. See `context/AUTH_AND_SECURITY.md`.
+
+
 > **Scope:** Architecture, routes, controllers, middleware, plugins, acquirer simulator, and webhook dispatcher for the primary REST API service.
 
 ---

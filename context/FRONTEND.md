@@ -1,5 +1,10 @@
 # Frontend Architecture & UI Reference — FilsPay
 
+## Current sign-in (2026-10-30)
+
+Both portals navigate after password sign-in for unenrolled accounts. Enrolled accounts see authenticator/recovery-code entry; email code and resend UI are removed. This supersedes older sign-in descriptions below.
+
+
 > **Scope:** Architecture, page hierarchies, component design, proxy configuration, formatting rules, and UI state management for `apps/web` and `apps/admin`.
 
 ---

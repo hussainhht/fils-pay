@@ -25,10 +25,9 @@ export type AdminRole = "support" | "finance" | "super_admin";
 /** `POST /v1/admin/auth/login` → `200 { otpRequired: true, otpExpiresAt, devOtpCode? }`. */
 export interface AdminLoginResponse {
   otpRequired: boolean;
-  verificationMethod?: "email" | "totp";
-  otpExpiresAt: string;
+  verificationMethod?: "totp";
+  otpExpiresAt?: string;
   /** Dev-only convenience, gated server-side the same way merchant login gates it. */
-  devOtpCode?: string;
 }
 
 /** `POST /v1/admin/auth/otp/verify` → `200 { authenticated: true, adminUserId, role }`. */

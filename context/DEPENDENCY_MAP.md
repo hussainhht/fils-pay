@@ -1,5 +1,10 @@
 # Dependency Map & Blast Radius Matrix — FilsPay
 
+## Login dependency update (2026-10-30)
+
+Both login planes query authenticator tables even if FEATURE_TOTP is disabled, so migration 0085 is required. Email delivery is no longer a login dependency. Enrollment confirmation and login serialize via user-row locks; existing session and factor locks still apply. The earlier OTP delivery dependency section is historical.
+
+
 > **Scope:** Inter-workspace dependencies, database producer/consumer relationships, outbox pub/sub topologies, and change blast-radius analysis.
 
 ---

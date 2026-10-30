@@ -1,5 +1,10 @@
 # Authentication & Security Architecture — FilsPay
 
+## Current login policy (2026-10-30)
+
+Merchant and admin accounts without an enrolled authenticator receive an authenticated session after password verification. Enrolled accounts require an authenticator or unused recovery code; disabling FEATURE_TOTP does not bypass an enrolled factor and returns 503. Email OTP delivery and resend are no longer part of login; old email challenges cannot promote sessions. Authenticator setup requires a full session and fresh password, with existing factor proof for replacement. Both authenticator tables (migration 0085) must exist even when FEATURE_TOTP is disabled. This policy supersedes the earlier email-bootstrap and mandatory-MFA descriptions below.
+
+
 > **Scope:** Merchant and administrative authentication lifecycles, session tokens, OTP verification, RBAC, tenant isolation, impersonation constraints, and cryptographic operations.
 
 ---

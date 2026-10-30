@@ -1,5 +1,10 @@
 # HTTP API Reference — FilsPay Gateway & Internal RPC
 
+## Current login responses (2026-10-30)
+
+Both login endpoints return `otpRequired: false, authenticated: true` for accounts without an enrolled authenticator, or `otpRequired: true, verificationMethod: "totp", otpExpiresAt` with a pending cookie for enrolled accounts. `/otp/verify` accepts only authenticator or recovery codes. Merchant `/otp/resend` is removed. Authenticator enrollment is available after password-only login; see the security context. These statements supersede older email OTP descriptions below.
+
+
 > **Scope:** REST API endpoints, partner interfaces, public checkout routes, admin operations, internal settlement RPC, headers, and error handling.
 
 ---

@@ -204,12 +204,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error("loadConfig: FEATURE_TOTP requires TOTP_SECRET_ENCRYPTION_KEY (base64, exactly 32 bytes)");
   }
 
-  const otpTransport = env.OTP_DELIVERY_TRANSPORT ?? (nodeEnv === "production" ? "resend" : "development");
+  const otpTransport = env.OTP_DELIVERY_TRANSPORT ?? "disabled";
   if (otpTransport !== "development" && otpTransport !== "resend" && otpTransport !== "disabled") {
     throw new Error("loadConfig: OTP_DELIVERY_TRANSPORT must be development, resend or disabled");
   }
-  if (nodeEnv === "production" && otpTransport !== "resend" && !(featureTotp && otpTransport === "disabled")) {
-    throw new Error("loadConfig: production requires OTP_DELIVERY_TRANSPORT=resend, or disabled with FEATURE_TOTP");
+  if (nodeEnv === "production" && otpTransport === "development") {
+    throw new Error("loadConfig: production does not permit development OTP delivery");
   }
   if (nodeEnv === "production" && parseBoolEnv(env.OTP_DEV_EXPOSE, false)) {
     throw new Error("loadConfig: OTP_DEV_EXPOSE cannot be enabled in production");

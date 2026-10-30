@@ -100,6 +100,7 @@ export async function authenticatorRoutes(app: FastifyInstance, options: { plane
     if (typeof enrollmentId !== "string" || typeof code !== "string" || !/^\d{6}$/.test(code)) throw new BadRequestError("invalid_request");
     const confirmed = await withTransaction(app.db, async (client) => {
       await lockTrustedSessions(client, userId, sessionId, true);
+      await client.query(`SELECT id FROM ${tables.users} WHERE id = $1 FOR UPDATE`, [userId]);
       const row = await readAuthenticator(client, app.config, plane, userId, true);
       if (!row?.pending_ciphertext || row.pending_id !== enrollmentId || row.pending_session_id !== sessionId ||
           !row.pending_expires_at || row.pending_expires_at.getTime() <= Date.now()) throw new GoneError("enrollment_expired");

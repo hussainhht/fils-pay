@@ -1,5 +1,10 @@
 # Master Bug & Known Issues Registry — FilsPay
 
+## Login policy change (2026-10-30)
+
+Email OTP delivery is intentionally removed from sign-in; prior PMA-01 delivery verification is no longer applicable to login. Existing tests that require email OTP reflect the previous policy and must be updated; Postgres-backed authentication and concurrency are not verified in this environment. No BUG registry status is changed by this feature request.
+
+
 > **Scope:** Consolidated tracking registry of all 86 documented bugs (`BUG-001` through `BUG-086`), current remediation status, priority ratings, root causes, and verification state.
 
 ---

@@ -100,45 +100,14 @@ tables and cascading dependents; fixture data is not safe for shared databases.
 
 ## Images and environment
 
-### OTP email delivery (PMA-01)
+### Login and authenticator configuration
 
-Merchant/admin login emails use the stored user email after password verification.
-There is no SMS/phone identity path. Both flows share a Resend HTTPS adapter,
-using Node's built-in fetch with no new package or service. Merchant resend uses
-the same adapter; admin has no resend endpoint in the existing API.
-
-In production, supply these settings through your deployment secret configuration
-(never commit a populated env file):
-
-| Name | Requirement |
-|---|---|
-| `NODE_ENV` | `production` |
-| `OTP_DELIVERY_TRANSPORT` | `resend` (production default); `disabled` is permitted only with FEATURE_TOTP in production, and rejects email delivery |
-| `OTP_EMAIL_FROM` | Single bare sender email address on a verified Resend domain |
-| `OTP_RESEND_API_KEY` | Resend API key authorized to send for that domain |
-| `OTP_DELIVERY_TIMEOUT_MS` | Integer 100-30000 ms; default 5000 |
-| `OTP_DEV_EXPOSE` | Unset/false in production; true/1 makes startup fail |
-
-Production email mode fails before DB connection if delivery configuration is missing.
-The local setup script still generates only development settings. Local/test
-defaults send nothing and log metadata only; existing `devOtpCode` responses
-remain available outside production. No raw codes are logged in any environment.
-
-Submission occurs after the challenge/session transaction commits. Login only
-sets its pending cookie after provider acceptance; a provider error/timeout gives
-503 `otp_delivery_unavailable` without exposing upstream details. Provider
-acceptance means queued, not inbox delivery. There is no automatic send retry;
-the provider idempotency key is scoped to plane and challenge. A timed-out send
-may still arrive. After a failed login, retry login within existing challenge-rate
-limits. Merchant resend keeps its 30-second cooldown and inherited guess budget,
-including after failed sends; a new resend replaces the previous code. Failed
-login challenges/sessions expire normally and still count toward issuance limits.
-
-Before public sign-off, authorize a controlled test destination for each plane,
-verify sender/domain credentials, deliver both codes and complete both logins.
-Inspect delivery/bounce status in the provider dashboard. Do not enable
-development exposure as a fallback. Real delivery remains unverified until that
-test is performed; automated tests use mocks and never send mail.
+Merchant and admin accounts sign in with a password until an authenticator is
+activated. Enrolled accounts require an authenticator or recovery code. Email
+OTP is no longer sent or accepted for sign-in. `OTP_DELIVERY_TRANSPORT` defaults
+to `disabled`; a configured Resend adapter is unused by login. Apply migration
+0085 even when the authenticator feature is disabled, so login can detect an
+existing enrollment and fail closed if the feature is unavailable.
 
 ### Microsoft Authenticator / standard TOTP
 
@@ -151,16 +120,11 @@ key without first re-encrypting stored authenticator secrets under a reviewed
 rotation procedure. Losing it can lock out authenticator verification. No key is
 generated or stored in source/config templates by this implementation.
 
-With email bootstrap, retain the Resend settings above. For an explicitly
-TOTP-only deployment use `OTP_DELIVERY_TRANSPORT=disabled`; no email provider is
-then required. **Unenrolled accounts cannot complete a new login in that mode.**
-Enroll them through a trusted existing MFA-authenticated session plus fresh
-password verification, or first restore authorized email delivery and complete
-the existing password + email OTP journey. No password-only bootstrap, API-key
-bootstrap, impersonation bootstrap, or administrator-created MFA bypass exists.
-If no trusted session or recovery factor exists, identity verification and an
-approved recovery process are required outside this implementation. Do not edit
-the database to mark a pending session authenticated.
+Sign in using your password to enroll an authenticator. Enrolled users must
+continue using their authenticator or a recovery code. If an enrolled user has
+lost all factors, identity verification and an approved recovery process are
+required outside this implementation. Do not edit the database to authenticate
+a pending session.
 
 Open **Account security** at `/dashboard/security` (merchant) or `/security`
 (admin). Select **Other account** in Microsoft Authenticator and scan the local

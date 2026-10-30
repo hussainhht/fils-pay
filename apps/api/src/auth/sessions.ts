@@ -17,7 +17,7 @@ export async function createPendingSession(
   client: PoolClient,
   params: {
     merchantUserId: string;
-    otpChallengeId: string;
+    otpChallengeId: string | null;
     ttlMinutes: number;
     ipAddress?: string | null;
     userAgent?: string | null;
@@ -71,7 +71,7 @@ export async function revokeSession(client: PoolClient | Pool, sessionId: string
   await client.query(`UPDATE sessions SET revoked_at = now() WHERE id = $1`, [sessionId]);
 }
 
-/** Only ever returned for a session that completed OTP verification. */
+/** Only returned for an authenticated session. */
 export interface AuthenticatedSessionLookup {
   sessionId: string;
   merchantUserId: string;

@@ -1,5 +1,10 @@
 # Testing Strategy & Verification Guidelines — FilsPay
 
+## Password and authenticator login (2026-10-30)
+
+`apps/api/src/routes/passwordAuthenticator.new.test.ts` uses in-memory DB responses and real HTTP handlers/crypto: six tests pass covering each plane's password bootstrap, enrollment, recovery sign-in, rejection of old email challenges and fail-closed disabled authenticator. Postgres concurrency and real browser sign-in remain unverified. Older email OTP tests require revision to reflect the requested policy; see `Evidence/agent-1-remove-email-otp.md`.
+
+
 > **Scope:** Test suites, test runners, execution environments, database prerequisites, regression standards, and command references.
 
 ---

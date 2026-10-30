@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { login, resendOtp, verifyOtp } from "../../api/dashboardAuth.js";
+import { login, verifyOtp } from "../../api/dashboardAuth.js";
 import { ApiError, describeError } from "../../api/client.js";
 import {
   readLastMerchantId,
@@ -13,22 +13,6 @@ import { Brand } from "../../../../ui/Brand.js";
 
 type Step = { kind: "credentials" } | { kind: "otp"; challenge: DashboardLoginResponse };
 
-/**
- * Two-step merchant login: merchantId + email + password
- * creates a *pending* session and issues an OTP challenge; the OTP step is
- * what actually authenticates it. Neither step is told which credential was
- * wrong — the API answers a single generic `invalid_credentials`, and this
- * screen repeats it verbatim rather than guessing at something more specific.
- *
- * The Merchant ID field is a raw pasted UUID. This is a genuine rough edge,
- * not a preference: `merchant_users.email` is unique per merchant rather than
- * globally (Phase 1 schema), so an email alone cannot identify a user, and no
- * merchant slug or subdomain concept exists anywhere in the platform to infer
- * the id from. `localStorage` remembering the last-used value is the whole
- * mitigation available without new backend work; a lookup-by-email endpoint
- * or a per-merchant subdomain would be the real fix, and both are out of
- * scope for a frontend-only phase.
- */
 export function LoginPage() {
   const { status, refresh } = useDashboardAuth();
   const navigate = useNavigate();
@@ -44,7 +28,6 @@ export function LoginPage() {
   const isTotp = step.kind === "otp" && step.challenge.verificationMethod === "totp";
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? "/dashboard/transactions";
 
@@ -62,9 +45,15 @@ export function LoginPage() {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
-    setNotice(null);
     try {
       const challenge = await login({ merchantId: merchantId.trim(), email, password });
+      if (!challenge.otpRequired) {
+        writeLastMerchantId(merchantId.trim());
+        setPassword("");
+        await refresh();
+        navigate(redirectTo, { replace: true });
+        return;
+      }
       setStep({ kind: "otp", challenge });
       setPassword("");
       setUseRecovery(false);
@@ -81,7 +70,6 @@ export function LoginPage() {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
-    setNotice(null);
     try {
       await verifyOtp({ code });
       writeLastMerchantId(merchantId.trim());
@@ -104,25 +92,6 @@ export function LoginPage() {
     }
   }
 
-  async function handleResend(): Promise<void> {
-    setSubmitting(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const challenge = await resendOtp();
-      setStep({ kind: "otp", challenge });
-      setCode("");
-      setNotice("A new code has been sent.");
-    } catch (err) {
-      // Includes `429 resend_too_soon` — the server owns the cadence rule, so
-      // whatever it says is shown as-is rather than pre-empted by a
-      // client-side timer that could drift from it.
-      setError(describeError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
   return (
     <main className="dash-centered">
       <Brand />
@@ -131,7 +100,6 @@ export function LoginPage() {
       <p className="dash-muted">{step.kind === "credentials" ? "Enter your merchant account details to continue." : "Enter the one-time code for your account."}</p>
 
       {error ? <p className="dash-error" role="alert">{error}</p> : null}
-      {notice ? <p className="dash-notice" role="status">{notice}</p> : null}
 
       {step.kind === "credentials" ? (
         <form onSubmit={(e) => void handleCredentials(e)} className="dash-form">
@@ -177,14 +145,9 @@ export function LoginPage() {
         </form>
       ) : (
         <form onSubmit={(e) => void handleOtp(e)} className="dash-form">
-          <p>{isTotp ? "Enter the 6-digit code from Microsoft Authenticator or your standard authenticator app. Codes refresh every 30 seconds." : <>A one-time code was issued for <strong>{email}</strong>. It expires at {new Date(step.challenge.otpExpiresAt).toLocaleTimeString()}.</>}</p>
-          {step.challenge.devOtpCode ? (
-            <p className="dash-muted">
-              Development code: <code>{step.challenge.devOtpCode}</code>
-            </p>
-          ) : null}
+          <p>Enter the 6-digit code from your authenticator app.</p>
           <label>
-            {useRecovery ? "Unused recovery code" : isTotp ? "Authenticator code" : "One-time code"}
+            {useRecovery ? "Unused recovery code" : "Authenticator code"}
             <input
               type="text"
               inputMode={useRecovery ? "text" : "numeric"}
@@ -199,14 +162,6 @@ export function LoginPage() {
           <button type="submit" className="dash-button" disabled={submitting}>
             {submitting ? "Verifying..." : "Verify"}
           </button>
-          {!isTotp && <button
-            type="button"
-            className="dash-button"
-            disabled={submitting}
-            onClick={() => void handleResend()}
-          >
-            Resend code
-          </button>}
           <button type="button" className="dash-button" onClick={() => backToCredentials(null)}>
             Start over
           </button>
