@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { Pool } from "pg";
+import { generate } from "otplib";
 import { buildApp } from "../app.js";
 import { loadConfig } from "../config.js";
 import { hashPassword } from "../adminAuth/passwords.js";
@@ -37,6 +38,8 @@ const config = loadConfig({
   DATABASE_URL: databaseUrl,
   NODE_ENV: "test",
   OTP_DEV_EXPOSE: "true",
+  FEATURE_TOTP: "true",
+  TOTP_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 8).toString("base64"),
   SETTLEMENT_INTERNAL_TOKEN: "test-settlement-token",
   WEBHOOK_SECRET_ENCRYPTION_KEY: "Y1ZTGTcYbe30GZJebys9w7T3OYZNKewuOH3SUCEdRQk=",
 });
@@ -121,7 +124,7 @@ async function createAdminUser(role: AdminRole, label: string): Promise<{ id: st
   return { id: result.rows[0]!.id, email };
 }
 
-/** Full admin login: password -> OTP -> authenticated cookie. */
+/** Login an admin without an enrolled factor. */
 async function loginAdmin(email: string): Promise<string> {
   const loginRes = await app.inject({
     method: "POST",
@@ -129,20 +132,18 @@ async function loginAdmin(email: string): Promise<string> {
     payload: { email, password: ADMIN_PASSWORD },
   });
   assert.equal(loginRes.statusCode, 200, loginRes.body);
-  const loginBody = loginRes.json() as { otpRequired: boolean; devOtpCode?: string };
-  assert.equal(loginBody.otpRequired, true);
-  assert.ok(loginBody.devOtpCode);
-  const cookie = parseCookie(loginRes.headers["set-cookie"], config.adminCookieName);
+  assert.equal(loginRes.json().authenticated, true);
+  return parseCookie(loginRes.headers["set-cookie"], config.adminCookieName);
+}
 
-  const verifyRes = await app.inject({
-    method: "POST",
-    url: "/v1/admin/auth/otp/verify",
-    headers: { cookie },
-    payload: { code: loginBody.devOtpCode },
-  });
-  assert.equal(verifyRes.statusCode, 200, verifyRes.body);
-  // OTP verification issues a new session token (no session fixation).
-  return parseCookie(verifyRes.headers["set-cookie"], config.adminCookieName);
+async function enrollAdmin(email: string): Promise<string[]> {
+  const cookie = await loginAdmin(email);
+  const start = await app.inject({ method: "POST", url: "/v1/admin/auth/totp/enroll", headers: { cookie }, payload: { password: ADMIN_PASSWORD } });
+  assert.equal(start.statusCode, 200, start.body);
+  const setup = start.json() as { secret: string; enrollmentId: string };
+  const confirmed = await app.inject({ method: "POST", url: "/v1/admin/auth/totp/confirm", headers: { cookie }, payload: { enrollmentId: setup.enrollmentId, code: await generate({ secret: setup.secret }) } });
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  return confirmed.json().recoveryCodes as string[];
 }
 
 async function signedInAdmin(role: AdminRole, label: string) {
@@ -183,7 +184,7 @@ async function auditRowsFor(adminUserId: string, action: string) {
 
 // ------------------------------------------------------------ admin auth
 
-test("admin login -> otp verify -> GET /v1/admin/auth/me, then logout kills the cookie", async () => {
+test("admin login -> GET /v1/admin/auth/me, then logout kills the cookie", async () => {
   const { id, email } = await createAdminUser("finance", "meflow");
   const cookie = await loginAdmin(email);
 
@@ -206,6 +207,7 @@ test("admin login -> otp verify -> GET /v1/admin/auth/me, then logout kills the 
 // MK: does it? i only see signup -> login -> otp verify there
 test("a pending (pre-OTP) admin cookie authenticates nothing", async () => {
   const { email } = await createAdminUser("super_admin", "pending");
+  await enrollAdmin(email);
   const loginRes = await app.inject({
     method: "POST",
     url: "/v1/admin/auth/login",
@@ -258,14 +260,14 @@ test("a disabled admin cannot log in, and an existing session dies immediately",
 
 test("admin otp verify rejects a wrong code without burning the challenge", async () => {
   const { email } = await createAdminUser("support", "wrongotp");
+  const recovery = await enrollAdmin(email);
   const loginRes = await app.inject({
     method: "POST",
     url: "/v1/admin/auth/login",
     payload: { email, password: ADMIN_PASSWORD },
   });
   const cookie = parseCookie(loginRes.headers["set-cookie"], config.adminCookieName);
-  const realCode = (loginRes.json() as { devOtpCode: string }).devOtpCode;
-  const wrongCode = realCode === "000000" ? "111111" : "000000";
+  const wrongCode = "invalid-recovery-code";
 
   const wrongRes = await app.inject({
     method: "POST",
@@ -280,7 +282,7 @@ test("admin otp verify rejects a wrong code without burning the challenge", asyn
     method: "POST",
     url: "/v1/admin/auth/otp/verify",
     headers: { cookie },
-    payload: { code: realCode },
+    payload: { code: recovery[0] },
   });
   assert.equal(rightRes.statusCode, 200, rightRes.body);
 });

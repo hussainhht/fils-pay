@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { Pool } from "pg";
+import { generate } from "otplib";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 
@@ -32,6 +33,8 @@ const config = loadConfig({
   NODE_ENV: "test",
   KYC_UPLOAD_DIR: kycUploadDir,
   OTP_DEV_EXPOSE: "true",
+  FEATURE_TOTP: "true",
+  TOTP_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 8).toString("base64"),
   INTERNAL_API_TOKEN: "test-internal-token",
   WEBHOOK_SECRET_ENCRYPTION_KEY: "Y1ZTGTcYbe30GZJebys9w7T3OYZNKewuOH3SUCEdRQk=",
 });
@@ -84,7 +87,7 @@ async function signup(emailPrefix: string, password: string, email = uniqueEmail
   return { merchantId: body.merchantId, email, password };
 }
 
-/** Full signup -> login -> otp verify, returning an authenticated cookie. */
+/** Signup and authenticate an account without an enrolled factor. */
 async function signupLoginAndVerify(emailPrefix: string) {
   const password = "correct horse battery staple 1!";
   const { merchantId, email } = await signup(emailPrefix, password);
@@ -95,22 +98,9 @@ async function signupLoginAndVerify(emailPrefix: string) {
     payload: { merchantId, email, password },
   });
   assert.equal(loginRes.statusCode, 200, loginRes.body);
-  const loginBody = loginRes.json() as { otpRequired: boolean; devOtpCode?: string };
-  assert.equal(loginBody.otpRequired, true);
-  assert.ok(loginBody.devOtpCode, "expected devOtpCode with OTP_DEV_EXPOSE=true");
-  let cookie = parseCookie(loginRes.headers["set-cookie"]);
-
-  const verifyRes = await app.inject({
-    method: "POST",
-    url: "/v1/auth/otp/verify",
-    headers: { cookie },
-    payload: { code: loginBody.devOtpCode },
-  });
-  assert.equal(verifyRes.statusCode, 200, verifyRes.body);
-  // OTP verification issues a new session token (no session fixation).
-  cookie = parseCookie(verifyRes.headers["set-cookie"]);
-
-  return { merchantId, email, password, cookie: parseCookie(verifyRes.headers["set-cookie"]) };
+  assert.equal(loginRes.json().otpRequired, false);
+  assert.equal(loginRes.json().authenticated, true);
+  return { merchantId, email, password, cookie: parseCookie(loginRes.headers["set-cookie"]) };
 }
 
 function buildMultipart(
@@ -134,7 +124,7 @@ function buildMultipart(
   return { body: Buffer.concat(parts), contentType: `multipart/form-data; boundary=${boundary}` };
 }
 
-test("signup -> login -> otp verify -> authenticated /v1/auth/me", async () => {
+test("signup -> password login -> authenticated /v1/auth/me", async () => {
   const { merchantId, email, cookie } = await signupLoginAndVerify("flow");
 
   const meRes = await app.inject({ method: "GET", url: "/v1/auth/me", headers: { cookie } });
@@ -180,7 +170,7 @@ test("a second merchant sharing the same owner email resolves correctly via requ
   assert.equal(cross.json().error, "invalid_credentials");
 });
 
-test("login resolves the OTP recipient to the same account that was authenticated", async () => {
+test("login resolves the session to the same account that was authenticated", async () => {
   const { merchantId, cookie } = await signupLoginAndVerify("recipient-sanity");
 
   const meRes = await app.inject({ method: "GET", url: "/v1/auth/me", headers: { cookie } });
@@ -209,11 +199,17 @@ test("otp verify with the wrong code is rejected", async () => {
     payload: { merchantId, email, password },
   });
   assert.equal(loginRes.statusCode, 200);
-  const cookie = parseCookie(loginRes.headers["set-cookie"]);
-  const realCode = (loginRes.json() as { devOtpCode: string }).devOtpCode;
-
-  // A wrong code, deliberately different from the real one.
-  const wrongCode = realCode === "000000" ? "111111" : "000000";
+  const trusted = parseCookie(loginRes.headers["set-cookie"]);
+  const enroll = await app.inject({ method: "POST", url: "/v1/auth/totp/enroll", headers: { cookie: trusted }, payload: { password } });
+  assert.equal(enroll.statusCode, 200, enroll.body);
+  const setup = enroll.json() as { secret: string; enrollmentId: string };
+  const confirm = await app.inject({ method: "POST", url: "/v1/auth/totp/confirm", headers: { cookie: trusted }, payload: { enrollmentId: setup.enrollmentId, code: await generate({ secret: setup.secret }) } });
+  assert.equal(confirm.statusCode, 200, confirm.body);
+  const recovery = confirm.json().recoveryCodes[0] as string;
+  const pendingLogin = await app.inject({ method: "POST", url: "/v1/auth/login", payload: { merchantId, email, password } });
+  assert.equal(pendingLogin.json().verificationMethod, "totp");
+  const cookie = parseCookie(pendingLogin.headers["set-cookie"]);
+  const wrongCode = "invalid-recovery-code";
   const wrongRes = await app.inject({
     method: "POST",
     url: "/v1/auth/otp/verify",
@@ -228,7 +224,7 @@ test("otp verify with the wrong code is rejected", async () => {
     method: "POST",
     url: "/v1/auth/otp/verify",
     headers: { cookie },
-    payload: { code: realCode },
+    payload: { code: recovery },
   });
   assert.equal(rightRes.statusCode, 200, rightRes.body);
 });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import { Pool } from "pg";
+import { generate } from "otplib";
 import { buildApp } from "../app.js";
 import { loadConfig } from "../config.js";
 import { hashPassword } from "../auth/passwords.js";
@@ -16,6 +17,8 @@ const config = loadConfig({
   DATABASE_URL: databaseUrl,
   NODE_ENV: "test",
   OTP_DEV_EXPOSE: "true",
+  FEATURE_TOTP: "true",
+  TOTP_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 8).toString("base64"),
   WEBHOOK_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
 });
 const pool = new Pool({ connectionString: databaseUrl, max: 8 });
@@ -31,7 +34,16 @@ function cookieFrom(header: string | string[] | undefined): string {
   return value.split(";")[0]!;
 }
 function rawCookie(cookie: string): string { return cookie.slice(cookie.indexOf("=") + 1); }
-function wrongCode(code: string): string { return code === "000000" ? "111111" : "000000"; }
+function wrongCode(_code: string): string { return "invalid-recovery-code"; }
+
+async function enableAuthenticator(prefix: string, cookie: string): Promise<string> {
+  const start = await app.inject({ method: "POST", url: `${prefix}/totp/enroll`, headers: { cookie }, payload: { password } });
+  assert.equal(start.statusCode, 200, start.body);
+  const setup = start.json() as { secret: string; enrollmentId: string };
+  const confirmed = await app.inject({ method: "POST", url: `${prefix}/totp/confirm`, headers: { cookie }, payload: { enrollmentId: setup.enrollmentId, code: await generate({ secret: setup.secret }) } });
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  return confirmed.json().recoveryCodes[0] as string;
+}
 
 async function merchant(email = `auth-${randomUUID()}@example.test`) {
   const m = await pool.query<{ id: string }>(
@@ -49,10 +61,13 @@ async function pendingMerchant(email?: string) {
   const identity = await merchant(email);
   const login = await app.inject({ method: "POST", url: "/v1/auth/login", payload: { ...identity, password } });
   assert.equal(login.statusCode, 200, login.body);
-  const cookie = cookieFrom(login.headers["set-cookie"]);
+  const code = await enableAuthenticator("/v1/auth", cookieFrom(login.headers["set-cookie"]));
+  const second = await app.inject({ method: "POST", url: "/v1/auth/login", payload: { ...identity, password } });
+  assert.equal(second.statusCode, 200, second.body);
+  const cookie = cookieFrom(second.headers["set-cookie"]);
   const pending = await lookupPendingSession(pool, rawCookie(cookie));
   assert.ok(pending?.otpChallengeId);
-  return { ...identity, cookie, code: login.json().devOtpCode as string, pending };
+  return { ...identity, cookie, code, pending };
 }
 
 async function pendingAdmin() {
@@ -63,10 +78,13 @@ async function pendingAdmin() {
   );
   const login = await app.inject({ method: "POST", url: "/v1/admin/auth/login", payload: { email, password } });
   assert.equal(login.statusCode, 200, login.body);
-  const cookie = cookieFrom(login.headers["set-cookie"]);
+  const code = await enableAuthenticator("/v1/admin/auth", cookieFrom(login.headers["set-cookie"]));
+  const second = await app.inject({ method: "POST", url: "/v1/admin/auth/login", payload: { email, password } });
+  assert.equal(second.statusCode, 200, second.body);
+  const cookie = cookieFrom(second.headers["set-cookie"]);
   const pending = await lookupPendingAdminSession(pool, rawCookie(cookie));
   assert.ok(pending?.otpChallengeId);
-  return { userId: user.rows[0]!.id, cookie, code: login.json().devOtpCode as string, pending };
+  return { userId: user.rows[0]!.id, cookie, code, pending };
 }
 
 test("merchant pending cookie is denied; OTP rotates token and extends browser/server TTL", async () => {
@@ -138,7 +156,7 @@ for (const plane of ["merchant", "admin"] as const) {
   });
 }
 
-test("resend preserves guesses and serializes competing resends", async () => {
+test("removed resend cannot reset guesses on a pending authenticator challenge", async () => {
   const fixture = await pendingMerchant();
   for (let i = 0; i < 2; i++) {
     const result = await app.inject({ method: "POST", url: "/v1/auth/otp/verify", headers: { cookie: fixture.cookie }, payload: { code: wrongCode(fixture.code) } });
@@ -146,35 +164,33 @@ test("resend preserves guesses and serializes competing resends", async () => {
   }
   await pool.query(`UPDATE otp_challenges SET created_at = now() - interval '31 seconds' WHERE id = $1`, [fixture.pending.otpChallengeId]);
   const replies = await Promise.all(Array.from({ length: 2 }, () => app.inject({ method: "POST", url: "/v1/auth/otp/resend", headers: { cookie: fixture.cookie } })));
-  assert.equal(replies.filter((r) => r.statusCode === 200).length, 1);
-  assert.equal(replies.filter((r) => r.statusCode === 429).length, 1);
-  const resent = replies.find((r) => r.statusCode === 200)!;
+  assert.ok(replies.every((r) => r.statusCode === 404));
   const current = await lookupPendingSession(pool, rawCookie(fixture.cookie));
   assert.ok(current?.otpChallengeId);
-  assert.notEqual(current.otpChallengeId, fixture.pending.otpChallengeId);
+  assert.equal(current.otpChallengeId, fixture.pending.otpChallengeId);
   const challenge = await pool.query<{ attempt_count: number; max_attempts: number }>(`SELECT attempt_count, max_attempts FROM otp_challenges WHERE id = $1`, [current.otpChallengeId]);
   assert.equal(challenge.rows[0]!.attempt_count, 2);
   for (let i = 2; i < challenge.rows[0]!.max_attempts; i++) {
-    assert.equal((await app.inject({ method: "POST", url: "/v1/auth/otp/verify", headers: { cookie: fixture.cookie }, payload: { code: wrongCode(resent.json().devOtpCode) } })).json().error, "invalid_code");
+    assert.equal((await app.inject({ method: "POST", url: "/v1/auth/otp/verify", headers: { cookie: fixture.cookie }, payload: { code: wrongCode(fixture.code) } })).json().error, "invalid_code");
   }
-  const exhausted = await app.inject({ method: "POST", url: "/v1/auth/otp/verify", headers: { cookie: fixture.cookie }, payload: { code: resent.json().devOtpCode } });
+  const exhausted = await app.inject({ method: "POST", url: "/v1/auth/otp/verify", headers: { cookie: fixture.cookie }, payload: { code: fixture.code } });
   assert.equal(exhausted.statusCode, 429);
 });
 
-test("expired OTP can be resent during a valid pending session without resetting its budget", async () => {
+test("expired authenticator challenge cannot be resent or verified", async () => {
   const fixture = await pendingMerchant();
   await app.inject({ method: "POST", url: "/v1/auth/otp/verify", headers: { cookie: fixture.cookie }, payload: { code: wrongCode(fixture.code) } });
   await pool.query(`UPDATE otp_challenges SET created_at = now() - interval '6 minutes', expires_at = now() - interval '1 minute' WHERE id = $1`, [fixture.pending.otpChallengeId]);
   const resent = await app.inject({ method: "POST", url: "/v1/auth/otp/resend", headers: { cookie: fixture.cookie } });
-  assert.equal(resent.statusCode, 200, resent.body);
+  assert.equal(resent.statusCode, 404, resent.body);
   const current = await lookupPendingSession(pool, rawCookie(fixture.cookie));
   assert.ok(current?.otpChallengeId);
   const stored = await pool.query<{ attempt_count: number }>(`SELECT attempt_count FROM otp_challenges WHERE id = $1`, [current.otpChallengeId]);
   assert.equal(stored.rows[0]!.attempt_count, 1);
-  assert.equal((await app.inject({ method: "POST", url: "/v1/auth/otp/verify", headers: { cookie: fixture.cookie }, payload: { code: resent.json().devOtpCode } })).statusCode, 200);
+  assert.equal((await app.inject({ method: "POST", url: "/v1/auth/otp/verify", headers: { cookie: fixture.cookie }, payload: { code: fixture.code } })).statusCode, 410);
 });
 
-test("verify racing resend cannot lose the failed guess from the inherited budget", async () => {
+test("verify racing removed resend cannot lose a failed guess", async () => {
   const fixture = await pendingMerchant();
   await pool.query(`UPDATE otp_challenges SET created_at = now() - interval '31 seconds' WHERE id = $1`, [fixture.pending.otpChallengeId]);
   const [verify, resend] = await Promise.all([
@@ -183,7 +199,7 @@ test("verify racing resend cannot lose the failed guess from the inherited budge
   ]);
   assert.equal(verify.statusCode, 401, verify.body);
   assert.equal(verify.json().error, "invalid_code");
-  assert.equal(resend.statusCode, 200, resend.body);
+  assert.equal(resend.statusCode, 404, resend.body);
   const current = await lookupPendingSession(pool, rawCookie(fixture.cookie));
   assert.ok(current?.otpChallengeId);
   const stored = await pool.query<{ attempt_count: number }>(`SELECT attempt_count FROM otp_challenges WHERE id = $1`, [current.otpChallengeId]);

@@ -52,17 +52,8 @@ async function signedInAdmin(role: "support" | "finance"): Promise<string> {
     payload: { email, password },
   });
   assert.equal(loginRes.statusCode, 200, loginRes.body);
-  const loginBody = loginRes.json() as { devOtpCode?: string };
-  let cookie = parseCookie(loginRes.headers["set-cookie"], config.adminCookieName);
-  const verifyRes = await app.inject({
-    method: "POST",
-    url: "/v1/admin/auth/otp/verify",
-    headers: { cookie },
-    payload: { code: loginBody.devOtpCode },
-  });
-  assert.equal(verifyRes.statusCode, 200, verifyRes.body);
-  cookie = parseCookie(verifyRes.headers["set-cookie"], config.adminCookieName);
-  return cookie;
+  assert.equal(loginRes.json().authenticated, true);
+  return parseCookie(loginRes.headers["set-cookie"], config.adminCookieName);
 }
 
 test("a support admin cannot create a credit", async () => {

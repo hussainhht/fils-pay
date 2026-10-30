@@ -11,6 +11,7 @@ const env = {
   SETTLEMENT_INTERNAL_TOKEN: "fixture-internal",
   ACQUIRER_CALLBACK_SIGNING_SECRET: "fixture-callback",
   WEBHOOK_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
+  OTP_DELIVERY_TRANSPORT: "resend",
   OTP_EMAIL_FROM: "otp@example.test",
   OTP_RESEND_API_KEY: "fixture-provider-key",
 };
@@ -93,7 +94,7 @@ test("re-submitting the same challenge uses the same provider key and payload", 
 
 test("development/test transport never sends or logs codes", async () => {
   for (const nodeEnv of ["development", "test"]) {
-    const config = loadConfig({ DATABASE_URL: env.DATABASE_URL, NODE_ENV: nodeEnv });
+    const config = loadConfig({ DATABASE_URL: env.DATABASE_URL, NODE_ENV: nodeEnv, OTP_DELIVERY_TRANSPORT: "development" });
     const logs: unknown[] = [];
     const otp = challenge();
     await sendOtpCode({ info: (...args) => { logs.push(args); } }, config,
@@ -109,12 +110,12 @@ test("production configuration fails closed for missing settings, development ex
     { OTP_EMAIL_FROM: "one@example.test,two@example.test" },
     { OTP_EMAIL_FROM: "one@example.test,extra" },
     { OTP_DELIVERY_TRANSPORT: "development" }, { OTP_DELIVERY_TRANSPORT: "unknown" },
-    { OTP_DELIVERY_TRANSPORT: "disabled" },
     { OTP_DEV_EXPOSE: "true" }, { OTP_DEV_EXPOSE: "1" },
     { OTP_DELIVERY_TIMEOUT_MS: "0" }, { OTP_DELIVERY_TIMEOUT_MS: "Infinity" },
     { OTP_DELIVERY_TIMEOUT_MS: "100junk" }, { OTP_DELIVERY_TIMEOUT_MS: "30001" },
   ]) assert.throws(() => loadConfig({ ...env, ...patch }), /loadConfig:.*OTP|loadConfig: resend/);
   assert.equal(loadConfig(env).otpDevExpose, false);
+  assert.equal(loadConfig({ ...env, OTP_DELIVERY_TRANSPORT: "disabled", OTP_EMAIL_FROM: "", OTP_RESEND_API_KEY: "" }).otpDelivery.transport, "disabled");
 });
 
 test("production TOTP-only mode disables email securely instead of requiring a delivery provider", async () => {

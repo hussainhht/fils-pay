@@ -7,9 +7,10 @@ import { loadConfig } from "../config.js";
 import { hashPassword } from "./passwords.js";
 import { sha256Hex } from "../lib/crypto.js";
 import { randomDigits, randomFromAlphabet } from "../lib/random.js";
+import { generate } from "otplib";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 12 });
-const config = loadConfig({ DATABASE_URL: process.env.DATABASE_URL, NODE_ENV: "test", OTP_DEV_EXPOSE: "true", INTERNAL_API_TOKEN: "test-internal-token", WEBHOOK_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"), ACQUIRER_FAILURE_RATE: "0", ACQUIRER_LATENCY_MIN_MS: "0", ACQUIRER_LATENCY_MAX_MS: "1" });
+const config = loadConfig({ DATABASE_URL: process.env.DATABASE_URL, NODE_ENV: "test", FEATURE_TOTP: "true", TOTP_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 8).toString("base64"), INTERNAL_API_TOKEN: "test-internal-token", WEBHOOK_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"), ACQUIRER_FAILURE_RATE: "0", ACQUIRER_LATENCY_MIN_MS: "0", ACQUIRER_LATENCY_MAX_MS: "1" });
 const app = buildApp(config, pool);
 test.after(async () => { await app.close(); await pool.end(); });
 const password = "fork-regression-password-123!";
@@ -30,21 +31,33 @@ async function fixture(admin = false, email = `${randomUUID()}@fork.test`) {
 async function login(u: Awaited<ReturnType<typeof fixture>>, admin = false, remoteAddress = "127.0.0.1", pass = password) {
   return app.inject({ method: "POST", url: admin ? "/v1/admin/auth/login" : "/v1/auth/login", remoteAddress, payload: { email: u.email, merchantId: u.merchantId, password: pass } });
 }
+async function enroll(u: Awaited<ReturnType<typeof fixture>>, admin: boolean) {
+  const base = admin ? "/v1/admin/auth" : "/v1/auth";
+  const first = await login(u, admin);
+  assert.equal(first.statusCode, 200, first.body);
+  const trusted = cookie(first);
+  const start = await app.inject({ method: "POST", url: `${base}/totp/enroll`, headers: { cookie: trusted }, payload: { password } });
+  assert.equal(start.statusCode, 200, start.body);
+  const setup = start.json() as { secret: string; enrollmentId: string };
+  const confirmed = await app.inject({ method: "POST", url: `${base}/totp/confirm`, headers: { cookie: trusted }, payload: { enrollmentId: setup.enrollmentId, code: await generate({ secret: setup.secret }) } });
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  return confirmed.json().recoveryCodes as string[];
+}
 for (const admin of [false,true]) {
   const base = admin ? "/v1/admin/auth" : "/v1/auth";
   test(`${base}: pending denied, OTP rotates token and renews cookie; old token rejected`, async () => {
-    const u = await fixture(admin); const l = await login(u,admin); assert.equal(l.statusCode,200,l.body);
+    const u = await fixture(admin); const recovery = await enroll(u, admin); const l = await login(u,admin); assert.equal(l.statusCode,200,l.body);
     const pending = cookie(l);
     assert.equal((await app.inject({url: `${base}/me`,headers:{cookie:pending}})).statusCode,401);
-    const v = await app.inject({method:"POST",url:`${base}/otp/verify`,headers:{cookie:pending},payload:{code:l.json().devOtpCode}});
+    const v = await app.inject({method:"POST",url:`${base}/otp/verify`,headers:{cookie:pending},payload:{code:recovery[0]}});
     assert.equal(v.statusCode,200,v.body); const live = cookie(v); assert.notEqual(live,pending);
     assert.match(String(v.headers["set-cookie"]), new RegExp(`Max-Age=${(admin ? config.adminSessionTtlHours : config.sessionTtlHours) * 3600}`));
     assert.equal((await app.inject({url:`${base}/me`,headers:{cookie:pending}})).statusCode,401);
     assert.equal((await app.inject({url:`${base}/me`,headers:{cookie:live}})).statusCode,200);
   });
   test(`${base}: concurrent guesses cannot exceed the attempt budget`, async () => {
-    const u=await fixture(admin);const l=await login(u,admin);const pending=cookie(l);
-    const wrong=l.json().devOtpCode === "000000" ? "111111" : "000000";
+    const u=await fixture(admin);await enroll(u,admin);const l=await login(u,admin);const pending=cookie(l);
+    const wrong="invalid-recovery-code";
     const replies=await Promise.all(Array.from({length:12},()=>app.inject({method:"POST",url:`${base}/otp/verify`,headers:{cookie:pending},payload:{code:wrong}})));
     const table=admin ? "admin_otp_challenges" : "otp_challenges";
     const column=admin ? "admin_user_id" : "merchant_user_id";
@@ -61,14 +74,15 @@ for (const admin of [false,true]) {
 }
 test("shared email login remains bound to the merchant whose password was checked",async()=>{
   const email=`${randomUUID()}@fork.test`;await fixture(false,email);const b=await fixture(false,email);
-  const l=await login(b);const v=await app.inject({method:"POST",url:"/v1/auth/otp/verify",headers:{cookie:cookie(l)},payload:{code:l.json().devOtpCode}});
-  assert.equal(v.statusCode,200,v.body);assert.equal(v.json().merchantId,b.merchantId);
+  const l=await login(b);assert.equal(l.statusCode,200,l.body);
+  const me=await app.inject({url:"/v1/auth/me",headers:{cookie:cookie(l)}});
+  assert.equal(me.statusCode,200,me.body);assert.equal(me.json().merchant.id,b.merchantId);
 });
-test("resend preserves guess budget and serializes concurrent resends",async()=>{
-  const u=await fixture();const l=await login(u);const pending=cookie(l);
+test("removed email resend cannot reset authenticator guess budget",async()=>{
+  const u=await fixture();await enroll(u,false);const l=await login(u);const pending=cookie(l);
   await pool.query("UPDATE otp_challenges SET attempt_count=4, created_at=now()-interval '1 minute' WHERE merchant_user_id=$1",[u.id]);
   const rs=await Promise.all([1,2].map(()=>app.inject({method:"POST",url:"/v1/auth/otp/resend",headers:{cookie:pending}})));
-  assert.deepEqual(rs.map(r=>r.statusCode).sort(),[200,429]);
+  assert.deepEqual(rs.map(r=>r.statusCode).sort(),[404,404]);
   const r=await pool.query("SELECT c.attempt_count FROM otp_challenges c JOIN sessions s ON s.otp_challenge_id=c.id WHERE s.merchant_user_id=$1",[u.id]);
   assert.equal(r.rows[0].attempt_count,4);
 });

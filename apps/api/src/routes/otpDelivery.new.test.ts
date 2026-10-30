@@ -129,46 +129,40 @@ async function fixture(t: TestContext, plane: "merchant" | "admin", totp = false
 }
 
 for (const plane of ["merchant", "admin"] as const) {
-  test(`${plane} login submits stored recipient after commit; valid OTP completes once without production exposure`, async (t) => {
+  test(`${plane} unenrolled login authenticates without sending email or exposing OTP`, async (t) => {
     const f = await fixture(t, plane);
     const response = await f.login();
     assert.equal(response.statusCode, 200, response.body);
     assert.equal(response.json().devOtpCode, undefined);
-    assert.equal(response.json().authenticated, undefined);
-    assert.deepEqual(f.state.sent[0]!.body.to, [f.email]);
-    assert.match(f.state.sent[0]!.key, new RegExp(`/${plane}/`));
-    assert.equal(f.state.authenticated, false);
+    assert.equal(response.json().authenticated, true);
+    assert.equal(f.state.providerCalls, 0);
+    assert.equal(f.state.authenticated, true);
     const cookie = String(response.headers["set-cookie"]).split(";")[0]!;
     assert.match(cookie, plane === "merchant" ? /^fp_sid=/ : /^fp_admin_sid=/);
-    const result = await f.verify(cookie, f.code());
-    assert.equal(result.statusCode, 200, result.body);
-    assert.equal(result.json().authenticated, true);
-    assert.equal((await f.verify(cookie, f.code())).statusCode, 401);
+    assert.equal((await f.verify(cookie, "invalid-code")).statusCode, 401);
     assert.equal((await f.app.inject({ method: "GET", url: "/healthz" })).statusCode, 200);
   });
 
-  test(`${plane} delivery failure is sanitized 503, creates no authenticated session or success cookie`, async (t) => {
+  test(`${plane} login does not depend on email provider availability`, async (t) => {
     const f = await fixture(t, plane); f.state.providerStatus = 500;
     const response = await f.login();
-    assert.equal(response.statusCode, 503, response.body);
-    assert.equal(response.json().error, "otp_delivery_unavailable");
-    assert.equal(response.headers["set-cookie"], undefined);
-    assert.equal(f.state.authenticated, false);
-    assert.equal(f.state.providerCalls, 1);
+    assert.equal(response.statusCode, 200, response.body);
+    assert.equal(response.json().authenticated, true);
+    assert.equal(f.state.authenticated, true);
+    assert.equal(f.state.providerCalls, 0);
     assert.ok(!response.body.includes("private provider details"));
-    assert.ok(!response.body.includes(f.code()));
   });
 
   for (const reason of ["expired", "consumed", "incorrect", "exhausted", "other-plane"] as const) {
     test(`${plane} rejects ${reason} OTP without authenticating`, async (t) => {
-      const f = await fixture(t, plane); const login = await f.login();
+      const f = await fixture(t, plane, true); const validCode = await enrollFactor(f); const login = await f.login();
       let cookie = String(login.headers["set-cookie"]).split(";")[0]!;
       if (reason === "expired") f.state.challenge!.expires_at = new Date(0);
       if (reason === "consumed") f.state.challenge!.consumed_at = new Date();
       if (reason === "exhausted") f.state.challenge!.attempt_count = f.state.challenge!.max_attempts;
       if (reason === "other-plane") cookie = cookie.replace(plane === "merchant" ? "fp_sid=" : "fp_admin_sid=", plane === "merchant" ? "fp_admin_sid=" : "fp_sid=");
-      const wrong = "X".repeat(f.code().length);
-      const result = await f.verify(cookie, reason === "incorrect" ? wrong : f.code());
+      const wrong = "invalid-recovery-code";
+      const result = await f.verify(cookie, reason === "incorrect" ? wrong : validCode);
       assert.equal(result.statusCode, reason === "expired" || reason === "consumed" ? 410 : reason === "exhausted" ? 429 : 401, result.body);
       assert.equal(f.state.authenticated, false);
       if (reason === "incorrect") assert.equal(f.state.challenge!.attempt_count, 1);
@@ -176,7 +170,7 @@ for (const plane of ["merchant", "admin"] as const) {
   }
 
   test(`${plane} login/challenge rate limits prevent a provider submission`, async (t) => {
-    const f = await fixture(t, plane); f.state.accountFailures = f.config.loginMaxFailuresPerAccount;
+    const f = await fixture(t, plane, true); await enrollFactor(f); f.state.accountFailures = f.config.loginMaxFailuresPerAccount;
     assert.equal((await f.login()).statusCode, 429);
     assert.equal(f.state.providerCalls, 0);
     f.state.accountFailures = 0; f.state.challengeCount = f.config.otpMaxChallengesPerUser;
@@ -196,35 +190,41 @@ for (const plane of ["merchant", "admin"] as const) {
   });
 }
 
-test("merchant resend keeps guess budget and cooldown, uses a new challenge delivery key, and reports delivery failure", async (t) => {
-  const f = await fixture(t, "merchant"); const login = await f.login();
+test("removed merchant email resend cannot reset the authenticator guess budget", async (t) => {
+  const f = await fixture(t, "merchant", true); await enrollFactor(f); const login = await f.login();
   const cookie = String(login.headers["set-cookie"]).split(";")[0]!;
   const resend = () => f.app.inject({ method: "POST", url: `${f.prefix}/otp/resend`, headers: { cookie } });
-  assert.equal((await resend()).statusCode, 429);
-  assert.equal(f.state.providerCalls, 1);
+  assert.equal((await resend()).statusCode, 404);
+  assert.equal(f.state.providerCalls, 0);
   f.state.challenge!.attempt_count = 2; f.state.challenge!.created_at = new Date(Date.now() - 31_000);
-  const oldKey = f.state.sent[0]!.key;
-  assert.equal((await resend()).statusCode, 200);
+  assert.equal((await resend()).statusCode, 404);
   assert.equal(f.state.challenge!.attempt_count, 2);
-  assert.notEqual(f.state.sent[1]!.key, oldKey);
-  f.state.challenge!.created_at = new Date(Date.now() - 31_000); f.state.providerStatus = 503;
-  const failed = await resend();
-  assert.equal(failed.statusCode, 503, failed.body);
   assert.equal(f.state.challenge!.attempt_count, 2);
   assert.equal(f.state.authenticated, false);
-  assert.equal((await resend()).statusCode, 429);
+  assert.equal((await resend()).statusCode, 404);
 });
 
 const cookieFrom = (response: { headers: Record<string, unknown> }) => String(response.headers["set-cookie"]).split(";")[0]!;
 
+async function enrollFactor(f: Awaited<ReturnType<typeof fixture>>): Promise<string> {
+  const first = await f.login();
+  assert.equal(first.statusCode, 200, first.body);
+  const trusted = cookieFrom(first);
+  const start = await f.app.inject({ method: "POST", url: `${f.prefix}/totp/enroll`, headers: { cookie: trusted }, payload: { password: f.password } });
+  assert.equal(start.statusCode, 200, start.body);
+  const setup = start.json() as { secret: string; enrollmentId: string };
+  const confirmed = await f.app.inject({ method: "POST", url: `${f.prefix}/totp/confirm`, headers: { cookie: trusted }, payload: { enrollmentId: setup.enrollmentId, code: await generate({ secret: setup.secret }) } });
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  return confirmed.json().recoveryCodes[0] as string;
+}
+
 for (const plane of ["merchant", "admin"] as const) {
-  test(`${plane} authenticator enrollment requires full MFA session, password, correct origin and no impersonation`, async (t) => {
+  test(`${plane} authenticator enrollment requires a session, password, correct origin and no impersonation`, async (t) => {
     const f = await fixture(t, plane, true);
-    const pending = await f.login();
-    const pendingCookie = cookieFrom(pending);
+    const first = await f.login();
+    const trusted = cookieFrom(first);
     const enroll = (cookie: string, payload = { password: f.password }, origin?: string) => f.app.inject({ method: "POST", url: `${f.prefix}/totp/enroll`, headers: { cookie, ...(origin ? { origin } : {}) }, payload });
-    assert.equal((await enroll(pendingCookie)).statusCode, 401);
-    const trusted = cookieFrom(await f.verify(pendingCookie, f.code()));
+    assert.equal((await enroll("" )).statusCode, 401);
     assert.equal((await enroll(trusted, { password: "wrong" })).statusCode, 401);
     assert.equal((await enroll(trusted, undefined, "https://attacker.example")).statusCode, 403);
     assert.equal((await enroll(`${trusted}; fp_impersonation=present`)).statusCode, 403);
@@ -239,8 +239,7 @@ for (const plane of ["merchant", "admin"] as const) {
 
   test(`${plane} confirmation activates only a valid new factor; login refuses replay and accepts recovery once`, async (t) => {
     const f = await fixture(t, plane, true);
-    const pending = await f.login();
-    const trusted = cookieFrom(await f.verify(cookieFrom(pending), f.code()));
+    const trusted = cookieFrom(await f.login());
     const start = await f.app.inject({ method: "POST", url: `${f.prefix}/totp/enroll`, headers: { cookie: trusted }, payload: { password: f.password, userId: "other-user" } });
     assert.equal(start.statusCode, 200, start.body);
     const setup = start.json();
@@ -258,7 +257,7 @@ for (const plane of ["merchant", "admin"] as const) {
     assert.equal(login.json().verificationMethod, "totp");
     assert.equal(login.json().devOtpCode, undefined);
     assert.equal(f.state.providerCalls, count, "no email downgrade for enrolled accounts");
-    if (plane === "merchant") assert.equal((await f.app.inject({ method: "POST", url: `${f.prefix}/otp/resend`, headers: { cookie: cookieFrom(login) } })).statusCode, 400);
+    if (plane === "merchant") assert.equal((await f.app.inject({ method: "POST", url: `${f.prefix}/otp/resend`, headers: { cookie: cookieFrom(login) } })).statusCode, 404);
     assert.equal((await f.verify(cookieFrom(login), token)).statusCode, 401, "confirmation code is already consumed");
     const nextCode = await generate({ secret: setup.secret, period: 30, digits: 6, epoch: Math.floor(Date.now() / 1000) + 30 });
     assert.equal((await f.verify(cookieFrom(login), nextCode)).statusCode, 200);
@@ -273,7 +272,7 @@ for (const plane of ["merchant", "admin"] as const) {
 
   test(`${plane} enrollment confirmation binds session, expires, and stops after five incorrect codes`, async (t) => {
     const f = await fixture(t, plane, true);
-    const pending = await f.login(); const trusted = cookieFrom(await f.verify(cookieFrom(pending), f.code()));
+    const trusted = cookieFrom(await f.login());
     const start = await f.app.inject({ method: "POST", url: `${f.prefix}/totp/enroll`, headers: { cookie: trusted }, payload: { password: f.password } });
     const confirm = () => f.app.inject({ method: "POST", url: `${f.prefix}/totp/confirm`, headers: { cookie: trusted }, payload: { enrollmentId: start.json().enrollmentId, code: "000000" } });
     const expiresAt = f.state.factor!.pending_expires_at;
@@ -294,7 +293,7 @@ for (const plane of ["merchant", "admin"] as const) {
 
   test(`${plane} device replacement requires the existing factor and rotates recovery codes only on confirmation`, async (t) => {
     const f = await fixture(t, plane, true);
-    const pending = await f.login(); const trusted = cookieFrom(await f.verify(cookieFrom(pending), f.code()));
+    const trusted = cookieFrom(await f.login());
     const enroll = (currentCode?: string) => f.app.inject({ method: "POST", url: `${f.prefix}/totp/enroll`, headers: { cookie: trusted }, payload: { password: f.password, currentCode } });
     let start = await enroll();
     const confirm = async (setup: { secret: string; enrollmentId: string }) => f.app.inject({ method: "POST", url: `${f.prefix}/totp/confirm`, headers: { cookie: trusted }, payload: { enrollmentId: setup.enrollmentId, code: await generate({ secret: setup.secret, digits: 6, period: 30 }) } });

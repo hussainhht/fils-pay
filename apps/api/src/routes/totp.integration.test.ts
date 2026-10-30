@@ -43,10 +43,9 @@ for (const plane of ["merchant", "admin"] as const) {
     const login = () => app.inject({ method: "POST", url: `${prefix}/login`, payload: { merchantId, email, password } });
     const verify = (session: string, code: string) => app.inject({ method: "POST", url: `${prefix}/otp/verify`, headers: { cookie: session }, payload: { code } });
     const first = await login(); assert.equal(first.statusCode, 200);
-    const denied = await app.inject({ method: "POST", url: `${prefix}/totp/enroll`, headers: { cookie: cookie(first) }, payload: { password } });
-    assert.equal(denied.statusCode, 401, "password-only session cannot enroll");
-    const emailCode = /code is (\d+)/.exec(messages[0]!.text)![1]!;
-    const trusted = cookie(await verify(cookie(first), emailCode));
+    assert.equal(first.json().authenticated, true);
+    assert.equal(first.json().otpRequired, false);
+    const trusted = cookie(first);
     const enroll = (session: string, currentCode?: string) => app.inject({ method: "POST", url: `${prefix}/totp/enroll`, headers: { cookie: session }, payload: { password, currentCode } });
     let start = await enroll(trusted); assert.equal(start.statusCode, 200);
     let setup = start.json() as { secret: string; enrollmentId: string };
@@ -69,7 +68,7 @@ for (const plane of ["merchant", "admin"] as const) {
 
     const one = await login(), two = await login();
     assert.equal(one.json().verificationMethod, "totp"); assert.equal(one.json().devOtpCode, undefined);
-    assert.equal(messages.length, 1, "enrolled login never sends fallback email");
+    assert.equal(messages.length, 0, "login never sends fallback email");
     const next = await generate({ secret: setup.secret, digits: 6, period: 30, epoch: Math.floor(Date.now() / 1000) + 30 });
     const raced = await Promise.all([verify(cookie(one), next), verify(cookie(two), next)]);
     assert.equal(raced.filter((r) => r.statusCode === 200).length, 1);
@@ -91,10 +90,10 @@ for (const plane of ["merchant", "admin"] as const) {
       const otherMerchant = (await pool.query<{ id: string }>(`INSERT INTO merchants (display_name) VALUES ($1) RETURNING id`, [`TOTP tenant ${randomUUID()}`])).rows[0]!.id;
       await pool.query(`INSERT INTO merchant_users (merchant_id, email, password_hash, role) VALUES ($1, $2, $3, 'owner')`, [otherMerchant, email, passwordHash]);
       const otherLogin = await app.inject({ method: "POST", url: `${prefix}/login`, payload: { merchantId: otherMerchant, email, password } });
-      assert.equal(otherLogin.json().verificationMethod, "email", "same email in another tenant does not inherit the factor");
+      assert.equal(otherLogin.json().authenticated, true, "same email in another tenant does not inherit the factor");
+      assert.equal(otherLogin.json().otpRequired, false);
       assert.equal((await verify(cookie(otherLogin), replaced.json().recoveryCodes[0])).statusCode, 401);
-      const otherEmailCode = /code is (\d+)/.exec(messages.at(-1)!.text)![1]!;
-      const otherSession = cookie(await verify(cookie(otherLogin), otherEmailCode));
+      const otherSession = cookie(otherLogin);
       const status = await app.inject({ method: "GET", url: `${prefix}/totp`, headers: { cookie: otherSession } });
       assert.equal(status.json().enabled, false);
     }

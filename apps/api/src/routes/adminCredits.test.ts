@@ -70,19 +70,8 @@ async function signedInAdmin(role: AdminRole, label: string) {
     payload: { email, password: ADMIN_PASSWORD },
   });
   assert.equal(loginRes.statusCode, 200, loginRes.body);
-  const loginBody = loginRes.json() as { devOtpCode?: string };
-  let cookie = parseCookie(loginRes.headers["set-cookie"], config.adminCookieName);
-  const verifyRes = await app.inject({
-    method: "POST",
-    url: "/v1/admin/auth/otp/verify",
-    headers: { cookie },
-    payload: { code: loginBody.devOtpCode },
-  });
-  assert.equal(verifyRes.statusCode, 200, verifyRes.body);
-  // OTP verification issues a new session token (no session fixation).
-  cookie = parseCookie(verifyRes.headers["set-cookie"], config.adminCookieName);
-
-  return { id: inserted.rows[0]!.id, email, cookie: parseCookie(verifyRes.headers["set-cookie"], config.adminCookieName) };
+  assert.equal(loginRes.json().authenticated, true);
+  return { id: inserted.rows[0]!.id, email, cookie: parseCookie(loginRes.headers["set-cookie"], config.adminCookieName) };
 }
 
 async function createMerchant(label: string, mdrBps = 250): Promise<string> {
