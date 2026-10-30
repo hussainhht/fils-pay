@@ -26,15 +26,19 @@
   - `errorHandler.ts`: Central error translation turning `AppError` subclasses into structured JSON responses.
 - **`src/routes/`:**
   - `auth.ts`: `/v1/auth` (merchant authentication, OTP challenge/verification, session rotation).
+  - `businessProfile.ts`: `POST /v1/merchants` (signup) and `GET`/`PATCH` `/v1/merchants/:merchantId/business-profile`.
+  - `kyc.ts`: `/v1/merchants/:merchantId/kyc/documents` (upload, list, inline file stream, thumbnail).
+  - `apiKeys.ts`: `/v1/merchants/:merchantId/api-keys` (issue, list, revoke API keys).
   - `transactions.ts`: `/v1/transactions` (authorize, capture, void, search, CSV export).
   - `refunds.ts`: `/v1/refunds` and `/v1/merchants/:merchantId/refunds` (FP-212 refunds).
   - `paymentLinks.ts`: `/v1/merchants/:merchantId/payment-links` and public `/v1/payment-links/:token`.
-  - `admin*.ts`: `/v1/admin/*` (admin auth, merchants, KYC reviews, bulk approvals, credits, balance adjustments).
-  - `acquirerCallbacks.ts`: `/v1/acquirer/callback`.
-  - `webhooks.ts`: `/v1/merchants/:merchantId/webhook-endpoints`.
+  - `admin*.ts`: `/v1/admin/*` (admin auth, merchants, KYC reviews, bulk approvals, credits, balance adjustments, batch re-runs, balance rebuilds).
+  - `acquirerCallbacks.ts`: `/v1/acquirer/callback` (inbound HMAC verified webhook receiver).
+  - `webhooks.ts`: `/v1/merchants/:merchantId/webhook-endpoints` (merchant webhook registrations and deliveries).
   - `settlement.ts`: `/v1/settlement` (batch queries).
-  - `reporting.ts`: `/v1/reporting` (aggregates and saved filters).
-  - `health.ts`: `/healthz`, `/readyz`.
+  - `reporting.ts`: `/v1/reporting` (daily volume, payout trends, saved filters).
+  - `analytics.ts`: `/v1/analytics/overview` (high-level KPIs).
+  - `health.ts`: `/healthz`, `/readyz` (liveness and boot readiness checks).
 - **`src/v1/`:** **Protected Partner API Contract — FROZEN / DO NOT MODIFY**.
 
 ---

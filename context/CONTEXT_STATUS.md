@@ -8,9 +8,9 @@
 
 - **Initial Generation Date:** 2026-10-30
 - **Git Branch:** `main`
-- **Baseline Commit HEAD:** `e4cb706fc718ce1a13e3de0fb942ce3ea21fa168`
+- **Baseline Commit HEAD:** `f0419b2c948a9c7da881c2d159f8449e5f286906` (reviewed and audited from `e4cb706`)
 - **Environment:** Windows NT 10.0, Node.js 22.19.0, npm 10.9.3, Go 1.24.2, PostgreSQL 16
-- **Status of Working Tree:** Active in-progress uncommitted changes in `apps/admin`, `apps/api`, `apps/web` preserved intact.
+- **Status of Working Tree:** Active workspace verified against latest main branch.
 
 ---
 

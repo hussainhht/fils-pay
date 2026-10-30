@@ -38,6 +38,26 @@
 
 ---
 
+## [1.0.1] — 2026-10-30
+
+### Skeptical Verification & Audit Fixes
+- **Author:** Antigravity AI Reviewer & Repository Intelligence Specialist.
+- **Baseline Commit HEAD:** `f0419b2c948a9c7da881c2d159f8449e5f286906`.
+- **Corrections Applied:**
+  - `context/DATABASE.md` & `context/modules/db-migrations-seed.md`: Corrected false migration gap claims (clarified that 0054_views.sql, 0055_chart_of_accounts_suspense.sql, and 0056_api_keys_revoke_after.sql exist on disk; cataloged true missing numbers 0039, 0041, 0059, 0062, 0063, 0067 across 72 files up to 0078).
+  - `context/API.md`: Corrected 5 invalid/broken admin route paths:
+    - Fixed `/v1/admin/adjustments/balance` $\rightarrow$ `POST /v1/admin/merchants/:id/balance-adjustments`.
+    - Fixed `/v1/admin/adjustments/import` $\rightarrow$ `POST /v1/admin/adjustment-imports`. Added `GET /v1/admin/adjustment-imports` and `GET .../:id/rows`.
+    - Fixed `/v1/admin/credits` $\rightarrow$ disambiguated `POST /v1/admin/merchants/:id/credits` (create) vs `GET /v1/admin/credits` (list).
+    - Fixed `/v1/admin/settlement/rebuild-balances` $\rightarrow$ `POST /v1/admin/balances/rebuild`.
+    - Fixed `/v1/admin/settlement/rebuild-analytics` $\rightarrow$ `POST /v1/admin/reporting/rebuild`.
+  - `context/API.md`: Added missing merchant onboarding routes (`POST /v1/merchants`, business profile `GET`/`PATCH`), KYC document management routes (`/v1/merchants/:id/kyc/documents`), API key management routes (`/v1/merchants/:id/api-keys`), and platform health endpoints (`/healthz`, `/readyz`).
+  - `context/API.md`: Added missing admin routes: `POST /v1/admin/impersonation/:grantId/end`, `POST /v1/admin/merchants/:id/mdr-recalculation`, `POST /v1/admin/merchants/:id/transactions/recompute-statuses`, and webhook batch replay/archive endpoints.
+  - `context/modules/apps-api.md`: Added `businessProfile.ts`, `kyc.ts`, `apiKeys.ts`, and `analytics.ts` to the route handler catalog.
+  - `context/CONTEXT_STATUS.md`: Updated baseline commit reference and audited verification records.
+
+---
+
 ## Instructions for Future Context Updates
 
 When completing any coding task:
