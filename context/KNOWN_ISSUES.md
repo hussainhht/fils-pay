@@ -125,3 +125,7 @@ TOTP implementation is unit/mocked-HTTP verified; deployment remains unverified 
 ## Checkout UI scope and existing limitations (2026-10-30)
 
 No historical bug statuses changed by this presentation redesign. Source-confirmed existing behavior: the frontend creates a fresh idempotency key per attempt and offers retry after 502, while paymentLinks/pay.ts retains ambiguous reservations for same-key recovery. Therefore a fresh UI retry can receive processing/conflict rather than recover the attempt (confirmed-current, P2; left unchanged under the explicit payment-logic freeze). Runtime reproduction remains unverified. Insufficient-funds responses share the existing generic declined text; simulator outcomes remain distinct. The preserved test instructions say any other PAN approves, while the simulator can also randomly fail according to its configured failure rate. No new guarantee is added. No financial ADR conflicts were acted on. Responsive visual/keyboard verification remains unverified; see Evidence/ui_checkout_redesign.md.
+
+### Checkout missing styles/oversized SVG follow-up (2026-10-30)
+
+P2 screenshot defect: confirmed-current -> fix-verified at served-module/regression level. The running Vite CSS module was empty; rewriting the file restored layout CSS, and intrinsic SVG dimensions prevent icon enlargement without styles. Browser visual confirmation remains pending. Exact stale-transform cause undetermined. Existing ambiguous-payment retry issue above is unchanged.

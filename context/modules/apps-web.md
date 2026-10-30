@@ -85,3 +85,7 @@
 ## Checkout redesign verification (2026-10-30)
 
 Presentation split across CheckoutFrame, CheckoutDetails, CheckoutPaymentForm and scoped CSS; CheckoutPage still owns fetching, card state, submission and payment-state branches. Input callbacks, raw PAN, numeric month/year conversion, request body and idempotency lifecycle are preserved. Seven checkout presentation tests cover dynamic escaped data/exact fils display, native validation attributes, submitting/declined markup, sandbox suffixes, result composition and input/submit callback forwarding. Web suite: 45/45 pass; production build and repository typecheck pass. Local-only scripts/checkout-preview.mjs serves the actual app with synthetic /v1 responses on loopback port 5175, without proxy/database access; --before loads the three original checkout files from baseline 2ee8df0. This fixture is not payment integration evidence. See Evidence/ui_checkout_redesign.md for capture instructions and limitations.
+
+### Screenshot follow-up (2026-10-30)
+
+Actual public route is /pay/:token (router.tsx); the fixture uses /pay/preview. Running Vite was observed returning an empty checkout CSS JavaScript module while ?direct contained CSS. Rewriting the stylesheet invalidated the stale transform; final HTTP checks inspect layout content, not just status. All checkout SVGs now have intrinsic dimensions to avoid oversized icons without CSS. New regression fails before missing dimensions and passes after. Web tests 46/46, build and repository typecheck passed. Browser appearance remains unverified.

@@ -66,3 +66,15 @@ Scoped issue counts: confirmed-current 1; historical-report 0; already-fixed 0; 
 Preserved legacy instruction “any other number approves” is qualified in practice by the simulator's configured random failure rate; simulator unchanged. Generic backend body.message handling and retry semantics remain as before. No financial ADR conflict was implemented or resolved.
 
 Reference-image matching remains unverified: the supplied attachment directory contains only the written request, no image. The written visual brief guided implementation. Browser and isolated DB limitations prevent an end-to-end or pixel-match completion claim.
+
+## Screenshot follow-up correction ? 2026-10-30
+
+User supplied a screenshot of the real /pay/:token page with a viewport-sized lock and missing checkout layout. Confirmed against the running localhost:5173 server: the JavaScript CSS response contained const __vite__css = "" despite the on-disk stylesheet and ?direct response containing the layout. This is runtime evidence missed by the earlier HTTP-status-only check. The precise cause of the stale empty Vite transform was not established. Rewriting the stylesheet (also removing its UTF-8 BOM) invalidated that transform; the same CSS module subsequently returned the full layout rules. No server restart or cache deletion was performed.
+
+Added intrinsic 20x20 SVG dimensions to all CheckoutIcon variants, 32x32 to result SVGs and 300x180 to the illustration, retaining CSS responsive sizing. The new regression failed for missing width/height before the fix and passed after. Initial invocation from repo root used the wrong tsx JSX configuration and failed with React undefined; rerunning from apps/web reproduced the intended missing-dimension assertion. No test or validation was weakened.
+
+Corrected screenshot fixture and instructions from /checkout/preview to the actual existing /pay/preview route; production routing was not changed. Changed files in this follow-up: CheckoutPage.css, CheckoutDetails.tsx, CheckoutFrame.tsx, checkout.test.ts, scripts/checkout-preview.mjs, this evidence and affected context notes. Previous work and external .api-run.log changes preserved.
+
+Verification kept scoped: web tests 46/46 passed; web production build passed with the same existing helper chunk warning; full repository typecheck passed. Final localhost:5173 HTTP module checks confirmed the actual served stylesheet contains .checkout-layout, max-width: 1056px and .checkout-icon, and the served icon module contains intrinsic width/height. No additional payment, simulator or DB tests rerun. Visual/browser screenshots remain unverified because browser automation is unavailable.
+
+Follow-up issue: oversized icon/missing runtime checkout styles, P2, before confirmed-current; after fix-verified at runtime module/regression level, with browser appearance still unverified. Combined scoped issue counts now: confirmed-current 1 (unchanged ambiguous retry limitation), fix-verified 1; other status counts 0. Baseline HEAD unchanged. The page should be refreshed to load the restored stylesheet.

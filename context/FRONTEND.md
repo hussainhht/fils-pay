@@ -105,3 +105,7 @@ Shared apps/ui/AuthenticatorSetup.tsx and authenticator.css provide Account secu
 ## Hosted checkout presentation (2026-10-30)
 
 CheckoutFrame composes the existing Brand header, form/result region and optional CheckoutSummary sidebar. CheckoutDetails supplies dynamic merchant/order information, neutral simulated-payment wording, inline SVG illustration and expanded native test-card disclosure. CheckoutPaymentForm retains the original four inputs, native required/min/max validation, card state callbacks and brand hint; month/year remain separate. Scoped CheckoutPage.css uses shared tokens, a 1056px desktop container and a single column at 800px and below. Busy submission and inline error alerts are exposed accessibly; native browser validation messages remain in use. Success shows API merchant, returned amount, transaction ID and paidAt. No API, routing, financial or database behavior changed. Browser screenshots and 375/768/1024/1440 layout/keyboard verification remain unverified because the browser host is unavailable.
+
+### Hosted checkout runtime style correction (2026-10-30)
+
+The actual source route is /pay/:token, not the historical /checkout/:token shown earlier in this context. Preview instructions now use /pay/preview. A screenshot follow-up confirmed an empty Vite CSS transform; stylesheet rewrite restored the served layout. Checkout icon/result/illustration SVGs have intrinsic dimensions independent of CSS. No API/payment/routing behavior changed. Visual review remains pending.

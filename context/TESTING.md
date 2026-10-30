@@ -110,3 +110,7 @@ Focused checks only, per user request to avoid overtesting. auth/totp.new.test.t
 ## Checkout UI redesign (2026-10-30)
 
 Focused validation completed: web suite 45/45, simulator 6/6, payment-link pay/status/serialization unit tests 13/13, production web build and full repository typecheck passed. Seven new checkout render/callback tests use React server rendering and inspect actual JSX callbacks; they do not prove browser interactions or payment integration. No lint script/configuration is present. Browser host/native automation unavailable; visual checks at 375, 768, 1024 and 1440, keyboard checks and screenshots were not run. No identified isolated DATABASE_URL or Docker executable: DB-backed checkout/recovery tests not run. Existing API /healthz and /readyz returned 200, which does not verify a current real DB query. User requested no further testing after these focused checks. Screenshot fixture: node scripts/checkout-preview.mjs; original baseline: add --before. See Evidence/ui_checkout_redesign.md.
+
+### Checkout screenshot regression follow-up (2026-10-30)
+
+One added intrinsic-SVG-sizing regression was observed failing before the fix (from apps/web, to use its JSX configuration). After the fix: web suite 46/46, web build and full repository typecheck passed. HTTP checks of the real localhost:5173 CSS/module bodies now assert layout selectors and explicit SVG sizes rather than merely HTTP 200. No additional payment integration or broad suites run. Browser screenshots remain unavailable.
