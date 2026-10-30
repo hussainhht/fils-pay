@@ -4,6 +4,19 @@
 
 ---
 
+## BUG-033 retirement verification (2026-10-30)
+
+- `scripts/reconcile_march.safety.test.ts`: four database-free regressions cover
+  dependency/poster removal, repeated CLI refusal with/without configuration,
+  silent import with preserved pure helpers, and package/ops automation references.
+  A loader rejects `pg` before evaluation, so baseline testing cannot run the poster.
+- Baseline: three failures, one pass; fixed: four passes. Existing pure-helper and
+  janitor/SQL-filter regressions also pass (11 tests total).
+- Full `npm.cmd run typecheck`: passed. Windows sandbox blocked tsx user lookup;
+  the approved run outside the sandbox succeeded.
+- March DB stress test and supported batch DB integration: not verified without
+  a configured, verified disposable database. See the safety evidence report.
+
 ## 1. Testing Frameworks & Philosophy
 
 FilsPay enforces strict test-driven verification for all financial, security, and authorization logic:

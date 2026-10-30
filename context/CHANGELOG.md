@@ -2,6 +2,19 @@
 
 > **Scope:** Persistent audit trail of all updates, additions, and revisions made to the `context/` knowledge base. Every meaningful change to the repository must append an entry here.
 
+## 2026-10-30 — PMA-08 / BUG-033 retirement safety
+
+- Baseline `1c3f99e0c5478e1ff616898cdfc1cd6f5283172d`; removed the retired March
+  script's DB dependency and poster. CLI exits 1; imports retain pure helpers.
+- Replaced unsafe month-end runbook instructions. Added four safety regressions;
+  11 database-free script tests and repository typecheck pass.
+- Updated scripts module, dependency map, architecture/decision source correction,
+  testing and known issues. BUG-033 becomes `fix-verified` for future prevention.
+- Go settlement suite passes its runnable tests, with DB tests skipped because
+  DATABASE_URL is unset. Historical financial data remains unverified.
+- Evidence: `Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md`. No financial records,
+  migrations, protected money implementation, or supported settlement code changed.
+
 ---
 
 ## [1.1.0] — 2026-10-30

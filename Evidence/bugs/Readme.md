@@ -1,6 +1,6 @@
 # FilsPay — Master Bug Registry
 
-One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential and unique (`BUG-001` through `BUG-090`).
+One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential and unique (`BUG-001` through `BUG-091`).
 
 **Ground truth is always the code.** Tickets, ADRs, and comments are leads. They are not proof.
 
@@ -142,6 +142,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-088** | Promotional Discount Parser Multiplies BD by 100 | `High` | RUNTIME REPRODUCED | Fixed | Ledger and financial calculations | [BUG-088](bug-088-promotional-discount-times-100.md) |
 | **BUG-089** | Admin Invite Codes Are Drawn from Math.random | `Medium` | RUNTIME REPRODUCED | Fixed | Admin console and controls | [BUG-089](bug-089-admin-invite-math-random.md) |
 | **BUG-090** | Hex Compare Treats a Trailing Nibble as Equal | `Medium` | RUNTIME REPRODUCED | Fixed | Webhooks | [BUG-090](bug-090-hex-compare-drops-trailing-nibble.md) |
+| **BUG-091** | Expired Payment Links Are Still Displayed as Active | `Medium (P2)` | SOURCE-FUNCTION REPRODUCED; UI STATICALLY CONFIRMED | confirmed-current | Frontend / merchant API | [BUG-091](bug-091-expired-payment-links-displayed-active.md) |
 
 ---
 
@@ -274,7 +275,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-055** | Double-Entry Ledger and Audit Tables Lack Immutability Database Triggers | `High` | STATICALLY CONFIRMED | Fixed | [bug-055-ledger-and-audit-not-immutable.md](bug-055-ledger-and-audit-not-immutable.md) |
 | **BUG-081** | Migration Runner Lacks Checksum Verification Allowing Retroactive File Edits | `Low` | STATICALLY CONFIRMED | Open | [bug-081-migration-runner-has-no-checksum.md](bug-081-migration-runner-has-no-checksum.md) |
 
-### Frontend (9)
+### Frontend (10)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
@@ -287,6 +288,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-083** | View as Merchant Action Opens Unregistered Web Root Route | `Low` | STATICALLY CONFIRMED | Fixed | [bug-083-impersonation-opens-unregistered-web-root.md](bug-083-impersonation-opens-unregistered-web-root.md) |
 | **BUG-085** | Merchant Dashboard Document Title Says Checkout | `Low` | RUNTIME REPRODUCED | Fixed | [bug-085-dashboard-document-title-says-checkout.md](bug-085-dashboard-document-title-says-checkout.md) |
 | **BUG-087** | Checkout Brand Hint Misses Mastercard BIN 2720 | `Low` | RUNTIME REPRODUCED | Fixed | [bug-087-mastercard-2720-brand-hint-unknown.md](bug-087-mastercard-2720-brand-hint-unknown.md) |
+| **BUG-091** | Expired Payment Links Are Still Displayed as Active | `Medium (P2)` | SOURCE-FUNCTION REPRODUCED; UI STATICALLY CONFIRMED | confirmed-current | [bug-091-expired-payment-links-displayed-active.md](bug-091-expired-payment-links-displayed-active.md) |
 
 ### Infrastructure and configuration (4)
 
@@ -420,7 +422,7 @@ Every report must follow the standardized 17-section structure:
 
 1. Ensure the defect has been verified against the actual codebase.
 2. Check existing entries in the Master Bug Index to prevent duplicates.
-3. Assign the next available sequential ID (`BUG-091`).
+3. Assign the next available sequential ID (`BUG-092`).
 4. Follow the 17-section template.
 5. Add an entry to the Master Bug Index and the relevant Category section in this `Readme.md`.
 

@@ -4,6 +4,17 @@
 
 ---
 
+## Retirement safety update (2026-10-30, BUG-033)
+
+`scripts/reconcile_march.ts` is a fail-closed historical entrypoint, not a ledger
+writer. It has no database dependency and refuses CLI execution with exit 1.
+Current `CloseBatch` posts `grossFils - truncated` per scheme line inside its
+batch transaction (credit `card_scheme_clearing`, debit `scheme_rounding_residue`),
+and row-locks the batch before returning a no-op for already closed/paid batches.
+Historical reports claiming no Go residue posting exists are stale at this HEAD.
+Retirement does not backfill prior closes or settle the ADR 0003/0004/0006 and
+HANDOVER policy conflicts; these remain human decisions.
+
 ## 1. Architectural Philosophy & Principles
 
 FilsPay is designed around a single shared PostgreSQL 16 database acting as both the transactional store and the decoupled messaging backbone. The system balances strict financial consistency with distributed microservice responsibilities:

@@ -4,6 +4,15 @@
 
 ---
 
+## Current source correction (2026-10-30, BUG-033)
+
+At HEAD `1c3f99e`, `CloseBatch` already posts scheme-line residue atomically
+(`batch.go:314-325`). The older ADR 0002 implementation assessments below are
+historical and superseded by this source verification. The retired March poster
+has now been removed, leaving a CLI refusal and pure historical test helpers.
+No accepted ADR decision was changed. Month-window and balance-adjustment policy
+conflicts remain open for human review. See the PMA-08 safety evidence report.
+
 ## 1. Architecture Decision Records Catalog
 
 | ADR # | Title | Date | Deciders | Status in Docs | Reality in Code |
