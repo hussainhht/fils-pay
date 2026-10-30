@@ -48,7 +48,7 @@ apps/web/src/
    - Independent of merchant dashboard shell; displays cardholder payment interface.
    - Queries `GET /v1/payment-links/:token` for amount and status.
    - Submits payment to `POST /v1/payment-links/:token/pay`.
-   - Handles reservation timeout countdown and displays terminal success/failure state.
+   - Displays loading, processing, success and unavailable states. No reservation countdown is implemented; the backend retains ambiguous reservations for same-key recovery.
 3. **Refund Drawer:**
    - Slide-over panel on transaction detail view allowing merchant owners and finance users to issue full or partial refunds.
    - Validates that refund amount does not exceed captured headroom.
@@ -101,3 +101,7 @@ apps/admin/src/
 ## Authenticator UI (2026-10-30)
 
 Shared apps/ui/AuthenticatorSetup.tsx and authenticator.css provide Account security at /dashboard/security and /security, linked from each authenticated shell. Setup uses a locally generated PNG QR, optional manual key, new-code confirmation and one-time recovery-code display with explicit save acknowledgement. Secrets remain in component memory only; no localStorage, external QR service or secret-bearing URL. Replacement requires fresh password and old-factor/recovery proof. Login pages consume verificationMethod, show authenticator instructions/recovery toggle, and hide merchant email resend for TOTP. Microsoft Authenticator uses Other account; no Entra/push flow exists. Build/static correctness verified; actual device scan/interactive visual review remains unverified.
+
+## Hosted checkout presentation (2026-10-30)
+
+CheckoutFrame composes the existing Brand header, form/result region and optional CheckoutSummary sidebar. CheckoutDetails supplies dynamic merchant/order information, neutral simulated-payment wording, inline SVG illustration and expanded native test-card disclosure. CheckoutPaymentForm retains the original four inputs, native required/min/max validation, card state callbacks and brand hint; month/year remain separate. Scoped CheckoutPage.css uses shared tokens, a 1056px desktop container and a single column at 800px and below. Busy submission and inline error alerts are exposed accessibly; native browser validation messages remain in use. Success shows API merchant, returned amount, transaction ID and paidAt. No API, routing, financial or database behavior changed. Browser screenshots and 375/768/1024/1440 layout/keyboard verification remain unverified because the browser host is unavailable.

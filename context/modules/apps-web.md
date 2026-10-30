@@ -8,7 +8,7 @@
 
 `apps/web` is a React 18 single-page application built with Vite providing:
 1. **The Merchant Portal (`/dashboard/*`):** Self-service dashboard for merchants to monitor transactions, issue refunds, create payment links, view settlements, and configure webhooks.
-2. **Hosted Checkout (`/checkout/:token`):** Public-facing cardholder checkout interface for executing single-use payment link payments.
+2. **Hosted Checkout (`/pay/:token`):** Public-facing cardholder checkout interface for executing single-use payment link payments.
 
 ---
 
@@ -30,7 +30,7 @@
     - `payment-links/`: Link creation dialog, active/expired link tables.
     - `settlement/`: Batch list, batch detail, scheme export CSV downloads.
     - `webhooks/`: Webhook endpoint management, delivery log, test ping button.
-    - `checkout/`: Consumer checkout payment form (`/checkout/:token`).
+    - `checkout/`: Consumer checkout payment form (`/pay/:token`).
   - `src/refunds/`: `RefundDrawer` slide-over component.
 
 ---
@@ -50,12 +50,12 @@
 - UI switches to OTP entry $\rightarrow$ calls `POST /v1/auth/otp/verify`.
 - Session token is rotated on promotion (`BUG-016`); UI redirects to `/dashboard`.
 
-### 2. Hosted Checkout Page (`/checkout/:token`)
+### 2. Hosted Checkout Page (`/pay/:token`)
 - Rendered in isolation without the dashboard layout.
 - Calls public `GET /v1/payment-links/:token` for amount and status.
-- Displays expiration countdown and card input form.
+- Displays card inputs and server-derived public status; there is no frontend expiration countdown.
 - On submit, calls `POST /v1/payment-links/:token/pay`.
-- If the reservation lock expires or is claimed concurrently, displays `409 Conflict` message (`BUG-006`).
+- Competing payers receive a `409 Conflict` message. Ambiguous reservations remain bound to the original key/request, including after timeout; the UI currently creates a fresh key per retry.
 
 ### 3. Financial Display Formatting
 - **Invariant:** Never use `toFixed(2)` on monetary figures.
@@ -81,3 +81,7 @@
 1. **Document Title (BUG-085):** Dashboard pages incorrectly retained the title string "Checkout".
 2. **Date Filtering (BUG-076):** Date pickers generated UTC midnight timestamps, cutting off the first 3 hours of Bahrain daily volume.
 3. **Payment Links Pagination (BUG-077):** Link table was capped at 100 links with no pagination controls.
+
+## Checkout redesign verification (2026-10-30)
+
+Presentation split across CheckoutFrame, CheckoutDetails, CheckoutPaymentForm and scoped CSS; CheckoutPage still owns fetching, card state, submission and payment-state branches. Input callbacks, raw PAN, numeric month/year conversion, request body and idempotency lifecycle are preserved. Seven checkout presentation tests cover dynamic escaped data/exact fils display, native validation attributes, submitting/declined markup, sandbox suffixes, result composition and input/submit callback forwarding. Web suite: 45/45 pass; production build and repository typecheck pass. Local-only scripts/checkout-preview.mjs serves the actual app with synthetic /v1 responses on loopback port 5175, without proxy/database access; --before loads the three original checkout files from baseline 2ee8df0. This fixture is not payment integration evidence. See Evidence/ui_checkout_redesign.md for capture instructions and limitations.

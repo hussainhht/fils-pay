@@ -116,7 +116,7 @@ The transaction lifecycle enforces strict, irreversible state transitions:
   - Browser fetches link details via public `GET /v1/payment-links/:token`. Returns amount, merchant name, and expiry. Never returns API keys or internal hashes (`BUG-022`).
 - **Payment Submission:**
   - Customer submits card details to `POST /v1/payment-links/:token/pay`.
-  - **Atomic Reservation Lock (`BUG-006`):**
+  - **Historical reservation example (`BUG-006`; superseded by current source):**
     ```sql
     UPDATE payment_links
        SET status = 'reserved',
@@ -154,3 +154,7 @@ The transaction lifecycle enforces strict, irreversible state transitions:
        - `customer_settlement`: CREDIT `refundAmount`
      - Deletes reservation from `pending_refund_reservations`.
      - Enqueues outbox event: `refund.created`.
+
+## Current reservation clarification (2026-10-30 source review)
+
+The SQL example above describes the historical timeout-based claim. Current paymentLinks/pay.ts binds a durable reservation to payment_key_hash and payment_request_hash; only the identical key/request may resume a reserved link, regardless of timeout. derivePublicStatus keeps timed-out reservations processing. Definite authorization declines release the reservation; ambiguous transport/capture outcomes retain it. This documentation correction accompanies a UI-only redesign; no payment implementation changed. Checkout UI still makes a new key for each explicit retry; see KNOWN_ISSUES for the resulting recovery limitation.

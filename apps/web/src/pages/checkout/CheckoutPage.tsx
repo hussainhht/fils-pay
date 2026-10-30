@@ -5,7 +5,9 @@ import { getPaymentLink, payPaymentLink } from "../../api/paymentLinks.js";
 import { ApiError } from "../../api/client.js";
 import type { PaymentLinkPublicDto, PayPaymentLinkResponse, SimulatedCardInput } from "../../types.js";
 import "./CheckoutPage.css";
+import { CheckoutPaymentForm } from "./CheckoutPaymentForm.js";
 import { CheckoutFrame } from "./CheckoutFrame.js";
+import { CheckoutMerchant, CheckoutSummary, CheckoutTestInfo } from "./CheckoutDetails.js";
 
 type LoadState =
   | { kind: "loading" }
@@ -91,14 +93,14 @@ export function CheckoutPage() {
   if (loadState.kind === "loading") {
     return (
       <CheckoutFrame>
-        <p className="fp-loading-state" role="status">Loading...</p>
+        <div className="checkout-loading" role="status"><span className="checkout-spinner" aria-hidden="true" /><h1>Preparing your checkout</h1><p>Loading payment details...</p></div>
       </CheckoutFrame>
     );
   }
 
   if (loadState.kind === "not_found") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>Payment link not found</h1>
         <p>This payment link does not exist.</p>
       </CheckoutFrame>
@@ -109,10 +111,12 @@ export function CheckoutPage() {
 
   if (payState.kind === "success") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="success" summary={<CheckoutSummary link={link} />}>
         <h1>Payment successful</h1>
         <p>Thank you — your payment has been received.</p>
-        <dl>
+        <CheckoutMerchant name={link.merchantDisplayName} />
+        <p className="checkout-amount">{formatBhd(toFils(payState.result.amountFils))} <span>BHD</span></p>
+        <dl className="checkout-receipt">
           <dt>Transaction ID</dt>
           <dd>{payState.result.transactionId}</dd>
           <dt>Paid at</dt>
@@ -124,7 +128,7 @@ export function CheckoutPage() {
 
   if (payState.kind === "terminal") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>Unable to pay</h1>
         <p>{payState.message}</p>
       </CheckoutFrame>
@@ -133,7 +137,7 @@ export function CheckoutPage() {
 
   if (link.status === "paid") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>Already paid</h1>
         <p>This invoice has already been paid.</p>
       </CheckoutFrame>
@@ -141,7 +145,7 @@ export function CheckoutPage() {
   }
   if (link.status === "expired") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>Link expired</h1>
         <p>This payment link has expired.</p>
       </CheckoutFrame>
@@ -149,7 +153,7 @@ export function CheckoutPage() {
   }
   if (link.status === "canceled") {
     return (
-      <CheckoutFrame>
+      <CheckoutFrame result="unavailable">
         <h1>No longer available</h1>
         <p>This payment link is no longer available.</p>
       </CheckoutFrame>
@@ -158,7 +162,7 @@ export function CheckoutPage() {
   if (link.status === "processing") {
     return (
       <CheckoutFrame>
-        <h1>Payment processing</h1>
+        <div className="checkout-loading" role="status"><span className="checkout-spinner" aria-hidden="true" /><h1>Payment processing</h1></div>
         <p>A payment is being processed for this link — please wait a moment and refresh.</p>
       </CheckoutFrame>
     );
@@ -169,84 +173,18 @@ export function CheckoutPage() {
   const submitting = payState.kind === "submitting";
 
   return (
-    <CheckoutFrame>
-      <div className="checkout-summary">
-      <h1>{link.merchantDisplayName}</h1>
-      <p className="checkout-amount">{amount} BHD</p>
-      {link.description ? <p className="checkout-description">{link.description}</p> : null}
-      {link.reference ? <p className="checkout-reference">Reference: {link.reference}</p> : null}
-      </div>
+    <CheckoutFrame summary={<CheckoutSummary link={link} />}>
+      <section className="checkout-summary" aria-labelledby="paying-to-title">
+        <p className="checkout-eyebrow" id="paying-to-title">Paying to</p>
+        <CheckoutMerchant name={link.merchantDisplayName} />
+        <div className="checkout-amount-section"><h1>Amount</h1><p className="checkout-amount">{amount} <span>BHD</span></p></div>
+      </section>
 
-      {payState.kind === "declined" ? <p className="checkout-error" role="alert">{payState.message}</p> : null}
+      {payState.kind === "declined" ? <div className="checkout-error" role="alert" id="checkout-payment-error"><strong>Payment not completed</strong><p>{payState.message}</p></div> : null}
 
-      <form onSubmit={handleSubmit} className="checkout-form">
-        <label>
-          Card number
-          <input
-            type="text"
-            inputMode="numeric"
-            required
-            value={card.pan}
-            onChange={(e) => {
-              const pan = e.target.value;
-              setCard({ ...card, pan });
-              const digits = pan.replace(/\D/g, "");
-              if (digits.length >= 4) {
-                void import("../../utils/helpers.js").then((m) => {
-                  setBrandHint(m.formatCardBrandHint(digits));
-                });
-              } else {
-                setBrandHint(null);
-              }
-            }}
-          />
-          {brandHint && brandHint !== "unknown" ? (
-            <span className="checkout-brand-hint">{brandHint}</span>
-          ) : null}
-        </label>
-        <div className="checkout-form-row">
-          <label>
-            Expiry month
-            <input
-              type="number"
-              min={1}
-              max={12}
-              required
-              value={card.expiryMonth}
-              onChange={(e) => setCard({ ...card, expiryMonth: Number(e.target.value) })}
-            />
-          </label>
-          <label>
-            Expiry year
-            <input
-              type="number"
-              min={new Date().getFullYear()}
-              required
-              value={card.expiryYear}
-              onChange={(e) => setCard({ ...card, expiryYear: Number(e.target.value) })}
-            />
-          </label>
-          <label>
-            CVV
-            <input
-              type="text"
-              inputMode="numeric"
-              required
-              value={card.cvv}
-              onChange={(e) => setCard({ ...card, cvv: e.target.value })}
-            />
-          </label>
-        </div>
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Processing..." : `Pay ${amount} BHD`}
-        </button>
-      </form>
+      <CheckoutPaymentForm card={card} setCard={setCard} brandHint={brandHint} setBrandHint={setBrandHint} submitting={submitting} amount={amount} declined={payState.kind === "declined"} onSubmit={handleSubmit} />
 
-      <p className="checkout-help">
-        Test cards (simulated acquirer, no real charge): any other number approves; a PAN ending{" "}
-        <code>0002</code> always declines (do not honor); ending <code>0119</code> always declines
-        (insufficient funds); ending <code>0069</code> always errors.
-      </p>
+      <CheckoutTestInfo />
     </CheckoutFrame>
   );
 }
