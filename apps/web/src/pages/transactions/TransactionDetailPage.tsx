@@ -214,7 +214,7 @@ export function TransactionDetailPage() {
             {voidable ? (
               <button
                 type="button"
-                className="dash-button"
+                className="dash-button fp-button-danger"
                 disabled={submitting}
                 onClick={() => void handleVoid()}
               >
