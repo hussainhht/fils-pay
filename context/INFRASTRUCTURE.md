@@ -159,3 +159,11 @@ FEATURE_TOTP defaults false and requires approved migration 0085 before activati
 ## Prepared isolated capacity stack (2026-10-30)
 
 `ops/capacity/compose.yml` is independent of local/production Compose, with its own project-scoped PostgreSQL 16 volume and only nginx on 127.0.0.1:3300. Steady declared quotas total 0.95 CPU/1600 MiB including API 0.5 CPU/512 MiB; 0.05 CPU/448 MiB remains for OS/Docker/monitoring on a 1-CPU/2-GiB host. Swap maxima equal RAM limits. Actual enforcement/overhead remains unverified without Docker. Private `.env` is generated exclusively, runtime files ignored/excluded from builds, simulator 100–400 ms/2%/seed42 fixed, and existing auth checks retained. Additive fixtures only use capacity-postgres/filspay_test_capacity; no existing DB was used. Image builds, semantic Compose validation, provisioning and capacity remain pending. This is not a production deployment change. Exact commands and limitations: `Evidence/agent-1-capacity-optimization.md`.
+
+## Remote preview update (2026-10-31)
+
+The static preview at 68.183.82.221 uses /srv/filspay/releases/20261031-f4b5a1a, built from commit f4b5a1a. The Node production image tag points to that build. Existing reporting and settlement containers were not restarted; the API remains inactive and health returns 503. Migration 0085 was already applied; no migration or seed was run. Merchant and admin login HTML and their referenced JavaScript returned HTTP 200. Authenticated flows remain unverified and require appropriate HTTPS and setup.
+
+## HTTPS and API activation (2026-10-31)
+
+The temporary origin is https://68-183-82-221.sslip.io, using Let's Encrypt and a systemd renewal timer; an ACME renewal dry run passed. HTTP redirects to HTTPS. Static assets and the API use this origin; API and reporting run f4b5a1a Node images. Settlement was not restarted and its source, Go dependencies and Dockerfile are unchanged from the prior release. API health and readiness return 200 and its DB query succeeded. OTP delivery is disabled, matching current login code, which does not use email OTP; FEATURE_TOTP is disabled and its key absent. No users exist and authenticated workflows are unverified. No database migration or seed was run. Full details: Evidence/production_deployment_verification.md.

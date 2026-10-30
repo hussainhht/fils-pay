@@ -220,3 +220,11 @@ One added intrinsic-SVG-sizing regression was observed failing before the fix (f
 ## Checkout capacity preparation (2026-10-30)
 
 `node --test scripts/checkout-capacity.test.mjs` passed 4/4 actual loopback HTTP runner tests: unsafe/public target refusal, exact outcome classification, fixed-arrival generator drops, and closed-loop fixture exhaustion. This is tooling validation, not application capacity evidence. Focused existing acquirer/pool/payment-link unit tests passed 20/20; full repository typecheck passed. Go available tests passed with temporary GOCACHE after default-cache ACL failure; DB-backed scenarios skipped with DATABASE_URL absent. Full API/reporting DB suites were not run. Node syntax and stage-script PowerShell AST parsing passed. Docker/Compose semantic validation, isolated fixture SQL and all sustained capacity, resource enforcement, financial/restart/recovery measurements remain pending. Do not run integration suites against measured fixture data. Exact commands, matrix and metric limitations: `Evidence/agent-1-capacity-optimization.md`.
+
+## Test merchant provisioning (2026-10-31)
+
+Onboarding mock transaction regression and authenticator mock tests passed; real PostgreSQL signup/login/rollback and Go settlement exclusion tests are present but were skipped because no isolated migrated local test database was available. Never point these tests at production. See Evidence/test_mode_merchant_provisioning.md.
+
+## Test-mode isolated database attempt (2026-10-31)
+
+On a temporary migrated isolated PostgreSQL, new provisioning/auth integration passed 4/4 and Go settlement exclusion passed 1/1. The full API suite was interrupted after 20 failures in 147 reported subtests, largely old email-OTP expectations versus current login/config. No deployment followed. See Evidence/test_mode_merchant_provisioning.md.

@@ -202,3 +202,11 @@ The original redesign left ambiguous-payment retry unresolved; the subsequently 
 ### Checkout missing styles/oversized SVG follow-up (2026-10-30)
 
 P2 screenshot defect: confirmed-current -> fix-verified at served-module/regression level. The running Vite CSS module was empty; rewriting the file restored layout CSS, and intrinsic SVG dimensions prevent icon enlargement without styles. Exact stale-transform cause undetermined. The merged checkout has since been checked in desktop and mobile Chromium viewports; see `context/TESTING.md`.
+
+## Test merchant provisioning deployment blocker (2026-10-31)
+
+Production signup creates live-mode merchants and the settlement scheduler selects them. A local operator test-mode creation path has been implemented but is unverified against a real isolated database and has not been deployed. Production test-merchant login remains blocked. See Evidence/test_mode_merchant_provisioning.md.
+
+## API regression-suite authentication mismatch (2026-10-31)
+
+Isolated full API run reported 20 failures before interruption in app.test.ts, auth/forkBatch1.new.test.ts and auth/otpDelivery.new.test.ts. These include legacy email-OTP expectations conflicting with current login and delivery defaults. Full scope and baseline attribution remain unverified. Deployment of test-mode provisioning is blocked by the required passing suite. See Evidence/test_mode_merchant_provisioning.md.

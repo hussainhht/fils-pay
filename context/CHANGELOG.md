@@ -192,3 +192,19 @@ Confirmed actual localhost:5173 served an empty checkout CSS transform despite p
 - Current authorize/capture release transactions before provider waits. Historical BUG-061 wording in the API module is corrected. Missing checkout admission and existing Compose resource enforcement remain source-confirmed gaps; next bottleneck is unmeasured.
 - Client tests 4/4 and focused existing tests 20/20 pass; repository typecheck passes. Go available tests pass with temporary cache; DB-backed cases skipped without configuration. Node syntax/PowerShell parsing pass; Docker/Compose/fixture SQL and all actual capacity/correctness measurements remain pending.
 - Evidence and exact future commands: `Evidence/agent-1-capacity-optimization.md`. No payment implementation, schema, dependency, protected contract, production template or submitted server changed. Existing context edits were preserved and these findings appended.
+
+## 2026-10-31 - Server preview release f4b5a1a
+
+Updated INFRASTRUCTURE.md with the new static preview release, image, verification and inactive API state. No application code changed.
+
+## 2026-10-31 - HTTPS and API activation
+
+Updated INFRASTRUCTURE.md with the temporary HTTPS origin, service and certificate status, and remaining authentication/testing blockers. See Evidence/production_deployment_verification.md.
+
+## 2026-10-31 - Test-mode merchant provisioning preparation
+
+Added a local operator-only test merchant creation path and tests, and documented authorization, dependencies and missing database verification. Not deployed; no production account created. See Evidence/test_mode_merchant_provisioning.md.
+
+## 2026-10-31 - Isolated provisioning test and API failures
+
+Recorded passing isolated provisioning and settlement checks and a stopped API suite with 20 reported failures. No production deployment or account creation. See Evidence/test_mode_merchant_provisioning.md.

@@ -127,3 +127,7 @@ Merchant login/resend and admin login -> separate notifier wrappers -> shared au
 ## TOTP dependencies (2026-10-30)
 
 Auth login/verification -> auth/totp -> auth/totpCrypto (otplib, qrcode for setup only) -> dedicated plane-specific authenticator tables. Enrollment management uses existing full session middleware, password verifier, login failure limits, transaction helper and admin audit logger. Frontend login DTOs add verificationMethod; both security pages share apps/ui/AuthenticatorSetup. New schema requires 0085 before FEATURE_TOTP=true; no financial table/event dependency is introduced. TOTP key is separate from webhook encryption.
+
+## Test provisioning dependency (2026-10-31; local, not deployed)
+
+Operator CLI -> onboarding service -> PostgreSQL merchant/profile/owner transaction; settlement's existing active AND test_mode=false filter excludes test merchants. Public signup has no test-mode input. No schema or financial service change. DB-backed verification is pending.

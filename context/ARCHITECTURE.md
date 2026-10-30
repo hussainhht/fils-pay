@@ -201,3 +201,7 @@ No provider vault/tokenization, hosted-field integration or authenticated custom
 ownership model exists. Saving/retrieving/removing cards remains unavailable.
 Merchant or admin identity must never be substituted for cardholder identity.
 No API/schema, financial module, settlement behavior or accepted ADR changed.
+
+## Operator test provisioning (2026-10-31; local, not deployed)
+
+A separate operator CLI uses the merchant creation transaction to write test_mode=true at insert. Authorization relies on restricted operator/database access and explicit CLI confirmation, not a public API parameter. Existing settlement eligibility is unchanged. Real database verification and deployment remain pending.

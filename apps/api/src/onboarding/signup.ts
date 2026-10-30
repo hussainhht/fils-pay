@@ -41,12 +41,25 @@ export async function createMerchantWithOwner(
   config: Config,
   input: SignupInput,
 ): Promise<SignupResult> {
+  return createMerchant(pool, config, input, false);
+}
+
+/** For trusted operator tooling only; never expose this choice on public signup. */
+export async function createTestMerchantWithOwner(
+  pool: Pool,
+  config: Config,
+  input: SignupInput,
+): Promise<SignupResult> {
+  return createMerchant(pool, config, input, true);
+}
+
+async function createMerchant(pool: Pool, config: Config, input: SignupInput, testMode: boolean): Promise<SignupResult> {
   const passwordHash = await hashPassword(input.owner.password, config);
 
   return withTransaction(pool, async (client) => {
     const merchantResult = await client.query<{ id: string; onboarding_status: string }>(
-      `INSERT INTO merchants (display_name) VALUES ($1) RETURNING id, onboarding_status`,
-      [input.businessProfile.legalName],
+      `INSERT INTO merchants (display_name, test_mode) VALUES ($1, $2) RETURNING id, onboarding_status`,
+      [input.businessProfile.legalName, testMode],
     );
     const merchant = merchantResult.rows[0];
     if (!merchant) {
