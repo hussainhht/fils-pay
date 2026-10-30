@@ -142,6 +142,46 @@ checkouts; notification scanning does not change payment-link financial state.
 - **BUG-085 (P3):** Merchant dashboard document title displays "Checkout".
 - **BUG-086 (P1):** Credit fee reversal calculates fee using `merchants.mdr_bps` instead of the effective `fee_schedules` row.
 
+
+## Checkout workstream findings ? 2026-10-30
+
+These local finding IDs do not renumber the historical BUG-001?BUG-086 registry.
+
+| Finding | Severity | Current status | Evidence |
+|---|---|---|---|
+| CHECKOUT-01: open active page remained payable in the UI after expiry | P2 | `fix-verified` | Baseline Edge check fails; enhanced checkout removes the form at expiry and checks again immediately before a new attempt. Existing server expiry enforcement is preserved. |
+| CHECKOUT-02: frontend used a fresh key after an uncertain result, preventing resumption of the server's bound attempt | P2 | `fix-verified` | Baseline retry check fails; browser tests prove identical key/payload on 502/500/409/network recovery and a fresh key after definitive decline. |
+
+Feature limitation: the simulator has no tokenization/vault and the application has
+no verified cardholder identity. Saving, retrieval, ownership checks, removal and
+future charging of saved cards cannot be safely implemented with this integration.
+The UI states saving is unavailable. This is a feature blocker, not a claim that
+historical payment/security defects elsewhere have been resolved. Recovery keys
+and card values remain memory-only; a reload loses the ability to resume locally.
+The scoped findings above total `fix-verified`: 2; all other status counts: 0.
+
+## Payment-link amount workstream finding — 2026-10-30
+
+| Finding | Severity | Current status | Evidence |
+|---|---|---|---|
+| AMOUNT-01: creation used raw fils and a number field that lost the trailing decimal while typing | P2 | `fix-verified` | Baseline Edge check at HEAD `1b1f64b` produced `1` for `1.`. The BHD text field now retains drafts/caret, normalizes only at blur/submit and uses the existing exact money parser; 55 web tests and 11 browser groups pass. See FEAT-003 in `Evidence/features/features.md`. |
+
+Scoped count: `confirmed-current`: 1 before; `fix-verified`: 1 after; all other statuses: 0. Historical BUG-001–BUG-086 counts were not reassessed. Localized separators/digits are unsupported; physical keyboards, other browsers and live browser authentication-to-creation remain unverified.
+
+## Payment-link expiration completion — 2026-10-30
+
+This extends FEAT-003 from baseline `850504a`; the earlier amount-phase live-browser limitation is superseded for authentication/creation by the new isolated check.
+
+| Finding | Severity | Current status | Evidence |
+|---|---|---|---|
+| EXPIRY-01: missing duration choices/bounds; only a future timestamp required | P2 | `fix-verified` | Baseline service accepts a 899-second instant; baseline browser has no expiration radios. Inclusive 900..10368000 seconds, exactly-one-of, server-relative calculation and labeled Bahrain estimate now verified by units, real API/DB and browser checks. Existing historical links and expired bound-attempt recovery preserved. |
+| AMOUNT-02: direct creation accepts zero fils | P2 | `fix-verified` | Baseline service only called nonnegative `toFils`; new positive guard tested before INSERT and by real route 400/no-row assertions. Working BHD editing unchanged. |
+| VERIFY-EXPIRY-01: dispatcher test asserted a fixed delay from a randomly jittered function | P3 | `fix-verified` | The feature-branch run saw 508/509 pass. On merged main, the existing test injects deterministic jitter when asserting the exact delay; see the merge verification entry in `context/TESTING.md`. |
+| VERIFY-EXPIRY-02: settlement fake-server fetch failure in one full run | Unclassified | `unverified` | Did not recur in final fresh standalone run. No settlement code touched. |
+| VERIFY-EXPIRY-03: concurrent capture returned internal error in one full run | Unclassified | `unverified` | Did not recur in final fresh standalone run. No capture code touched. |
+
+Implementation findings: before `confirmed-current`: 2; after `fix-verified`: 2, other statuses 0. Separate verification findings after merge: `fix-verified`: 1 (P3), `unverified`: 2, other statuses 0. No remaining confirmed P0–P2 defect in the scoped implementation; historical registry counts are unchanged, not re-audited. See FEAT-003 for the original branch's commands and verification limits; `context/TESTING.md` records merged results.
+
 ## PMA-01 production OTP delivery (2026-10-30 update)
 
 Status: `unverified` (implementation + mocked unit/HTTP verification complete; DB/external verification blocked). Baseline was confirmed-current P0: merchant/admin production notifiers logged metadata without delivering. Shared Resend adapter now submits after commit, fails securely on provider failure/missing configuration, and prohibits production code exposure. Development/test sends nothing and logs no codes. Do not label fully fix-verified until both planes deliver using authorized production-equivalent provider settings and complete authentication. Evidence: Evidence/PMA-01_OTP_DELIVERY_FIX.md. Historical registry aggregate counts above were not recomputed by this scoped fix.
@@ -152,12 +192,8 @@ TOTP implementation is unit/mocked-HTTP verified; deployment remains unverified 
 
 ## Checkout UI scope and existing limitations (2026-10-30)
 
-No historical bug statuses changed by this presentation redesign. Source-confirmed existing behavior: the frontend creates a fresh idempotency key per attempt and offers retry after 502, while paymentLinks/pay.ts retains ambiguous reservations for same-key recovery. Therefore a fresh UI retry can receive processing/conflict rather than recover the attempt (confirmed-current, P2; left unchanged under the explicit payment-logic freeze). Runtime reproduction remains unverified. Insufficient-funds responses share the existing generic declined text; simulator outcomes remain distinct. The preserved test instructions say any other PAN approves, while the simulator can also randomly fail according to its configured failure rate. No new guarantee is added. No financial ADR conflicts were acted on. Responsive visual/keyboard verification remains unverified; see Evidence/ui_checkout_redesign.md.
+The original redesign left ambiguous-payment retry unresolved; the subsequently merged feature branch fixes that behavior, as recorded under CHECKOUT-02 above. Insufficient-funds responses share generic declined text; simulator outcomes remain distinct. The test instructions say any other PAN approves, while the simulator can also randomly fail according to its configured failure rate. No new guarantee is added. No financial ADR conflicts were acted on. See Evidence/ui_checkout_redesign.md for the original redesign verification and `context/TESTING.md` for merged browser checks.
 
 ### Checkout missing styles/oversized SVG follow-up (2026-10-30)
 
-P2 screenshot defect: confirmed-current -> fix-verified at served-module/regression level. The running Vite CSS module was empty; rewriting the file restored layout CSS, and intrinsic SVG dimensions prevent icon enlargement without styles. Browser visual confirmation remains pending. Exact stale-transform cause undetermined. Existing ambiguous-payment retry issue above is unchanged.
-
-## Checkout capacity source clarification (2026-10-30)
-
-Scoped source review at `1f88a47`: BUG-061's historical row-lock-across-acquirer description no longer matches current capture source. Prepare commits before network I/O; apply reacquires locks. The historical reopened-link/live-hold behavior also differs: current checkout voids definitive capture declines before releasing and retains ambiguous reservations. Both are `already-fixed` by source inspection here; no new integration confirmation. Checkout-specific bounded admission and existing Compose CPU/RAM enforcement are `confirmed-current` P2 gaps, with overload impact/live enforcement unmeasured. Reporting outbox SHARE-lock contention and simulator result-cache growth are performance hypotheses (`unverified` impact), not measured bottlenecks. New `ops/capacity/compose.yml` declares a separate disposable benchmark budget; it does not fix production configuration. Scope/status counts and verification limits: `Evidence/agent-1-capacity-optimization.md`. This clarification does not rescan or replace the historical 86-issue registry.
+P2 screenshot defect: confirmed-current -> fix-verified at served-module/regression level. The running Vite CSS module was empty; rewriting the file restored layout CSS, and intrinsic SVG dimensions prevent icon enlargement without styles. Exact stale-transform cause undetermined. The merged checkout has since been checked in desktop and mobile Chromium viewports; see `context/TESTING.md`.

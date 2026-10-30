@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { formatBhd, toFils } from "@filspay/money";
 import { getPaymentLink, payPaymentLink } from "../../api/paymentLinks.js";
 import { ApiError } from "../../api/client.js";
 import type { PaymentLinkPublicDto, PayPaymentLinkResponse, SimulatedCardInput } from "../../types.js";
 import "./CheckoutPage.css";
-import { CheckoutPaymentForm } from "./CheckoutPaymentForm.js";
 import { CheckoutFrame } from "./CheckoutFrame.js";
+import { CardPaymentForm } from "./CardPaymentForm.js";
+import { linkHasExpired } from "./cardInput.js";
 import { CheckoutMerchant, CheckoutSummary, CheckoutTestInfo } from "./CheckoutDetails.js";
 
 type LoadState =
@@ -18,20 +19,21 @@ type PayState =
   | { kind: "idle" }
   | { kind: "submitting" }
   | { kind: "success"; result: PayPaymentLinkResponse }
-  | { kind: "declined"; message: string; retryable: boolean }
+  | { kind: "declined"; message: string; recovery?: boolean }
   | { kind: "terminal"; message: string };
-
-const EMPTY_CARD: SimulatedCardInput = { pan: "", expiryMonth: 1, expiryYear: new Date().getFullYear() + 1, cvv: "" };
 
 export function CheckoutPage() {
   const { token } = useParams<{ token: string }>();
+  return <CheckoutSession key={token} token={token} />;
+}
+
+function CheckoutSession({ token }: { token: string | undefined }) {
   const [loadState, setLoadState] = useState<LoadState>({ kind: "loading" });
   const [payState, setPayState] = useState<PayState>({ kind: "idle" });
-  const [card, setCard] = useState<SimulatedCardInput>(EMPTY_CARD);
-  const [brandHint, setBrandHint] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now);
+  const inFlight = useRef(false);
+  const attemptKey = useRef<string | null>(null);
 
-  // FH: memory leak — this effect never aborts the fetch on unmount (React warning in console?)
-  // theres a cancelled flag in the cleanup tho. warning must be from somewhere else — am
   useEffect(() => {
     if (!token) {
       setLoadState({ kind: "not_found" });
@@ -52,41 +54,54 @@ export function CheckoutPage() {
     };
   }, [token]);
 
-  async function handleSubmit(event: React.FormEvent): Promise<void> {
-    event.preventDefault();
-    if (!token) return;
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
-    // A fresh Idempotency-Key per explicit user action — every click,
-    // including a "try again" after a decline, is a new attempt.
-    const idempotencyKey = crypto.randomUUID();
-    const submittedAt = new Date().toISOString();
+  async function handleSubmit(card: SimulatedCardInput): Promise<void> {
+    if (!token || inFlight.current || loadState.kind !== "loaded") return;
+    // A bound attempt may resume after expiry; only the server can determine
+    // its outcome. A new attempt must never begin after the deadline.
+    if (!attemptKey.current && (loadState.link.status !== "active" || linkHasExpired(loadState.link.expiresAt))) {
+      setPayState({ kind: "terminal", message: "This payment link has expired or is no longer available." });
+      return;
+    }
+    inFlight.current = true;
+    const idempotencyKey = attemptKey.current ?? crypto.randomUUID();
+    attemptKey.current = idempotencyKey;
     setPayState({ kind: "submitting" });
 
     try {
-      const result = await payPaymentLink(token, { card, submittedAt }, idempotencyKey);
+      const result = await payPaymentLink(token, { card }, idempotencyKey);
       setPayState({ kind: "success", result });
     } catch (err) {
       if (err instanceof ApiError) {
         const { statusCode, body } = err;
         if (statusCode === 402) {
+          attemptKey.current = null;
           const stageLabel = body.stage === "capture" ? "Your payment could not be completed." : "Your card was declined.";
-          setPayState({ kind: "declined", message: stageLabel, retryable: true });
+          setPayState({ kind: "declined", message: stageLabel });
         } else if (statusCode === 502) {
-          setPayState({ kind: "declined", message: "The acquirer is temporarily unavailable. Please try again.", retryable: true });
+          setPayState({ kind: "declined", message: "The payment processor is temporarily unavailable. Your payment outcome is not yet confirmed.", recovery: true });
         } else if (statusCode === 409 && body.error === "payment_link_already_paid") {
           setPayState({ kind: "terminal", message: "This invoice has already been paid." });
         } else if (statusCode === 409 && body.error === "payment_link_canceled") {
           setPayState({ kind: "terminal", message: "This payment link is no longer available." });
         } else if (statusCode === 409) {
-          setPayState({ kind: "declined", message: "A payment is already being processed for this link. Please try again shortly.", retryable: true });
+          setPayState({ kind: "declined", message: "A payment is already being processed for this link. Please check again shortly.", recovery: true });
         } else if (statusCode === 410) {
           setPayState({ kind: "terminal", message: "This payment link has expired." });
+        } else if (statusCode >= 500) {
+          setPayState({ kind: "declined", message: "We could not confirm the payment outcome. Please retry this payment.", recovery: true });
         } else {
-          setPayState({ kind: "declined", message: body.message ?? "Something went wrong. Please try again.", retryable: true });
+          setPayState({ kind: "terminal", message: "This payment could not be processed. Please contact the merchant." });
         }
       } else {
-        setPayState({ kind: "declined", message: "Something went wrong. Please try again.", retryable: true });
+        setPayState({ kind: "declined", message: "We could not confirm the payment outcome. Check your connection and retry this payment.", recovery: true });
       }
+    } finally {
+      inFlight.current = false;
     }
   }
 
@@ -143,7 +158,7 @@ export function CheckoutPage() {
       </CheckoutFrame>
     );
   }
-  if (link.status === "expired") {
+  if (link.status === "expired" || (link.status === "active" && !attemptKey.current && linkHasExpired(link.expiresAt, now))) {
     return (
       <CheckoutFrame result="unavailable">
         <h1>Link expired</h1>
@@ -182,7 +197,8 @@ export function CheckoutPage() {
 
       {payState.kind === "declined" ? <div className="checkout-error" role="alert" id="checkout-payment-error"><strong>Payment not completed</strong><p>{payState.message}</p></div> : null}
 
-      <CheckoutPaymentForm card={card} setCard={setCard} brandHint={brandHint} setBrandHint={setBrandHint} submitting={submitting} amount={amount} declined={payState.kind === "declined"} onSubmit={handleSubmit} />
+      <CardPaymentForm amount={amount} submitting={submitting}
+        recovery={payState.kind === "declined" && Boolean(payState.recovery)} onPay={handleSubmit} />
 
       <CheckoutTestInfo />
     </CheckoutFrame>

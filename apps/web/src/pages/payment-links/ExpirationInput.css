@@ -1,0 +1,13 @@
+.payment-link-expiration { border: 0; padding: 0; margin: 0; min-width: 0; }
+.payment-link-expiration legend { margin-bottom: 10px; font-weight: 600; }
+.payment-link-expiration-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.dash-form .payment-link-expiration-option { display: flex; flex-direction: row; align-items: center; gap: 8px; min-height: 48px; padding: 10px; border: 1px solid var(--fp-border); border-radius: 7px; cursor: pointer; }
+.dash-form .payment-link-expiration-option:has(input:checked) { color: var(--fp-primary-hover); background: var(--fp-soft); border-color: var(--fp-primary); }
+.dash-form .payment-link-expiration-option:has(input:focus-visible) { outline: 2px solid var(--fp-primary); outline-offset: 2px; }
+.dash-form .payment-link-expiration-option input { width: 18px; min-height: 18px; margin: 0; flex: none; accent-color: var(--fp-primary); }
+.payment-link-custom-duration { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.payment-link-custom-duration input, .payment-link-custom-duration select { width: 100%; min-width: 0; }
+@media (max-width: 540px) {
+  .payment-link-expiration-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .payment-link-custom-duration { grid-template-columns: minmax(0, 1fr); }
+}

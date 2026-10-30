@@ -4,17 +4,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { createPaymentLink } from "../../api/paymentLinks.js";
 import { describeError } from "../../api/client.js";
 import { useDashboardAuth } from "../../auth/DashboardAuthContext.js";
-import { localDateTimeToIso } from "../../format.js";
+import { BhdAmountInput } from "./BhdAmountInput.js";
+import { normalizeBhdAmount, parseBhdAmountDraft } from "./bhdAmount.js";
+import { ExpirationInput } from "./ExpirationInput.js";
+import { expirationSeconds, type DurationUnit, type ExpirationOption } from "./expiration.js";
 
 /**
  * `POST /v1/merchants/:merchantId/payment-links`, `owner`/`finance`
  * server-side.
  *
- * Amount is entered in fils — the platform's actual unit, and the same unit
- * the checkout page works in. No decimal-BHD input widget: a second
- * string-to-fils parser in the browser is exactly the kind of place a money
- * bug hides, and `parseBhdToFils` exists in @filspay/money for whenever a
- * phase genuinely wants that UI.
+ * Amount is edited as BHD text and converted by @filspay/money to exact
+ * integer fils at submission. Formatting is deferred until blur/submit.
  *
  * The two client-side checks below mirror the server's own two real checks so
  * an obviously-bad value doesn't need a round trip. They are not the
@@ -25,31 +25,29 @@ export function PaymentLinkCreatePage() {
   const { me } = useDashboardAuth();
   const navigate = useNavigate();
 
-  const [amountFils, setAmountFils] = useState("");
+  const [amountBhd, setAmountBhd] = useState("");
   const [reference, setReference] = useState("");
   const [description, setDescription] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
+  const [expirationOption, setExpirationOption] = useState<ExpirationOption>("24-hours");
+  const [customDuration, setCustomDuration] = useState("");
+  const [durationUnit, setDurationUnit] = useState<DurationUnit>("minutes");
+  const durationSeconds = expirationSeconds(expirationOption, customDuration, durationUnit);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // YA: amount typed as raw fils, no BD conversion. intentional for now
   async function handleSubmit(event: React.FormEvent): Promise<void> {
     event.preventDefault();
     if (!me) return;
     setError(null);
 
-    const amount = Number(amountFils);
-    if (!Number.isInteger(amount) || amount <= 0) {
-      setError("Amount must be a positive whole number of fils.");
+    const amount = parseBhdAmountDraft(amountBhd);
+    if (amount === null || amount <= 0) {
+      setError("Enter a positive BHD amount with up to 3 decimal places, within the supported range.");
       return;
     }
-    const expiresAtIso = localDateTimeToIso(expiresAt);
-    if (!expiresAtIso) {
-      setError("Expiry must be a valid date and time.");
-      return;
-    }
-    if (new Date(expiresAtIso).getTime() <= Date.now()) {
-      setError("Expiry must be in the future.");
+    setAmountBhd(normalizeBhdAmount(amountBhd));
+    if (durationSeconds === null) {
+      setError("Expiry duration must be a whole number between 15 minutes and 120 days, inclusive.");
       return;
     }
 
@@ -59,7 +57,7 @@ export function PaymentLinkCreatePage() {
         amountFils: amount,
         reference: reference.trim() || undefined,
         description: description.trim() || undefined,
-        expiresAt: expiresAtIso,
+        expiresInSeconds: durationSeconds,
       });
       navigate(`/dashboard/payment-links/${link.id}`, { replace: true });
     } catch (err) {
@@ -76,18 +74,11 @@ export function PaymentLinkCreatePage() {
       {error ? <p className="dash-error">{error}</p> : null}
 
       <form className="dash-form" onSubmit={(e) => void handleSubmit(e)}>
-        <label>
-          Amount in fils
-          <input
-            type="number"
-            min={1}
-            step={1}
-            required
-            value={amountFils}
-            onChange={(e) => setAmountFils(e.target.value)}
-          />
+        <label htmlFor="payment-link-amount">
+          Amount in BHD
+          <BhdAmountInput value={amountBhd} onChange={setAmountBhd} />
         </label>
-        <p className="dash-muted dash-hint">1000 fils = 1.000 BHD.</p>
+        <p id="payment-link-amount-hint" className="dash-muted dash-hint">Up to 3 decimal places. 1.000 BHD = 1,000 fils.</p>
         <label>
           Reference (optional)
           <input type="text" value={reference} onChange={(e) => setReference(e.target.value)} />
@@ -96,16 +87,9 @@ export function PaymentLinkCreatePage() {
           Description (optional)
           <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
-        <label>
-          Expires at
-          <input
-            type="datetime-local"
-            required
-            value={expiresAt}
-            onChange={(e) => setExpiresAt(e.target.value)}
-          />
-        </label>
-        <button type="submit" className="dash-button" disabled={submitting}>
+        <ExpirationInput option={expirationOption} custom={customDuration} unit={durationUnit} seconds={durationSeconds}
+          onOption={setExpirationOption} onCustom={setCustomDuration} onUnit={setDurationUnit} />
+        <button type="submit" className="dash-button" disabled={submitting || durationSeconds === null}>
           {submitting ? "Creating..." : "Create payment link"}
         </button>
       </form>

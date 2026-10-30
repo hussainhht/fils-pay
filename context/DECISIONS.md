@@ -73,6 +73,10 @@ Per `AGENTS.md` and repository guidelines:
 2. **Treat ADRs 0003, 0004, 0006 and HANDOVER conflicts as open human policy questions.**
 3. **Do not silently "fix" or blindly implement these conflicting behaviors in new code.** Flag the tension in your report and seek human confirmation before modifying core accounting logic.
 
+## Payment-link creation expiration — 2026-10-30
+
+FEAT-003 adds a duration option to the existing merchant creation endpoint, keeping absolute `expiresAt` requests and response/storage shapes. Exactly one expiration input is allowed. Integer seconds in inclusive 900..10368000 are resolved using one server-time reference; absolute instants must lie in the same window. This deliberately tightens new creation validation, without latency allowances, clamping, client-clock trust or retroactive link changes. The dashboard sends duration and labels its Asia/Bahrain preview an estimate. A day means 24 elapsed hours. No dependencies, schema, frozen partner contract or accepted ADR decisions change; ADR 0003/0004/0006 and HANDOVER financial conflicts remain human questions.
+
 ## PMA-01 implementation choice (2026-10-30; no accepted ADR changed)
 
 No reusable SMTP/email/SMS integration exists in the inspected auth/ops dependencies. Implement synchronous Resend HTTPS submissions with native fetch, no new dependency or durable queue, preserving the existing post-commit notification boundary and plaintext-in-memory-only OTP contract. Bound sends with abort/timeout, prevent redirects, scope idempotency to plane/challenge, and never automatically retry ambiguous outcomes. Fail production boot for missing provider configuration and fail delivery with sanitized 503. Development/test is explicitly no-send; OTP values are never logged. External delivery for both planes remains a release gate. This choice does not resolve or modify disputed financial ADRs.

@@ -2,20 +2,11 @@
 
 > **Scope:** Persistent audit trail of all updates, additions, and revisions made to the `context/` knowledge base. Every meaningful change to the repository must append an entry here.
 
-## 2026-10-30 — Remote server frontend deployment
+## 2026-10-30 — Merge main into payment-link feature branch
 
-- Baseline `1f88a47ee619e87728219ad531df4dc4e4cbad56`; deployed sanitized source
-  plus new production templates to `68.183.82.221` over authorized SSH.
-- Added separate production Node build/Compose/nginx templates and an operational
-  runbook, preserving the local development stack and protected application code.
-- Public IP merchant/admin static pages and assets verified; PostgreSQL 16 and
-  reporting/settlement run privately with separate non-superuser roles and all
-  79 existing migrations. No accounts or financial fixture data were seeded.
-- API remains inactive because real Resend configuration is missing. HTTP preview
-  does not constitute production login/payment acceptance; HTTPS also remains.
-- Typecheck/build/config checks passed. Updated infrastructure, ops module,
-  testing and known deployment limits. Full evidence and activation steps are in
-  `Evidence/agent-1-server-deployment.md` and `ops/PRODUCTION.md`. No commit/push.
+- Baselines: feature branch `2679bef60f265b27372905a0aad595cfa98baa39`, `origin/main` `1f88a47ee619e87728219ad531df4dc4e4cbad56`, common ancestor `1c3f99e0c5478e1ff616898cdfc1cd6f5283172d`.
+- Resolved checkout presentation conflicts by retaining main's responsive order summary and the feature branch's card validation, editable inputs, expiration admission and same-key payment recovery. Updated the existing checkout browser harness to wait for main's renamed loading indicator. Combined compatible context records and corrected obsolete checkout and jitter-test issue descriptions. No accepted financial ADR decision changed; ADR 0003/0004/0006 and HANDOVER conflicts remain open human questions.
+- Verification and limitations are recorded in `Evidence/implementation/agent-main-merge.md` and `context/TESTING.md`. No migrations or seeds were modified; existing main migrations were applied to isolated local test databases only.
 
 ## 2026-10-30 — Webhook audit and verification
 
@@ -48,6 +39,14 @@
   migrations, protected money implementation, or supported settlement code changed.
 
 ---
+
+## 2026-10-30 — FEAT-003 payment-link expiration completion
+
+- Baseline `850504a2e500997fe1323b227354ea1d6fe50ea0`, clean worktree. Preserved the BHD input/parser/caret behavior and protected money package.
+- Added native green single-choice expiration presets and whole minutes/hours/days custom controls, inclusive 15-minute/120-day creation bounds and explicitly estimated Asia/Bahrain preview. The merchant endpoint supports exactly one server-relative `expiresInSeconds` or legacy absolute `expiresAt`; returned/stored absolute deadlines remain unchanged. Bounds are creation-only; historical links, admission expiry and durable recovery unchanged. Direct zero-fils creation and malformed metadata now return 400.
+- Source changes: API `paymentLinks/{create,expiration}.ts`, `routes/paymentLinks.ts`; web `pages/payment-links/{PaymentLinkCreatePage,ExpirationInput}.tsx`, `ExpirationInput.css`, `expiration.ts`, `types.ts`, API-client contract comment. Added policy/service/web tests, extended route/browser tests, updated only the duration fixture in the cryptographic-token test.
+- Fresh results: 59 web tests, 17 targeted API tests, typecheck and web build pass; 14 mocked amount/expiration browser groups plus one real isolated password/OTP-to-creation/DB group pass; 15 existing checkout browser groups pass. Final full API suite: 508/509 pass, unrelated existing webhook jitter assertion fails. Two other earlier suite failures did not recur; cause unverified. Baseline service/browser regressions failed as expected.
+- Updated existing FEAT-003 and context API, frontend, payment flows, API/web modules, decisions, testing, known issues and changelog. Dependency map reviewed: no dependency changes. No schema/migration source, settlement, partner-tree, accepted ADR, commit or push changes. Existing local DB queried read-only; fixtures/migrations restricted to two new isolated local databases, retained without destructive cleanup. Docker daemon inspection denied in restricted shell; local PostgreSQL 16.15 and existing API/Vite reachable. Broader runtime limitations recorded in FEAT-003.
 
 ## [1.1.0] — 2026-10-30
 
@@ -130,6 +129,24 @@ When completing any coding task:
    ```
 4. If no context files required modification, explicitly record that conclusion in your task completion report.
 
+
+## 2026-10-30 ? Payment checkout enhancements
+
+- Baseline HEAD: `1c3f99e0c5478e1ff616898cdfc1cd6f5283172d`.
+- Replaced the basic card input area with `CardPaymentForm`, numeric caret-aware formatting, network/CVV hints, Luhn and expiration validation, local licensed SVG logos, masked CVV and accessible errors. Retained the existing checkout states and public API.
+- Corrected open-link expiry and same-key recovery of uncertain attempts, with synchronous submission guards. Green responsive layout uses existing design tokens.
+- No raw-card saving or decorative consent checkbox: provider tokenization and verified customer ownership do not exist. No new dependencies, API/schema changes, protected-module changes or settlement changes.
+- Added unit tests, installed-Chromium browser checks, screenshots and `Evidence/payment_checkout_enhancements.md`. Baseline expiry/retry tests fail; enhanced browser checks and local simulator/API/Postgres capture plus balanced ledger pass.
+- Updated `FRONTEND`, `PAYMENT_FLOWS`, `modules/apps-web`, `ARCHITECTURE`, `TESTING` and `KNOWN_ISSUES`. Corrected checkout route documentation to `/pay/:token` and replaced obsolete timeout-reclaim descriptions with current durable binding. Reviewed `DEPENDENCY_MAP`: no dependency changes needed.
+
+## 2026-10-30 — Editable BHD amount for payment-link creation
+
+- Baseline HEAD: `1b1f64b2c3a42d53da6bc3e96a77a6ebe66e8392`; clean initial working tree. Current source still used raw fils; the baseline browser regression confirms `1.` lost its period.
+- Updated `PaymentLinkCreatePage.tsx`; added `BhdAmountInput.tsx`, `bhdAmount.ts`, colocated unit tests and `apps/web/scripts/paymentLinkAmount.browser.test.mjs`. Decimal placement, native caret and selection are preserved, invalid precision/signs are rejected, and complete drafts normalize only at blur/submit. Existing protected parser converts strings to exact safe-integer fils.
+- Verified: 55 web tests; full repository typecheck; web build; 11 Edge browser groups with sandbox API fixtures; all 8 existing payment-link API tests against local PostgreSQL 16.15; real DB SELECT and API/proxy health. Baseline browser regression fails before and passes after. No migrations, seeding or real payments.
+- Feature implementation/evidence added to the existing `Evidence/features/features.md` as FEAT-003. Updated `FRONTEND`, `PAYMENT_FLOWS`, `modules/apps-web`, `TESTING` and `KNOWN_ISSUES`. Reviewed `DEPENDENCY_MAP` and architecture/decision implications: no interface, dependency, schema, settlement or architecture changes required.
+- Limits: Chromium viewport emulation is not physical mobile testing; paste uses synthetic clipboard events; browser creation uses intercepted API/auth, independently of the real API route tests. Other engines, IME, screen-reader speech, full merchant auth-to-creation and settlement/reporting were not verified.
+
 ## 2026-10-30 ? PMA-01 OTP delivery implementation
 
 - Baseline HEAD c3eb21830dd133a47e86bf5f9150a3ba8f9caffd. Added shared Resend HTTPS adapter with native fetch, no dependencies/schema changes; merchant login/resend and admin login await post-commit delivery.
@@ -157,7 +174,7 @@ Baseline HEAD 2ee8df0a691e0bc0fe3624b4aa40e90f20d87617. Replaced narrow checkout
 
 Confirmed actual localhost:5173 served an empty checkout CSS transform despite populated source. Rewrote stylesheet to invalidate it and removed BOM; added intrinsic icon/result/illustration SVG dimensions and a failing-before/passing-after regression. Corrected fixture/docs to source /pay/:token route. Web 46/46, build, full typecheck and served module-content checks pass; visual browser check unavailable. Updated checkout evidence, frontend/module/testing/known-issue context. Dependency map and architecture reviewed: no dependency or behavioral change.
 
-## 2026-10-30 � Checkout capacity benchmark preparation
+## 2026-10-30 � Checkout capacity benchmark preparation
 
 - Baseline `1f88a47ee619e87728219ad531df4dc4e4cbad56`; Docker unavailable. User explicitly requested preparation/source review while leaving the runtime comparison pending and the existing localhost DB untouched.
 - Added `scripts/checkout-capacity.mjs`, its real HTTP fixture tests, guarded additive fixture preparer, and separate `ops/capacity/` Compose/init/nginx/stage/SQL tooling. `.dockerignore` excludes generated capacity artifacts.

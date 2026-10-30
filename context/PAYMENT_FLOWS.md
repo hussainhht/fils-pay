@@ -113,24 +113,19 @@ The transaction lifecycle enforces strict, irreversible state transitions:
 
 ## 5. Hosted Payment Links & Checkout (`apps/api/src/paymentLinks/`)
 
-- **Link Creation:** `POST /v1/merchants/:merchantId/payment-links` generates a secure random 128-bit hex token (`crypto.randomBytes(16).toString("hex")`, resolving `BUG-029`).
+- **Link Creation:** `POST /v1/merchants/:merchantId/payment-links` generates `plink_` followed by 22 cryptographically random URL-safe characters (`randomFromAlphabet`, current `create.ts`).
+- **Creation expiration policy (2026-10-30):** `paymentLinks/expiration.ts` validates exactly one of `expiresInSeconds` (integer 900..10368000 inclusive) or legacy absolute `expiresAt` (same bounds relative to one server-time reference). A day means 24 elapsed hours. The dashboard sends duration, preventing form age/request delay from shortening a preset; its Asia/Bahrain preview is an estimate. The stored/returned absolute deadline is authoritative. Validation is creation-only: historical lifetimes outside these bounds remain readable/payable until their existing deadline/status prevents a new attempt; expired reserved attempts still recover under their existing bound key/request. No migration or read/pay change.
+- **Merchant amount editing (2026-10-30):** `/dashboard/payment-links/new` accepts literal BHD text with an editable period and up to three fractional digits. Empty/trailing-dot drafts are retained while editing; blur/submit normalizes complete safe amounts. `bhdAmount.ts` delegates string-to-fils conversion to the unchanged `parseBhdToFils`; the form requires positive safe-integer fils and sends the existing `amountFils` shape. No settlement or checkout processing changes. See FEAT-003 in `Evidence/features/features.md`.
 - **Public Checkout Page (`apps/web`):**
-  - Customer navigates to `/checkout/:token`.
+  - Customer navigates to `/pay/:token`.
   - Browser fetches link details via public `GET /v1/payment-links/:token`. Returns amount, merchant name, and expiry. Never returns API keys or internal hashes (`BUG-022`).
 - **Payment Submission:**
   - Customer submits card details to `POST /v1/payment-links/:token/pay`.
-  - **Historical reservation example (`BUG-006`; superseded by current source):**
-    ```sql
-    UPDATE payment_links
-       SET status = 'reserved',
-           reserved_until = now() + INTERVAL '60 seconds'
-     WHERE token = $1
-       AND (status = 'active' OR (status = 'reserved' AND reserved_until < now()))
-    RETURNING id;
-    ```
-    If 0 rows are updated, the checkout terminates immediately with `409 Conflict`, preventing concurrent double-charges.
-  - Gateway authorizes and captures payment against the acquirer.
-  - Updates link to `status = 'paid'`, links `transaction_id`, and closes the reservation.
+  - **Durable payer binding (current source, 2026-10-30):** `pay.ts` commits a claim containing `reservation_id`, `payment_key_hash`, and `payment_request_hash`. Only an active, unexpired link can admit a new attempt; a reserved link only resumes under the identical key and request. Timeout does not admit a new payer.
+  - Authorization/capture reuse persisted operation identities. A definitive authorization decline releases the owned reservation; ambiguous outcomes stay bound. Capture declines release it only after local void succeeds.
+  - Finalization requires the same bound key/request and sets `paid` with `transaction_id`. Server time controls new-attempt expiry; `submittedAt` is ignored.
+  - Checkout keeps the current key and card values only in page memory for uncertain-response recovery. It disables editing and uses identical requests for retry, then removes the form on success/terminal status. A definitive 402 starts a fresh attempt if retried. Reloads do not retain sensitive fields or the attempt key.
+  - The acquirer remains an in-process simulator with no hosted fields, tokenization, vault, or cardholder identity. Card saving/reuse is unavailable. Production card collection requires a separate provider integration and security review.
 
 ---
 

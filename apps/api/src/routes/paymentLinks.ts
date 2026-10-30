@@ -28,7 +28,8 @@ interface CreatePaymentLinkBody {
   amountFils?: number;
   reference?: string;
   description?: string;
-  expiresAt?: string;
+  expiresAt?: unknown;
+  expiresInSeconds?: unknown;
 }
 
 /**
@@ -78,9 +79,12 @@ export async function paymentLinkMerchantRoutes(app: FastifyInstance): Promise<v
     { preHandler: [requireMerchantAuth, requireMerchantRole("owner", "finance")] },
     async (request, reply) => {
       assertOwnMerchant(request);
-      const { amountFils, reference, description, expiresAt } = request.body ?? {};
-      if (amountFils === undefined || !expiresAt) {
-        throw new BadRequestError("invalid_request", "amountFils and expiresAt are required");
+      if (!request.body || typeof request.body !== "object" || Array.isArray(request.body)) {
+        throw new BadRequestError("invalid_request", "A payment-link object is required");
+      }
+      const { amountFils, reference, description, expiresAt, expiresInSeconds } = request.body;
+      if (amountFils === undefined) {
+        throw new BadRequestError("invalid_request", "amountFils is required");
       }
 
       const writer = requireMerchantWriterActor(request.merchantAuth!);
@@ -90,6 +94,7 @@ export async function paymentLinkMerchantRoutes(app: FastifyInstance): Promise<v
         reference,
         description,
         expiresAt,
+        expiresInSeconds,
         createdByType: writer.type,
         createdById: writer.id,
       });

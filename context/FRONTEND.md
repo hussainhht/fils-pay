@@ -10,7 +10,7 @@ FilsPay provides two independent single-page React applications built with Vite:
 
 | Application | Role | Base Port | Key Routes | Upstream Proxy Target |
 |---|---|---|---|---|
-| `apps/web` | Merchant Portal & Hosted Checkout | 5173 | `/dashboard/*`, `/checkout/:token` | `http://127.0.0.1:3000/v1` |
+| `apps/web` | Merchant Portal & Hosted Checkout | 5173 | `/dashboard/*`, `/pay/:token` | `http://127.0.0.1:3000/v1` |
 | `apps/admin` | Operations & Admin Console | 5174 | `/login`, `/merchants`, `/credits`, `/settlement` | `http://127.0.0.1:3000/v1/admin` |
 
 ### Dev Proxy Configuration (`ops/preview.mjs`)
@@ -34,7 +34,7 @@ apps/web/src/
 │   ├── payment-links/      # Link creation dialog, active/expired link tables
 │   ├── settlement/         # Daily batch list, settlement breakdown, CSV download
 │   ├── webhooks/           # Endpoint registration, secret display, delivery logs, test ping
-│   └── checkout/           # Public customer checkout form (/checkout/:token)
+│   └── checkout/           # Public customer checkout form (/pay/:token)
 ├── refunds/         # RefundDrawer component (FP-212)
 └── router.tsx       # React Router 6 route definitions
 ```
@@ -44,17 +44,23 @@ apps/web/src/
    - Navigating to `/dashboard` redirects to `/dashboard/login` if unauthenticated.
    - Screen 1: Email + Password. Upon success, stores pending state and displays OTP challenge.
    - Screen 2: 6-digit OTP code entry. Upon verification, session cookie `fp_sid` is marked active and user is routed to `/dashboard`.
-2. **Hosted Checkout (`/checkout/:token`):**
+2. **Hosted Checkout (`/pay/:token`):**
    - Independent of merchant dashboard shell; displays cardholder payment interface.
    - Queries `GET /v1/payment-links/:token` for amount and status.
    - Submits payment to `POST /v1/payment-links/:token/pay`.
-   - Displays loading, processing, success and unavailable states. No reservation countdown is implemented; the backend retains ambiguous reservations for same-key recovery.
+   - Uses `CardPaymentForm` for numeric card entry, local network SVGs, network grouping/CVV length, Luhn/expiration validation, accessible errors and autofill.
+   - Open links stop admitting new attempts at expiry. Unknown payment outcomes retry under the same key with locked inputs; definitive declines allow a fresh attempt.
+   - Card saving is unavailable: the simulator has neither tokenization nor a customer identity/ownership model. Do not connect merchant login to cardholder ownership.
+   - The merged two-column `CheckoutFrame` and `CheckoutSummary` retain the redesigned merchant/order presentation while `CardPaymentForm` owns input validation and recovery behavior.
+   - Green design tokens, responsive two-column expiry/CVV layout, masked security code, loading/error/success states. Desktop and 390/320px Chromium screenshots are in `Evidence/implementation/checkout-*.png`.
 3. **Refund Drawer:**
    - Slide-over panel on transaction detail view allowing merchant owners and finance users to issue full or partial refunds.
    - Validates that refund amount does not exceed captured headroom.
 
 ### Frontend Invariants & Gotchas
-- **BHD Money Formatting:** Always use `formatBhd(fils)` (`format.ts`). Renders as `X.YYY BD` (e.g. `12.500 BD`). Never use `toFixed(2)`.
+- **Payment-link BHD entry:** `pages/payment-links/BhdAmountInput.tsx` is a decimal-keyboard text field. Accepted text and cursor/selection stay native during editing; one period and at most three fractional digits are allowed. Complete supported drafts normalize on blur/submit, and `bhdAmount.ts` delegates exact fils conversion to `parseBhdToFils`. Creation rejects empty/lone-period, zero and unsafe amounts. Existing green form styles and API payload are retained; see FEAT-003 in `Evidence/features/features.md`.
+- **Payment-link expiration (2026-10-30):** `ExpirationInput.tsx` replaces the creation datetime picker with native radios for 15 Minutes, 24 Hours (default), 7/30/90 Days and Custom Duration. Whole-number minutes/hours/days support inclusive 15-minute/120-day bounds. Invalid custom drafts disable creation; presets ignore hidden custom drafts. Green tokens, native arrow/Tab behavior, two-column mobile presets and stacked custom fields preserve accessibility. `expiration.ts` computes elapsed seconds; the creation payload uses `expiresInSeconds`. The refreshing preview explicitly says **Estimated expiration (Asia/Bahrain, UTC+03:00)**; the server-returned absolute deadline is authoritative. Unrelated dashboard date rendering is unchanged.
+- **BHD Money Formatting:** Dashboard `bhd(fils)` (`format.ts`) delegates to `formatBhd` and appends `BHD`, rendering `X.YYY BHD` (e.g. `12.500 BHD`), as does checkout. Never use `toFixed(2)`.
 - **Date Filters (BUG-076):** Transaction search and date filters must convert selected dates to **Asia/Bahrain** local midnight, not UTC midnight, to avoid dropping the first 3 hours of activity.
 - **Document Title (BUG-085):** Ensure dashboard pages set appropriate titles (`FilsPay Merchant Portal`) rather than default checkout strings.
 

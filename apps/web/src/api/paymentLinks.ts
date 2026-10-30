@@ -50,7 +50,9 @@ export function listPaymentLinks(
   );
 }
 
-/** `201` with the full merchant-facing DTO, including the shareable `url`. */
+/** Exactly one expiration input: server-relative whole seconds (900..10368000)
+ * or an absolute expiresAt instant in the same creation window. `201` returns
+ * the authoritative expiresAt and the full merchant DTO, including `url`. */
 export function createPaymentLink(
   merchantId: string,
   input: CreatePaymentLinkInput,

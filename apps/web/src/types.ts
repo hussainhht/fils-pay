@@ -152,12 +152,11 @@ export interface PaymentLinkListResponse {
   nextCursor: string | null;
 }
 
-export interface CreatePaymentLinkInput {
+export type CreatePaymentLinkInput = {
   amountFils: number;
   reference?: string;
   description?: string;
-  expiresAt: string;
-}
+} & ({ expiresAt: string; expiresInSeconds?: never } | { expiresInSeconds: number; expiresAt?: never });
 
 // --- webhooks ---
 export type WebhookEndpointStatus = "active" | "disabled";
