@@ -1,5 +1,7 @@
 # BUG-058 — Docker Compose References Missing Dockerfiles and Settlement Daemon Exits
 
+**Fixed for local boot (2026-10-30):** Added `ops/Dockerfile.node` / `ops/Dockerfile.go`, shared token injection, and migration-gated startup; image builds, API health, reporting/daemon startup, and internal bearer rejection/acceptance passed. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 `docker compose build` fails on the missing Dockerfiles.

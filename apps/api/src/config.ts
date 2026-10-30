@@ -150,7 +150,8 @@ function parseBoolEnv(value: string | undefined, fallback: boolean): boolean {
   return value === "true" || value === "1";
 }
 
-const DEV_FALLBACK_WEBHOOK_KEY_B64 = "dGVzdC1rZXktZm9yLWRldi1vbmx5LW5vdC1mb3ItcHJvZA==";
+// Public development-only fallback; Compose supplies a generated local key.
+const DEV_FALLBACK_WEBHOOK_KEY_B64 = Buffer.from("filspay-dev-only-webhook-key-001").toString("base64");
 
 const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 

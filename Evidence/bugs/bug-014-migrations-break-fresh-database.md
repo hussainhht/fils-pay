@@ -1,5 +1,7 @@
 # BUG-014 — Fresh Database Migrations Fail at 0054/0055 and View 0072 Has Broken Join Key
 
+**Fixed for fresh/unapplied databases (2026-10-30):** Corrected capture eligibility, valid clearing-account schema/kinds, and refund transaction join in migrations 0054/0055/0072; fresh migration, no-op rerun, and rollback-only SQL regressions passed. Existing applied databases still require corrective forward migrations. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 Fresh database migrations halt prematurely at 0054/0055 due to references to non-existent tables and mismatched schema column names, preventing downstream migrations (0056-0072) from running. Additionally, migration 0072 joins refunds to transactions on the wrong key.

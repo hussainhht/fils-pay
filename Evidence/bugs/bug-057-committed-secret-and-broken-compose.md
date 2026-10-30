@@ -1,5 +1,7 @@
 # BUG-057 — Acquirer Secret Committed in Git and Fallback Webhook Key Length Invalid
 
+**Partially fixed (2026-10-30):** Removed tracked secret configuration, added an ignored generated local environment and blank template, explicitly inject keys/tokens, and corrected the 32-byte development fallback in `apps/api/src/config.ts`. Rotation of any previously exposed external credential remains outstanding with its owner; history was not rewritten. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 A sandbox secret is in the repo.

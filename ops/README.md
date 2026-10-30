@@ -1,72 +1,92 @@
-# ops/
+# Local development stack
 
-Local development stack for FilsPay: Postgres plus the three services that
-talk to it directly (apps/api, apps/settlement, apps/reporting). The hosted
-demo instance uses the same compose file with a different `.env`.
+Postgres, API, settlement, and reporting run through Docker Compose. Web and
+admin remain separate Vite development servers. This configuration uses a
+shared development database role and public fixture credentials; provision
+separate database roles and deployment secrets before hosting it.
 
-## Quick start
+## Start without resetting data
 
+From the repository root, with Docker Compose v2:
+
+```sh
+node ops/setup-env.mjs
+docker compose -f ops/docker-compose.yml up --build -d
 ```
-docker compose -f ops/docker-compose.yml up -d postgres
-docker compose -f ops/docker-compose.yml run --rm migrate
-docker compose -f ops/docker-compose.yml run --rm seed
-docker compose -f ops/docker-compose.yml up api settlement reporting
+
+The setup script creates an ignored `ops/.env.docker` with fresh local values
+for the 32-byte webhook encryption key, callback signing secret, and settlement
+token. Rerunning preserves the existing file and its keys. The tracked
+`.env.docker.example` documents required names and contains no secret values.
+Compose explicitly supplies this file to API, settlement, and the optional
+seed job. API and settlement receive the same internal token.
+
+Startup waits for healthy Postgres and successful migrations. It does **not**
+seed or truncate existing data. The API listens on localhost:3000; Postgres
+on localhost:5432. Override the host ports with `FILSPAY_API_PORT` and
+`FILSPAY_POSTGRES_PORT` if they are already occupied. API health is `/healthz`.
+
+```sh
+docker compose -f ops/docker-compose.yml logs migrate api settlement reporting
+docker compose -f ops/docker-compose.yml down
 ```
 
-apps/web and apps/admin aren't part of this compose file — they're plain
-Vite dev servers that talk to apps/api over HTTP (`npm run dev` inside
-each package), not services with their own database connection.
+`down` preserves the database volume. Keep encryption keys with the data they
+protect; replacing an existing key prevents decryption of stored webhook
+secrets. No credentials are printed by the setup script. Any previously
+exposed external credential must be rotated with its provider; generating
+local values and removing tracked configuration do not perform that rotation.
 
-## Files
+## Explicit destructive fixture reset
 
-| File | Purpose |
-|---|---|
-| `docker-compose.yml` | the stack |
-| `.env.docker` | shared service settings, loaded by compose for every service |
-| `Dockerfile.node` | image for api, reporting, migrate and seed (`node:20`, full install) |
-| `Dockerfile.go` | multi-stage build of `apps/settlement` |
+Only reset an isolated local database. Stop the app services, run the seed as
+a one-off job with explicit opt-in, and restart apps only if that job succeeds:
 
-> **AM (July):** the two Dockerfiles aren't in the repo for me. built my own
->
-> **MK:** they were in the initial ops commit. check you're on main
+```sh
+docker compose -f ops/docker-compose.yml stop api settlement reporting &&
+ALLOW_DESTRUCTIVE_SEED=1 docker compose -f ops/docker-compose.yml --profile seed run --build --rm seed && docker compose -f ops/docker-compose.yml up -d api settlement reporting
+```
 
-## Database
+In PowerShell, use an explicit exit-code check:
 
-Every service, plus the one-off `migrate`/`seed` jobs, connects with the
-same `filspay` role and the same `DATABASE_URL`
-(`postgres://filspay:filspay_dev_password@postgres:5432/filspay?sslmode=disable`).
-One role keeps local setup to a single password instead of hand-rolling
-per-service grants for a stack this size. `sslmode=disable` is safe here:
-Postgres and every service run on the same Docker Compose bridge network,
-which never carries traffic outside the host, so there's no untrusted hop
-for a connection to cross.
+```powershell
+docker compose -f ops/docker-compose.yml stop api settlement reporting
+if ($LASTEXITCODE -ne 0) { throw 'Could not stop app services' }
+$env:ALLOW_DESTRUCTIVE_SEED = '1'
+try {
+    docker compose -f ops/docker-compose.yml --profile seed run --build --rm seed
+    if ($LASTEXITCODE -ne 0) { throw 'Seed failed; app services remain stopped' }
+    docker compose -f ops/docker-compose.yml up -d api settlement reporting
+} finally {
+    Remove-Item Env:ALLOW_DESTRUCTIVE_SEED
+}
+```
 
-The settlement worker can be given a second connection string,
-`PGCONN_SETTLEMENT`, for its batch-close pool. It only takes effect when
-`DATABASE_URL` is unset.
+The seed job waits for successful migrations and refuses a reset without
+opt-in. Apps depend only on migrations; Compose cannot enforce seed success
+through an optional dependency. Use the one-off workflow above instead of
+`--profile seed up`, which could start apps alongside a failed seed. Ordinary
+startup omits the seed job entirely.
 
-To reset the database to a clean, freshly-seeded state at any point, re-run
-the `seed` job above — `db/seed/index.ts` truncates and regenerates its
-fixture tables on every invocation; it doesn't need the volume removed
-first.
+The generator guard runs before acquiring a database connection, including
+for direct callers. It requires `ALLOW_DESTRUCTIVE_SEED=1`, a development/test
+environment (or the development default), and an explicit PostgreSQL URL for
+`localhost`, `127.0.0.1`, `::1`, or the Compose host `postgres`. Allowed database
+names are `filspay`, `filspay_dev`, `filspay_test`, or `filspay_test_<suffix>`.
+Destination-overriding URL parameters are rejected. The seed truncates business
+tables and cascading dependents; fixture data is not safe for shared databases.
 
-## Required settings per service
+## Images and environment
 
-| Service | Needs | Where it comes from in compose |
-|---|---|---|
-| api | `DATABASE_URL`, `SETTLEMENT_INTERNAL_URL` | `environment:` |
-| api | `WEBHOOK_SECRET_ENCRYPTION_KEY` | only outside dev; a dev key is used otherwise |
-| api | `ACQUIRER_CALLBACK_SIGNING_SECRET`, `NODE_ENV` | `.env.docker` |
-| settlement | `DATABASE_URL` | `environment:` |
-| settlement | `SETTLEMENT_INTERNAL_TOKEN` | defaults to `dev-token` |
-| reporting | `DATABASE_URL` | `environment:`; runs `worker` by default |
+`Dockerfile.node` uses Node 22 and the root lockfile for API, reporting,
+migrations, and seed. `Dockerfile.go` builds a static settlement binary in a
+separate builder image; its runtime includes CA certificates and timezone data.
+The build context excludes local environment files and repository evidence.
 
-> **MK:** the api won't boot without WEBHOOK_SECRET_ENCRYPTION_KEY in any environment. set it on the hosted box.
-
-## Resource sizing
-
-The hosted demo box is 0.5 vCPU / 2 GB RAM / 2 GB disk; the API container is
-limited to 512 MB. Postgres defaults are fine at this size. The settlement
-image is built on the box with `go build` from `Dockerfile.go`.
-
-> **AM:** first build on the box filled the disk (go build cache). cleared it and it went through on the second try
+Every service uses `DATABASE_URL` for the same development Postgres instance.
+Compose omits `PGCONN_SETTLEMENT`: Go intentionally gives that variable
+precedence when it is supplied externally. The settlement daemon requires a
+nonempty `SETTLEMENT_INTERNAL_TOKEN`; there is no daemon token fallback.
+Production API requires an explicit webhook encryption key; Compose supplies a
+generated key in development as well. Reporting starts with the explicit
+`worker` subcommand.

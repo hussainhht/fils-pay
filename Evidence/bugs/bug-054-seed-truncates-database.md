@@ -1,5 +1,7 @@
 # BUG-054 — Database Seed Script Executes Unconditional TRUNCATE Wiping Existing Data
 
+**Fixed (2026-10-30):** `db/seed/safety.ts` guards the generator before connection/reset with explicit opt-in and an allowlisted dev/test destination; ordinary Compose startup excludes seed. Guard regressions and explicit disposable seeding passed. See [validation](../implementation/wave1-validation.md).
+
 ## 1. Summary
 
 The seed is not an upsert.

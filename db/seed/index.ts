@@ -4,7 +4,7 @@
  * self-verify assertion against it. Exits non-zero iff any REAL assertion
  * fails.
  *
- * Usage: DATABASE_URL=postgres://... npx tsx db/seed/index.ts
+ * Usage: ALLOW_DESTRUCTIVE_SEED=1 DATABASE_URL=postgres://... npx tsx db/seed/index.ts
  */
 import { Pool } from "pg";
 import { generate } from "./generate.js";

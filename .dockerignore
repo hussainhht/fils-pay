@@ -1,0 +1,13 @@
+.git
+.agents
+.codex
+.claude
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+Evidence
+docs
+data
+*.log

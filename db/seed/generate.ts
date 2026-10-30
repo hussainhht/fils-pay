@@ -13,6 +13,7 @@ import {
   type GeneratedTransaction,
 } from "./fixtures/transactions.js";
 import { SEED, createRng } from "./rng.js";
+import { assertDestructiveSeedAllowed } from "./safety.js";
 
 // Password auth, business profiles, and KYC approval for the fixture
 // merchants/users. These import the *actual*
@@ -181,6 +182,8 @@ interface InsertedMerchant {
  * connection.
  */
 export async function generate(pool: Pool): Promise<SeedSummary> {
+  // Validate the actual pool destination, not a separately supplied URL.
+  assertDestructiveSeedAllowed(pool.options.connectionString);
   const rng = createRng(SEED);
   const config = loadConfig(process.env);
   const passwordHash = await hashPassword(SEED_USER_PASSWORD, config);
@@ -207,8 +210,7 @@ export async function generate(pool: Pool): Promise<SeedSummary> {
   try {
     await client.query("BEGIN");
     try {
-      // AM: only touches the fixture tables listed in TABLES_TO_RESET, so it's
-      // safe to run against a shared/staging database. (see RUNBOOK)
+      // Explicit local/dev fixture reset; cascades erase dependent business data.
       await client.query(`TRUNCATE TABLE ${TABLES_TO_RESET.join(", ")} RESTART IDENTITY CASCADE`);
 
       // Admin staff fixtures. Ids come from the database's own
