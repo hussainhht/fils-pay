@@ -1,3 +1,4 @@
+import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, adminAccountKey } from "../auth/loginLimits.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { verifyPassword } from "../adminAuth/passwords.js";
 import { issueAdminChallenge, verifyOtpCode } from "../adminAuth/otp.js";
@@ -53,10 +54,11 @@ interface AdminUserRow {
 export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Body: LoginBody }>("/login", async (request, reply) => {
     const { email, password } = request.body ?? {};
-    if (!email || !password) {
+    if (typeof email !== "string" || !email || typeof password !== "string" || !password) {
       throw new BadRequestError("invalid_request", "email and password are required");
     }
 
+    const attemptId = await beginLoginAttempt(app.db, reply, app.config, { plane: "admin", accountKey: adminAccountKey(email), ip: request.ip });
     const userResult = await app.db.query<AdminUserRow>(
       `SELECT id, email, role, password_hash FROM admin_users WHERE email = $1 AND status = 'active'`,
       [email],
@@ -71,7 +73,9 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
       throw new UnauthorizedError("invalid_credentials");
     }
 
+    await clearLoginAttempt(app.db, attemptId);
     const { code, expiresAt, rawToken } = await withTransaction(app.db, async (client) => {
+      await assertChallengeAllowed(client, reply, app.config, { plane: "admin", userId: user.id });
       const challenge = await issueAdminChallenge(client, {
         adminUserId: user.id,
         ttlMinutes: app.config.adminOtpTtlMinutes,

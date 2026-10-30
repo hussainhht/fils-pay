@@ -141,6 +141,7 @@ async function loginAdmin(email: string): Promise<string> {
     payload: { code: loginBody.devOtpCode },
   });
   assert.equal(verifyRes.statusCode, 200, verifyRes.body);
+  // OTP verification issues a new session token (no session fixation).
   return parseCookie(verifyRes.headers["set-cookie"], config.adminCookieName);
 }
 

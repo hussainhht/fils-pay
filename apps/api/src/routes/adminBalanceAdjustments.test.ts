@@ -74,6 +74,7 @@ async function signedInAdmin(role: AdminRole): Promise<{ id: string; cookie: str
     payload: { code: loginBody.devOtpCode },
   });
   assert.equal(verifyRes.statusCode, 200, verifyRes.body);
+  // OTP verification issues a new session token (no session fixation).
   return { id: inserted.rows[0]!.id, cookie: parseCookie(verifyRes.headers["set-cookie"], config.adminCookieName) };
 }
 

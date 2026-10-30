@@ -1,3 +1,4 @@
+import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, merchantAccountKey } from "../auth/loginLimits.js";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { verifyPassword } from "../auth/passwords.js";
 import { issueChallenge, verifyOtpCode } from "../auth/otp.js";
@@ -52,10 +53,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   /** POST /v1/auth/login — step 1. */
   app.post<{ Body: LoginBody }>("/login", async (request, reply) => {
     const { merchantId, email, password } = request.body ?? {};
-    if (!merchantId || !email || !password) {
+    if (typeof merchantId !== "string" || !merchantId || typeof email !== "string" || !email || typeof password !== "string" || !password) {
       throw new BadRequestError("invalid_request", "merchantId, email and password are required");
     }
 
+    const attemptId = await beginLoginAttempt(app.db, reply, app.config, { plane: "merchant", accountKey: merchantAccountKey(merchantId, email), ip: request.ip });
     const userResult = await app.db.query<MerchantUserRow>(
       `SELECT mu.id, mu.merchant_id, mu.email, mu.role, mu.password_hash
          FROM merchant_users mu
@@ -74,7 +76,9 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       throw new UnauthorizedError("invalid_credentials");
     }
 
+    await clearLoginAttempt(app.db, attemptId);
     const { code, expiresAt, rawToken } = await withTransaction(app.db, async (client) => {
+      await assertChallengeAllowed(client, reply, app.config, { plane: "merchant", userId: user.id });
       const challenge = await issueChallenge(client, {
         merchantUserId: user.id,
         ttlMinutes: app.config.otpTtlMinutes,
@@ -216,8 +220,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         return { error: new TooManyRequestsError("too_many_attempts") } as const;
       }
       if (Date.now() - existingChallenge.created_at.getTime() < 30_000) {
+        reply.header("Retry-After", "30");
         throw new TooManyRequestsError("resend_too_soon");
       }
+      await assertChallengeAllowed(client, reply, app.config, { plane: "merchant", userId: pending.merchantUserId });
       await client.query(`UPDATE otp_challenges SET consumed_at = now() WHERE id = $1`, [existingChallenge.id]);
       const challenge = await issueChallenge(client, {
         merchantUserId: pending.merchantUserId,
@@ -226,6 +232,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         maxAttempts: existingChallenge.max_attempts,
         attemptCount: existingChallenge.attempt_count,
       });
+      await client.query(`UPDATE otp_challenges SET attempt_count = $2 WHERE id = $1`, [challenge.id, existingChallenge.attempt_count]);
       await client.query(`UPDATE sessions SET otp_challenge_id = $1 WHERE id = $2`, [
         challenge.id,
         pending.sessionId,
@@ -262,8 +269,9 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         merchant_id: string;
         display_name: string;
         onboarding_status: string;
+        refunds_enabled: boolean | null;
       }>(
-        `SELECT mu.email, m.id AS merchant_id, m.display_name, m.onboarding_status
+        `SELECT mu.email, m.id AS merchant_id, m.display_name, m.onboarding_status, m.refunds_enabled
            FROM merchant_users mu
            JOIN merchants m ON m.id = mu.merchant_id
           WHERE mu.id = $1`,
@@ -281,6 +289,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           id: row.merchant_id,
           displayName: row.display_name,
           onboardingStatus: row.onboarding_status,
+          refundsEnabled: app.config.featureRefunds && row.refunds_enabled !== false,
         },
       };
     },
