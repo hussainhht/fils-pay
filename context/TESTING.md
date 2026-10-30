@@ -102,11 +102,29 @@ npm run typecheck
 ```
 *Executes `tsc` across all workspaces (`packages/*`, `apps/*`), `db/`, and `scripts/`.*
 
-### Running Entire Test Suite
+### Safe Default Checks
 ```bash
 npm test
 ```
-*Note: If `DATABASE_URL` is unset, integration tests will throw connection errors.*
+Runs the database-free allowlist in `scripts/test-unit.mjs`, removing inherited
+`DATABASE_URL`, `PGCONN_SETTLEMENT` and `SETTLEMENT_DATABASE_URL` from child environments. Includes money,
+events, web, test-preflight, janitor/filter and retired-script/seed safety tests.
+
+### Explicit Database Integration Suites
+```bash
+npm run test:integration
+npm run test:settlement
+```
+These are quarantined from default submission checks, not deleted or weakened.
+The root integration command and API/reporting workspace test commands require
+`ops/test-database.mjs` preflight: an explicit loopback PostgreSQL URL naming
+`filspay_test` or `filspay_test_<suffix>`, no production mode or connection
+overrides. URL query options are restricted to SSL mode. Use only a separately
+authorized disposable migrated database: reporting tests truncate/rebuild
+rollups and API/Go tests reset global counters. Preflight never connects,
+migrates, seeds or cleans up. Direct test-file/Go/browser invocation bypasses
+it. Full integration also includes previously omitted db/seed and nested
+scripts/lib tests; all existing fixtures/assertions remain intact.
 
 ### Running Specific Workspaces & Suites
 ```bash
@@ -122,11 +140,11 @@ npx tsx --test apps/api/src/admin/creditApproval.test.ts
 # Seed safety unit tests
 node --import tsx --test db/seed/safety.new.test.ts
 
-# API Workspace tests (Requires active PostgreSQL on DATABASE_URL)
+# API workspace tests (requires isolated local filspay_test[_suffix] DB)
 npm run test -w @filspay/api
 
-# Go Settlement Suite
-cd apps/settlement && go test ./...
+# Guarded Go settlement suite (same isolated-DB requirement)
+npm run test:settlement
 ```
 
 ### Windows PowerShell Execution Note

@@ -181,3 +181,21 @@ Confirmed actual localhost:5173 served an empty checkout CSS transform despite p
 - Current authorize/capture release transactions before provider waits. Historical BUG-061 wording in the API module is corrected. Missing checkout admission and existing Compose resource enforcement remain source-confirmed gaps; next bottleneck is unmeasured.
 - Client tests 4/4 and focused existing tests 20/20 pass; repository typecheck passes. Go available tests pass with temporary cache; DB-backed cases skipped without configuration. Node syntax/PowerShell parsing pass; Docker/Compose/fixture SQL and all actual capacity/correctness measurements remain pending.
 - Evidence and exact future commands: `Evidence/agent-1-capacity-optimization.md`. No payment implementation, schema, dependency, protected contract, production template or submitted server changed. Existing context edits were preserved and these findings appended.
+
+## 2026-10-30 — Pre-submission cleanup and database test quarantine
+
+- Baseline HEAD `d28fa2625b25a9ac27610413b231f4bedd86ec7b`, clean branch
+  `test/features-news`; original bootstrap `669af5289f12bbe156f452058a91ed667e426334`.
+- Preserved original/uncertain challenge code, AI setup, evidence, financial
+  regressions and deployment configuration. Removed only the byte-identical
+  `.webhook-typecheck.log` duplicate; its final counterpart remains. Ignore future
+  generated logs. Added baseline file-provenance inventory with ownership caveats.
+- Default npm checks now use audited database-free suites; full suites remain
+  behind explicit local-test-DB preflight. No test assertions were weakened.
+- Verified 134 default tests, full typecheck, both UI builds, Go build, installed
+  workspace dependencies, local health/proxies and a read-only DB query.
+  Integration/refund/settlement jobs and deployment were deliberately not run.
+- Reviewed/updated testing, infrastructure, script operations, dependencies,
+  decisions and known issues. Runtime module descriptions remain unchanged.
+  Evidence: `Evidence/pre_submission_cleanup.md`; final PDFs/public hosting still
+  require team sign-off. No commit, push, migration or seed was performed.

@@ -84,3 +84,11 @@ No reusable SMTP/email/SMS integration exists in the inspected auth/ops dependen
 ## Standard TOTP choice (2026-10-30)
 
 User authorized maintained-library TOTP support and explicitly approved migration 0085. Use otplib 13.5, SHA-1/6 digits/30 seconds and local qrcode rendering for Microsoft Authenticator Other account compatibility; no Entra or push integration. Store AES-GCM-encrypted secrets under a dedicated external key, bind ciphertext and recovery hashes to identity plane, and serialize replay/recovery updates transactionally. Bootstrap requires an existing MFA-authenticated session + current password; no password-only or API-key/admin impersonation enrollment. Replacement adds old factor/recovery proof and new-device confirmation. Optional explicit disabled email transport lets enrolled accounts use TOTP without a mail provider while refusing unenrolled logins; no automatic downgrade for enrolled accounts. No accepted financial ADR was changed.
+# Release test quarantine — 2026-10-30
+
+Default npm tests use an explicit database-free allowlist. Full API/reporting,
+script/seed and Go integration coverage is preserved behind explicit npm
+commands with a loopback `filspay_test[_suffix]` configuration preflight.
+This changes developer test entrypoints only; no runtime, financial policy or
+accepted ADR decision changes. Direct test-file commands bypass the preflight.
+ADRs 0003/0004/0006 and HANDOVER accounting conflicts remain human questions.

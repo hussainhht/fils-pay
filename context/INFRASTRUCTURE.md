@@ -2,6 +2,16 @@
 
 > **Scope:** Docker Compose topology, service specifications, container definitions, environment variable catalog, resource limits, and developer tooling.
 
+Release verification (2026-10-30): Dockerfiles/Compose have no test lifecycle
+invocation; ordinary startup runs migrations, not the opt-in seed. Root tests
+now default to database-free checks; database suites have explicit local-test
+preflight commands (see ops/README.md). Current Compose specifies no resource
+caps or restart policy; capacity figures below are historical assumptions, not
+the current file. Go module requires 1.22 and Docker uses 1.23, despite AGENTS'
+1.24 prerequisite. This cleanup does not alter deployment configuration. Local
+API/UI health and a real read-only DB SELECT pass; container/public-hosting and
+end-to-end payment sign-off remain unverified. See Evidence/pre_submission_cleanup.md.
+
 ---
 
 ## 1. Local Infrastructure Topology (`ops/docker-compose.yml`)
@@ -92,7 +102,8 @@ All environment variables used across services, their consumers, defaults, and s
 | Variable | Consumed By | Default / Fallback | Purpose & Invariants |
 |---|---|---|---|
 | `DATABASE_URL` | All services | — | PostgreSQL connection URI (e.g. `postgres://user:pass@host:5432/filspay`). **Required.** |
-| `PGCONN_SETTLEMENT` | `apps/settlement` | Unset | Optional override connection string for Go settlement worker. *(Note BUG-080: precedence bug).* |
+| `PGCONN_SETTLEMENT` | Legacy only | Ignored | Current Go config does not read this historical name. |
+| `SETTLEMENT_DATABASE_URL` | `apps/settlement` | Unset | Explicit override of DATABASE_URL; normal Compose omits it to share the same DB. |
 | `PORT` | `apps/api` | `3000` | Port Fastify binds to inside the container. |
 | `FILSPAY_API_PORT` | `docker-compose` | `3000` | Host port mapped to API container. |
 | `FILSPAY_POSTGRES_PORT` | `docker-compose` | `5432` | Host port mapped to PostgreSQL container. |

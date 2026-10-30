@@ -9,6 +9,31 @@ admin remain separate Vite development servers. This configuration uses a
 shared development database role and public fixture credentials; provision
 separate database roles and deployment secrets before hosting it.
 
+## Safe submission checks
+
+`npm test` (or `npm run test:unit`) runs the audited database-free examples and
+regressions through `scripts/test-unit.mjs`. It removes inherited database URLs
+from its child processes. Run `npm run typecheck` and the existing web/admin
+build commands separately. These checks do not start infrastructure, migrate,
+seed, or execute payments/settlement jobs.
+
+Database-writing suites are quarantined from the default check, with their
+assertions and fixtures retained. `npm run test:integration`, API/reporting
+workspace `test`, and `npm run test:settlement` first run
+`ops/test-database.mjs`. They refuse missing configuration, production mode,
+non-local or non-`filspay_test[_suffix]` destinations, and connection overrides.
+Use only a separately authorized disposable migrated test database; naming a
+database does not prove it is disposable. Some tests reset platform counters
+or truncate/rebuild reporting tables. No command provisions or resets a DB.
+Direct `tsx --test`, live browser scripts and bare `go test` bypass this
+preflight; do not point them at development, shared, staging or production data.
+
+Docker build/startup does not invoke tests. Normal Compose startup still runs
+the required migrations and leaves the opt-in seed job disabled. This remains
+a local development stack, not a production deployment configuration. Final
+submission evidence and unverified hosting/PDF requirements are recorded in
+`Evidence/pre_submission_cleanup.md`.
+
 ## Start without resetting data
 
 From the repository root, with Docker Compose v2:
@@ -194,8 +219,8 @@ separate builder image; its runtime includes CA certificates and timezone data.
 The build context excludes local environment files and repository evidence.
 
 Every service uses `DATABASE_URL` for the same development Postgres instance.
-Compose omits `PGCONN_SETTLEMENT`: Go intentionally gives that variable
-precedence when it is supplied externally. The settlement daemon requires a
+Go ignores legacy `PGCONN_SETTLEMENT`; explicit `SETTLEMENT_DATABASE_URL` overrides
+`DATABASE_URL` when supplied. Normal Compose omits both. The settlement daemon requires a
 nonempty `SETTLEMENT_INTERNAL_TOKEN`; there is no daemon token fallback.
 Production API requires an explicit webhook encryption key; Compose supplies a
 generated key in development as well. Reporting starts with the explicit

@@ -124,7 +124,10 @@
 - Route integration tests: `apps/api/src/routes/*.test.ts` (requires `DATABASE_URL` and migrated PostgreSQL).
 - Unit tests: `apps/api/src/admin/creditApproval.test.ts`, `apps/api/src/reporting/scope.new.test.ts`.
 - Payment-link policy units: `paymentLinks/expiration.test.ts` (fixed clock, exact bounds/types/precision/offsets/latency), `paymentLinks/create.test.ts` (invalid requests never insert). Route tests additionally exercise direct API bounds and persisted timestamps, malformed bodies, historical short/long links and expired bound-attempt recovery in an isolated migrated test database. `lib/random.new.test.ts` uses a valid 900-second duration for its unchanged cryptographic-token assertions.
-- Command to run: `npm.cmd run test -w @filspay/api`.
+- Command to run: `npm.cmd run test -w @filspay/api`. Release preflight now
+  requires an explicit isolated loopback `filspay_test[_suffix]` DATABASE_URL
+  before importing any suite. Root `npm test` excludes these DB-writing tests;
+  all existing assertions remain available through explicit integration checks.
 
 ---
 

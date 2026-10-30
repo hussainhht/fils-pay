@@ -197,3 +197,18 @@ The original redesign left ambiguous-payment retry unresolved; the subsequently 
 ### Checkout missing styles/oversized SVG follow-up (2026-10-30)
 
 P2 screenshot defect: confirmed-current -> fix-verified at served-module/regression level. The running Vite CSS module was empty; rewriting the file restored layout CSS, and intrinsic SVG dimensions prevent icon enlargement without styles. Exact stale-transform cause undetermined. The merged checkout has since been checked in desktop and mobile Chromium viewports; see `context/TESTING.md`.
+# Release cleanup verification — 2026-10-30
+
+- RELEASE-TEST-01 (P2): `fix-verified`. Previously root/workspace test commands
+  accepted arbitrary configured databases, including reporting rebuild/global
+  counter mutations. Default npm tests are now database-free and full suites
+  require explicit isolated-local-test configuration preflight. Four new
+  regressions fail against baseline wiring and pass after the change. Direct
+  `tsx --test`, browser `--live` and bare `go test` bypass this command guard.
+- Submission gaps: final named submission/slides PDFs were not found; own public
+  fork visibility, final published commit and four public live URLs are
+  unverified. Existing evidence is preserved, including capacity and screenshots;
+  completeness of before/after images, three annotated AI excerpts and refund
+  demonstration must be checked by the team. Local health is not public-hosting
+  or end-to-end proof. See `Evidence/pre_submission_cleanup.md`.
+- Historical BUG registry statuses/counts below were not reassessed by cleanup.

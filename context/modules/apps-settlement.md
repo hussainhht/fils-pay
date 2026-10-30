@@ -33,7 +33,7 @@ apps/settlement/
 ├── cmd/settlement/main.go         # CLI router and subcommand dispatcher
 └── internal/
     ├── balances/                  # Cache management (ApplyBatchClose, ApplyPayout)
-    ├── config/                    # Config loader (DATABASE_URL, PGCONN_SETTLEMENT, token)
+    ├── config/                    # Config loader (DATABASE_URL, SETTLEMENT_DATABASE_URL, token)
     ├── db/                        # pgxpool connection pool initialization
     ├── internalapi/               # Internal HTTP RPC server (:8091) serving apps/api
     ├── ledger/                    # Authoritative double-entry ledger walk recompute
@@ -95,9 +95,13 @@ apps/settlement/
 - Native Go tests located in `apps/settlement/internal/settlement/*_test.go`.
 - Command to run:
   ```bash
-  cd apps/settlement && go test ./...
+  npm run test:settlement
   ```
 - Tests validate business day window math, fee schedule hierarchy, and payout notifications.
+- The root command first requires an isolated loopback `filspay_test[_suffix]`
+  DATABASE_URL. Go integration tests can reset counters/write financial fixtures;
+  bare `go test` bypasses this preflight. No settlement tests/jobs were run during
+  release cleanup; the binary build passed independently with Go 1.23.1.
 
 ---
 
@@ -107,4 +111,4 @@ apps/settlement/
 2. **Batch Loop Abortion (BUG-064):** In `daemon`, a failure on one merchant halts processing for all subsequent merchants in that daily run.
 3. **Scheme Residue (PMA-08 source review, 2026-10-30):** `CloseBatch` now journals gross-minus-truncated residue per export line to the ADR accounts for new closes. Earlier omission notes are stale. Historical March impact remains unverified; retired `scripts/reconcile_march.ts` refuses execution and has no database/posting capability. Database-backed settlement tests require a migrated authorized database.
 4. **MDR Recalculation on Paid Batches (BUG-035):** Recalculating MDR modifies already-paid batches directly.
-5. **Config Precedence (BUG-080):** `PGCONN_SETTLEMENT` overrides `DATABASE_URL` even when `DATABASE_URL` is set.
+5. **Historical Config Precedence (BUG-080):** Current config ignores legacy `PGCONN_SETTLEMENT`; only explicit `SETTLEMENT_DATABASE_URL` overrides `DATABASE_URL`. Release cleanup verified this source behavior but did not reclassify the historical bug.

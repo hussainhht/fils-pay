@@ -2,6 +2,12 @@
 
 > **Scope:** Inter-workspace dependencies, database producer/consumer relationships, outbox pub/sub topologies, and change blast-radius analysis.
 
+Release test tooling (2026-10-30): root `test` -> `scripts/test-unit.mjs` ->
+audited money/events/web and script safety suites. Explicit root integration,
+API/reporting workspace tests and settlement test command ->
+`ops/test-database.mjs` preflight before suite execution. No runtime dependency,
+service interface, schema or financial producer/consumer changed.
+
 ---
 
 ## 1. Workspace & Library Dependencies

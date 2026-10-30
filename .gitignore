@@ -5,6 +5,7 @@ dist/
 .env.local
 ops/.env.docker
 npm-debug.log*
+*.log
 .DS_Store
 .claude/
 .fork-tooling/

@@ -6,7 +6,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test --test-concurrency=1 \"src/**/*.test.ts\"",
+    "test": "node ../../ops/test-database.mjs && tsx --test --test-concurrency=1 \"src/**/*.test.ts\"",
     "dev": "tsx src/index.ts"
   },
   "dependencies": {

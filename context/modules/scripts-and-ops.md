@@ -79,7 +79,7 @@ Resend settings and HTTPS. Existing local Compose behavior is unchanged.
   - `scripts/reconcile_march.integration.test.ts`.
 - Command to run:
   ```bash
-  npx.cmd tsx --test scripts/*.test.ts
+  npm.cmd run test:integration
   ```
 
 ## Checkout capacity tooling (2026-10-30)
@@ -88,3 +88,12 @@ Resend settings and HTTPS. Existing local Compose behavior is unchanged.
 - `scripts/checkout-capacity-prepare.mjs`: additive fixtures guarded to the dedicated Compose DB; manifests written exclusively under ignored runtime output.
 - `ops/capacity/`: separate capped Compose, private config initializer, nginx, PowerShell stage runner and read-only SQL checks. No production/local shared volume or DB port. Runtime/Compose/SQL not executed here; client fixture tests pass 4/4.
 - Exact startup, identity/resource checks, stage commands, comparison matrix, monitoring gaps and pending-runtime status: `Evidence/agent-1-capacity-optimization.md`. No application dependency/interface change.
+
+## Submission test isolation (2026-10-30)
+
+Default `npm test` runs `scripts/test-unit.mjs`: an explicit database-free
+allowlist, with inherited database URLs removed. Full database suites remain
+available only through explicit guarded npm commands. `ops/test-database.mjs`
+checks loopback/test-name configuration before any suite import; it does not
+connect or run migrations/seeding. Direct file/Go/browser calls bypass it.
+See `ops/README.md` and `Evidence/pre_submission_cleanup.md` for limits.

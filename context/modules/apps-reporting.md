@@ -77,7 +77,10 @@
   ```bash
   npm.cmd run test -w @filspay/reporting
   ```
-  *(Note: Requires active `DATABASE_URL` and migrated PostgreSQL).*
+  *(Requires an explicit isolated loopback `filspay_test[_suffix]` DATABASE_URL
+  and migrated PostgreSQL; release preflight rejects other destinations before
+  importing tests. These suites rebuild/truncate reporting data and are excluded
+  from default root tests. Production worker behavior is unchanged.)*
 
 ---
 
