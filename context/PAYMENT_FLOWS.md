@@ -111,6 +111,7 @@ The transaction lifecycle enforces strict, irreversible state transitions:
 ## 5. Hosted Payment Links & Checkout (`apps/api/src/paymentLinks/`)
 
 - **Link Creation:** `POST /v1/merchants/:merchantId/payment-links` generates `plink_` followed by 22 cryptographically random URL-safe characters (`randomFromAlphabet`, current `create.ts`).
+- **Merchant amount editing (2026-10-30):** `/dashboard/payment-links/new` accepts literal BHD text with an editable period and up to three fractional digits. Empty/trailing-dot drafts are retained while editing; blur/submit normalizes complete safe amounts. `bhdAmount.ts` delegates string-to-fils conversion to the unchanged `parseBhdToFils`; the form requires positive safe-integer fils and sends the existing `amountFils` shape. No settlement or checkout processing changes. See FEAT-003 in `Evidence/features/features.md`.
 - **Public Checkout Page (`apps/web`):**
   - Customer navigates to `/pay/:token`.
   - Browser fetches link details via public `GET /v1/payment-links/:token`. Returns amount, merchant name, and expiry. Never returns API keys or internal hashes (`BUG-022`).

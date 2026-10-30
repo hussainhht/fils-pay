@@ -131,3 +131,11 @@ The UI states saving is unavailable. This is a feature blocker, not a claim that
 historical payment/security defects elsewhere have been resolved. Recovery keys
 and card values remain memory-only; a reload loses the ability to resume locally.
 The scoped findings above total `fix-verified`: 2; all other status counts: 0.
+
+## Payment-link amount workstream finding — 2026-10-30
+
+| Finding | Severity | Current status | Evidence |
+|---|---|---|---|
+| AMOUNT-01: creation used raw fils and a number field that lost the trailing decimal while typing | P2 | `fix-verified` | Baseline Edge check at HEAD `1b1f64b` produced `1` for `1.`. The BHD text field now retains drafts/caret, normalizes only at blur/submit and uses the existing exact money parser; 55 web tests and 11 browser groups pass. See FEAT-003 in `Evidence/features/features.md`. |
+
+Scoped count: `confirmed-current`: 1 before; `fix-verified`: 1 after; all other statuses: 0. Historical BUG-001–BUG-086 counts were not reassessed. Localized separators/digits are unsupported; physical keyboards, other browsers and live browser authentication-to-creation remain unverified.

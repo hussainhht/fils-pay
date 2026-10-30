@@ -57,6 +57,7 @@ apps/web/src/
    - Validates that refund amount does not exceed captured headroom.
 
 ### Frontend Invariants & Gotchas
+- **Payment-link BHD entry:** `pages/payment-links/BhdAmountInput.tsx` is a decimal-keyboard text field. Accepted text and cursor/selection stay native during editing; one period and at most three fractional digits are allowed. Complete supported drafts normalize on blur/submit, and `bhdAmount.ts` delegates exact fils conversion to `parseBhdToFils`. Creation rejects empty/lone-period, zero and unsafe amounts. Existing green form styles and API payload are retained; see FEAT-003 in `Evidence/features/features.md`.
 - **BHD Money Formatting:** Always use `formatBhd(fils)` (`format.ts`). Renders as `X.YYY BD` (e.g. `12.500 BD`). Never use `toFixed(2)`.
 - **Date Filters (BUG-076):** Transaction search and date filters must convert selected dates to **Asia/Bahrain** local midnight, not UTC midnight, to avoid dropping the first 3 hours of activity.
 - **Document Title (BUG-085):** Ensure dashboard pages set appropriate titles (`FilsPay Merchant Portal`) rather than default checkout strings.

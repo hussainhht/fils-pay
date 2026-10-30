@@ -65,6 +65,12 @@
 - Use `formatBhd(fils)`:
   - Formats integer fils as `X.YYY BD` (e.g. `4750 fils` $\rightarrow$ `4.750 BD`).
 
+### 4. Merchant Payment-Link Amount Entry
+- `pages/payment-links/PaymentLinkCreatePage.tsx` accepts BHD text rather than raw fils. `BhdAmountInput.tsx` uses a decimal-keyboard text input, retains accepted edits and native caret/selection, rejects invalid insertions/pastes and restores selection for non-cancellable input events.
+- Drafts permit one period and up to three fractional digits, including empty text, `.`, `1.` and `0.`. No formatting happens during typing; complete safe amounts normalize to three decimals on blur/submit. Empty/lone-period drafts cannot submit.
+- `bhdAmount.ts` completes strings and delegates exact conversion to the existing `parseBhdToFils`. The page requires positive safe-integer fils and preserves expiry/metadata/auth behavior. No floats or rounding, money-package modifications, dependencies or API changes.
+- See `Evidence/features/features.md` (FEAT-003) for grammar, limits and actual verification.
+
 ---
 
 ## 5. Existing Tests & Verification
@@ -72,6 +78,8 @@
 - `src/dashboard.test.ts`: Unit tests for formatting and mock data.
 - `src/ui-accessibility.test.ts`: Accessibility checks.
 - `src/pages/checkout/cardInput.test.ts`: network/range, formatting/caret/deletion, Luhn, expiry, CVV and payload tests.
+- `src/pages/payment-links/bhdAmount.test.ts`: draft grammar, intermediate states, normalization, exact fils and safe-integer boundary tests.
+- `scripts/paymentLinkAmount.browser.test.mjs`: installed-Chromium decimal/caret/paste/mobile viewport and creation-payload checks with intercepted sandbox API fixtures; `--baseline` reproduces the HEAD raw-fils field losing the trailing decimal. On 2026-10-30 all 11 browser groups and all 55 web tests passed; live browser authentication/creation and physical mobile devices remain unverified.
 - `scripts/checkout.browser.test.mjs`: opt-in installed-Chromium UI checks; `--live` adds a simulator payment through localhost API/Postgres using new test fixtures. `--baseline` and `--baseline --retry-only` reproduce the two baseline regressions. See `Evidence/payment_checkout_enhancements.md`.
 - Build verification:
   ```bash

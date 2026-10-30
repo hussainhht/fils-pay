@@ -155,3 +155,84 @@ Saved-card consent/tokenization, retrieval/ownership, removal and future charges
 | Card-input tests | `apps/web/src/pages/checkout/cardInput.test.ts` |
 | Browser checks and optional local simulator payment | `apps/web/scripts/checkout.browser.test.mjs` |
 | Detailed evidence and limitations | `Evidence/payment_checkout_enhancements.md` |
+
+---
+
+## FEAT-003 — Payment-link creation: editable BHD amounts
+
+**Status:** Implemented and verified on 2026-10-30.
+
+**Baseline HEAD:** `1b1f64b2c3a42d53da6bc3e96a77a6ebe66e8392` (clean working tree before this task).
+
+**Was:** The current creation page used a raw-fils `type="number"` field, not a BHD widget. An installed-Edge regression reproduced `1.` becoming `1`; the previous BHD creation improvements described in the request were absent from this checkout.
+
+**Now:** The merchant enters BHD in a decimal-keyboard text field. The form sends the existing `amountFils` integer payload, using the protected money package without modifying it.
+
+### What the merchant does
+
+1. Opens `/dashboard/payment-links/new` as an owner or finance user.
+2. Types, selects, replaces, pastes or deletes BHD text. The decimal stays wherever the merchant puts it; digits are never shifted into a fixed fractional position.
+3. Leaves the field or submits the form. A complete, supported amount is normalized to three decimals: `1` or `1.` becomes `1.000`, `1.5` becomes `1.500`, `.001` becomes `0.001`, and `00012.50` becomes `12.500`.
+4. Supplies a future expiry and optional reference/description, then creates the link. Existing metadata trimming, API errors and navigation to the created link are retained.
+
+The existing green theme and form styles are reused. The field has an explicit BHD label, a linked precision hint and `inputMode="decimal"` for mobile keyboards.
+
+### Decimal editing and cursor behavior
+
+- Accepted edits remain byte-for-byte as entered while focused. No padding, decimal movement or other formatting runs during typing.
+- `1` → `1.` → `1.5` → `1.500` works naturally. Selecting/replacing all of `12.500` with `1.250`, or replacing the fractional digits in `0.100` with `001`, preserves the resulting `1.250` / `0.001` exactly.
+- The decimal can be deleted and reinserted at another position, provided each resulting draft has at most three fractional digits. Deleting it from `12.500` yields `12500`, without moving any digits. A second decimal is rejected until the existing decimal is removed or selected for replacement.
+- Middle edits retain the browser's native caret. Invalid insertions/pastes leave the original value and selection, including backward selection, intact.
+- Native `beforeinput` rejects invalid insertions before mutation where possible. Paste checks the entire proposed replacement, rather than stripping characters or truncating excess precision. An `onChange` fallback restores the last value and selection for non-cancellable/mobile/autofill input events.
+- Empty text, `.`, `1.` and `0.` are valid editing states. Empty text and a lone `.` remain visible on blur and cannot submit; they are never silently converted to a payment amount.
+
+### Validation and exact conversion
+
+Drafts allow ASCII digits and at most one period, with zero to three digits after it. Signs (including negative zero), multiple periods, fourth fractional digits, exponent notation, grouping commas, whitespace, currency symbols and localized digits/separators are rejected as a whole. Zero can be edited but cannot create a link.
+
+`bhdAmount.ts` completes the string with a leading zero where needed, strips redundant leading zeros and pads the fraction with string operations. It delegates conversion to the existing `parseBhdToFils`, which uses bigint intermediates and safe-integer validation. No `parseFloat`, floating-point multiplication, rounding or `toFixed` is involved. The page requires a positive branded `Fils` result before submitting.
+
+Examples: `1.500` → `1500`, `1.250` → `1250`, `0.100` → `100`, `0.001` → `1`. The existing numeric API transport supports up to `9007199254740.991` BHD (`Number.MAX_SAFE_INTEGER` fils); `.992` at that whole amount is rejected, not rounded. Unsafe drafts stay visible so the merchant can correct them.
+
+Expiry validation, merchant id from the authenticated dashboard context, owner/finance access and backend validation are retained. This feature changes no API contract, schema, authentication, checkout payment processing, settlement or protected financial implementation, and adds no dependencies. `context/DEPENDENCY_MAP.md` was reviewed: the web-to-money and web-to-API dependencies already exist and need no changes. Existing ADR 0003/0004/0006 financial-policy conflicts remain human questions; this input change makes no settlement, reporting or balance-policy decision.
+
+### Where it lives / files changed
+
+| Piece | Path |
+|---|---|
+| Creation page: BHD state, submit validation, normalization and fils payload | `apps/web/src/pages/payment-links/PaymentLinkCreatePage.tsx` |
+| Text input: native editing, rejection and caret/selection fallback | `apps/web/src/pages/payment-links/BhdAmountInput.tsx` |
+| Draft grammar, string completion and existing-parser adapter | `apps/web/src/pages/payment-links/bhdAmount.ts` |
+| Pure validation/conversion regression tests | `apps/web/src/pages/payment-links/bhdAmount.test.ts` |
+| Installed-Chromium browser regression checks | `apps/web/scripts/paymentLinkAmount.browser.test.mjs` |
+| This feature and its verification evidence | `Evidence/features/features.md` |
+| Persistent context updates | `context/FRONTEND.md`, `context/PAYMENT_FLOWS.md`, `context/modules/apps-web.md`, `context/TESTING.md`, `context/KNOWN_ISSUES.md`, `context/CHANGELOG.md` |
+
+### Actual verification results
+
+Environment: Windows PowerShell; Node 22.23.2; npm 10.9.8; installed headless Microsoft Edge; existing Vite preview/API; reachable migrated local PostgreSQL 16.15. Go 1.23.1 is below the documented 1.24 prerequisite but is not used by this workstream. Docker CLI 28.3.2 is installed; daemon inspection was denied in the restricted shell. The existing database and services were used; no migrations, seed, truncation or real payment calls were performed. `ops/.env.docker` exists; `DATABASE_URL` was initially unset. Local connection configuration was read from Compose for verification without printing its values.
+
+| Command / check | Actual outcome |
+|---|---|
+| `npm.cmd run test -w @filspay/web` before changes | PASS: 50 tests |
+| `node apps/web/scripts/paymentLinkAmount.browser.test.mjs --baseline` | Expected FAIL against HEAD: typing `1.` produced `1`. The check loads a temporary sibling module with exclusive creation, then removes only that module. It does not change Git history or revert source. |
+| `npm.cmd run test -w @filspay/web` after changes | PASS: 55 tests, including five new amount regression cases |
+| `npm.cmd run typecheck` | PASS: all workspaces, DB and scripts |
+| `npm.cmd run build -w @filspay/web` | PASS |
+| `node apps/web/scripts/paymentLinkAmount.browser.test.mjs` | PASS: 11 browser verification groups, all API calls intercepted with sandbox fixtures |
+| In `apps/api`, `node --import tsx --test src/routes/paymentLinks.test.ts`, with `DATABASE_URL` set in memory to the migrated localhost development database | PASS: all 8 existing route tests, including creation/read/payment, declines/retries, exact link amount, expiry, cancellation, listing and idempotent recovery; fixtures created by the existing tests, simulated acquirer only |
+| Real local PostgreSQL SELECT, including server version and `payment_links` existence | PASS: PostgreSQL 16.15, table present |
+| Existing API `GET /healthz`, `GET /readyz`; Vite-proxied `GET /healthz` | All HTTP 200 |
+| `node ops/preview.mjs` | Initial restricted-shell attempt failed to load Vite configuration. Retrying with approved unrestricted execution reported port 5173 already in use; the existing preview served the browser checks. No teammate's process was stopped. |
+
+The first restricted-shell web-test attempt failed in Windows `uv_os_get_passwd` before running tests. Approved unrestricted execution passed; Vite build and Edge verification also used approved unrestricted execution. No tests were skipped or weakened.
+
+Browser coverage includes desktop/native typing; decimal insertion, deletion and repositioning; the requested amount examples; middle digit edits; selected replacement/deletion; valid and invalid paste; trailing-dot and empty drafts; native caret and backward selection; non-cancellable input fallback; 390px and 320px mobile viewport edits, arrow/tab navigation and overflow; blur normalization; submission without blur; zero/overflow and expiry rejection; exact fils payloads through the safe-integer boundary; metadata; API errors; success navigation; and the existing support-role form restriction. Paste uses a synthetic clipboard event to exercise the paste handler followed by Chromium insertion for the allowed edit.
+
+Scoped finding **AMOUNT-01** (P2): `confirmed-current` → `fix-verified`, proven by the failing baseline browser check and passing updated check. Counts for this workstream: before `confirmed-current`: 1; after `fix-verified`: 1; all other statuses: 0. No historical BUG-001–BUG-086 counts were reassessed.
+
+### Remaining limitations / not verified
+
+- Physical mobile keyboards, Safari/Firefox, IME composition, operating-system clipboard integration and screen-reader speech were not verified. Localized decimal commas/Arabic numerals are unsupported; use digits `0`–`9` and `.`.
+- The browser creation tests use intercepted authentication and API fixtures; they do not prove a browser → real merchant login/OTP → creation → database journey. The existing route tests independently verify real local API/database payment-link behavior.
+- Broader admin/auth/KYC, reporting and settlement journeys, the full API workspace suite and real-provider payment processing were not rerun. No whole-application end-to-end claim is made.
