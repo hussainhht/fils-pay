@@ -1,3 +1,5 @@
+import { assertConsoleOtpRecipient, deliverOtpEmail } from "../auth/otpDelivery.js";
+import { verifyConsoleOtp } from "../auth/consoleOtp.js";
 import { authenticatorRoutes } from "./authenticator.js";
 import { readAuthenticator, verifyAuthenticatorFactor } from "../auth/totp.js";
 import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, merchantAccountKey } from "../auth/loginLimits.js";
@@ -76,9 +78,23 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     await clearLoginAttempt(app.db, attemptId);
     const result = await withTransaction(app.db, async (client) => {
       // Serialize with enrollment so a new factor cannot be bypassed by a concurrent login.
-      await client.query(`SELECT id FROM merchant_users WHERE id = $1 FOR UPDATE`, [user.id]);
+      const locked = await client.query<{ test_mode: boolean }>(`SELECT mu.id, m.test_mode FROM merchant_users mu JOIN merchants m ON m.id = mu.merchant_id WHERE mu.id = $1 FOR UPDATE OF mu, m`, [user.id]);
       const factor = await readAuthenticator(client, app.config, "merchant", user.id, true);
       if (factor?.enabled_at && !app.config.featureTotp) throw new AppError(503, "authenticator_unavailable");
+      if (!factor?.enabled_at && app.config.otpDelivery.transport === "console") {
+        const recipient = { plane: "merchant" as const, email: user.email, testMode: locked.rows[0]?.test_mode };
+        assertConsoleOtpRecipient(app.config, recipient);
+        await assertChallengeAllowed(client, reply, app.config, { plane: "merchant", userId: user.id });
+        // A new password login supersedes every previous pending challenge for this user.
+        await client.query(`UPDATE otp_challenges SET consumed_at = now() WHERE merchant_user_id = $1 AND consumed_at IS NULL`, [user.id]);
+        const challenge = await issueChallenge(client, { merchantUserId: user.id, ttlMinutes: app.config.otpTtlMinutes,
+          codeLength: 6, maxAttempts: app.config.otpMaxAttempts, consoleDelivery: true });
+        const session = await createPendingSession(client, { merchantUserId: user.id, otpChallengeId: challenge.id,
+          ttlMinutes: app.config.pendingSessionTtlMinutes, ipAddress: request.ip,
+          userAgent: (request.headers["user-agent"] as string | undefined) ?? null });
+        return { session, otpRequired: true as const, expiresAt: challenge.expiresAt, verificationMethod: "console" as const,
+          delivery: { ...recipient, challengeId: challenge.id, code: challenge.code, expiresAt: challenge.expiresAt } };
+      }
       if (!factor?.enabled_at) {
         const pending = await createPendingSession(client, { merchantUserId: user.id, otpChallengeId: null,
           ttlMinutes: app.config.pendingSessionTtlMinutes, ipAddress: request.ip,
@@ -92,15 +108,24 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const session = await createPendingSession(client, { merchantUserId: user.id, otpChallengeId: challenge.id,
         ttlMinutes: app.config.pendingSessionTtlMinutes, ipAddress: request.ip,
         userAgent: (request.headers["user-agent"] as string | undefined) ?? null });
-      return { session, otpRequired: true as const, expiresAt: challenge.expiresAt };
+      return { session, otpRequired: true as const, expiresAt: challenge.expiresAt, verificationMethod: "totp" as const };
     });
+
+    if ("delivery" in result && result.delivery) {
+      try {
+        await deliverOtpEmail(app.log, app.config, result.delivery);
+      } catch (error) {
+        await revokeSession(app.db, result.session.id);
+        throw error;
+      }
+    }
 
     reply.setCookie(app.config.cookieName, result.session.rawToken, {
       httpOnly: true, path: "/", sameSite: "lax", secure: app.config.cookieSecure,
       maxAge: result.otpRequired ? app.config.pendingSessionTtlMinutes * 60 : app.config.sessionTtlHours * 3_600,
     });
     reply.code(200).send(result.otpRequired
-      ? { otpRequired: true, verificationMethod: "totp", otpExpiresAt: result.expiresAt.toISOString() }
+      ? { otpRequired: true, authenticated: false, verificationMethod: result.verificationMethod, otpExpiresAt: result.expiresAt.toISOString() }
       : { otpRequired: false, authenticated: true });
   });
 
@@ -121,6 +146,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         // challenge, so neither can race an old challenge or promote twice.
         const pending = await lookupPendingSession(client, rawToken, true);
         if (!pending || !pending.otpChallengeId) throw new UnauthorizedError("no_pending_session");
+        // Match login/enrollment lock order before locking the challenge/factor.
+        await client.query(`SELECT id FROM merchant_users WHERE id = $1 FOR UPDATE`, [pending.merchantUserId]);
         const challengeResult = await client.query<{
           id: string;
           code_salt: string;
@@ -142,7 +169,9 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           await revokeSession(client, pending.sessionId);
           return { error: new TooManyRequestsError("too_many_attempts") } as const;
         }
-        const factorValid = await verifyAuthenticatorFactor(client, app.config, "merchant", pending.merchantUserId, code);
+        const factorValid = challenge.code_salt.startsWith("console:")
+          ? await verifyConsoleOtp(client, app.config, "merchant", pending.merchantUserId, code, challenge.code_salt, challenge.code_hash)
+          : await verifyAuthenticatorFactor(client, app.config, "merchant", pending.merchantUserId, code);
         if (factorValid !== true) {
           await client.query(`UPDATE otp_challenges SET attempt_count = attempt_count + 1 WHERE id = $1`, [challenge.id]);
           // Return the failure so the attempt increment commits before the

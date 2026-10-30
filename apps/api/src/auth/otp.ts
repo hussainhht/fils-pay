@@ -37,10 +37,11 @@ export interface IssuedOtpChallenge {
  */
 export async function issueChallenge(
   client: PoolClient,
-  params: { merchantUserId: string; ttlMinutes: number; codeLength: number; maxAttempts: number; attemptCount?: number },
+  params: { merchantUserId: string; ttlMinutes: number; codeLength: number; maxAttempts: number; attemptCount?: number; consoleDelivery?: boolean },
 ): Promise<IssuedOtpChallenge> {
   const code = generateOtpCode(params.codeLength);
-  const salt = randomBytes(16).toString("hex");
+  // Bind the verification method to the challenge without a schema change.
+  const salt = (params.consoleDelivery ? "console:" : "") + randomBytes(16).toString("hex");
   const hash = hashOtpCode(code, salt);
   const expiresAt = new Date(Date.now() + params.ttlMinutes * 60_000);
 

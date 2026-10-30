@@ -32,7 +32,9 @@ export interface Config {
   featureTotp: boolean;
   totpSecretEncryptionKey: string;
   otpDelivery: {
-    transport: "development" | "resend" | "disabled";
+    transport: "development" | "resend" | "disabled" | "console";
+    testMerchantEmails: string[];
+    testAdminEmails: string[];
     from: string;
     apiKey: string;
     timeoutMs: number;
@@ -205,8 +207,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
 
   const otpTransport = env.OTP_DELIVERY_TRANSPORT ?? "disabled";
-  if (otpTransport !== "development" && otpTransport !== "resend" && otpTransport !== "disabled") {
-    throw new Error("loadConfig: OTP_DELIVERY_TRANSPORT must be development, resend or disabled");
+  if (otpTransport !== "development" && otpTransport !== "resend" && otpTransport !== "disabled" && otpTransport !== "console") {
+    throw new Error("loadConfig: OTP_DELIVERY_TRANSPORT must be development, resend, console or disabled");
   }
   if (nodeEnv === "production" && otpTransport === "development") {
     throw new Error("loadConfig: production does not permit development OTP delivery");
@@ -253,7 +255,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     otpCodeLength: parseIntEnv(env.OTP_CODE_LENGTH, 6),
     otpMaxAttempts: parseIntEnv(env.OTP_MAX_ATTEMPTS, 5),
     otpDevExpose: nodeEnv !== "production" && parseBoolEnv(env.OTP_DEV_EXPOSE, true),
-    otpDelivery: { transport: otpTransport, from: otpFrom, apiKey: otpApiKey, timeoutMs: otpTimeoutMs },
+    otpDelivery: { transport: otpTransport, from: otpFrom, apiKey: otpApiKey, timeoutMs: otpTimeoutMs,
+      testMerchantEmails: (env.TEST_OTP_MERCHANT_EMAILS ?? "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean),
+      testAdminEmails: (env.TEST_OTP_ADMIN_EMAILS ?? "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean) },
 
     argon2MemoryKib: parseIntEnv(env.ARGON2_MEMORY_KIB, 19_456),
     argon2TimeCost: parseIntEnv(env.ARGON2_TIME_COST, 2),

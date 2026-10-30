@@ -145,9 +145,9 @@ export function LoginPage() {
         </form>
       ) : (
         <form onSubmit={(e) => void handleOtp(e)} className="dash-form">
-          <p>Enter the 6-digit code from your authenticator app.</p>
+          <p>{isTotp ? "Enter the 6-digit code from your authenticator app." : "Enter the 6-digit verification code from the test OTP console."}</p>
           <label>
-            {useRecovery ? "Unused recovery code" : "Authenticator code"}
+            {isTotp ? (useRecovery ? "Unused recovery code" : "Authenticator code") : "Verification code"}
             <input
               type="text"
               inputMode={useRecovery ? "text" : "numeric"}

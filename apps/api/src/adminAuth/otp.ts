@@ -24,10 +24,10 @@ export interface IssuedAdminOtpChallenge {
  */
 export async function issueAdminChallenge(
   client: PoolClient,
-  params: { adminUserId: string; ttlMinutes: number; codeLength: number; maxAttempts: number },
+  params: { adminUserId: string; ttlMinutes: number; codeLength: number; maxAttempts: number; consoleDelivery?: boolean },
 ): Promise<IssuedAdminOtpChallenge> {
   const code = generateOtpCode(params.codeLength);
-  const salt = randomBytes(16).toString("hex");
+  const salt = (params.consoleDelivery ? "console:" : "") + randomBytes(16).toString("hex");
   const hash = hashOtpCode(code, salt);
   const expiresAt = new Date(Date.now() + params.ttlMinutes * 60_000);
 

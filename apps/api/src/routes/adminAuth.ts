@@ -1,3 +1,5 @@
+import { assertConsoleOtpRecipient, deliverOtpEmail } from "../auth/otpDelivery.js";
+import { verifyConsoleOtp } from "../auth/consoleOtp.js";
 import { authenticatorRoutes } from "./authenticator.js";
 import { readAuthenticator, verifyAuthenticatorFactor } from "../auth/totp.js";
 import { beginLoginAttempt, clearLoginAttempt, assertChallengeAllowed, adminAccountKey } from "../auth/loginLimits.js";
@@ -72,6 +74,20 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
       await client.query(`SELECT id FROM admin_users WHERE id = $1 FOR UPDATE`, [user.id]);
       const factor = await readAuthenticator(client, app.config, "admin", user.id, true);
       if (factor?.enabled_at && !app.config.featureTotp) throw new AppError(503, "authenticator_unavailable");
+      if (!factor?.enabled_at && app.config.otpDelivery.transport === "console") {
+        const recipient = { plane: "admin" as const, email: user.email };
+        assertConsoleOtpRecipient(app.config, recipient);
+        await assertChallengeAllowed(client, reply, app.config, { plane: "admin", userId: user.id });
+        // A new password login supersedes every previous pending challenge for this user.
+        await client.query(`UPDATE admin_otp_challenges SET consumed_at = now() WHERE admin_user_id = $1 AND consumed_at IS NULL`, [user.id]);
+        const challenge = await issueAdminChallenge(client, { adminUserId: user.id, ttlMinutes: app.config.adminOtpTtlMinutes,
+          codeLength: 6, maxAttempts: app.config.adminOtpMaxAttempts, consoleDelivery: true });
+        const session = await createPendingAdminSession(client, { adminUserId: user.id, otpChallengeId: challenge.id,
+          ttlMinutes: app.config.adminPendingSessionTtlMinutes, ipAddress: request.ip,
+          userAgent: (request.headers["user-agent"] as string | undefined) ?? null });
+        return { session, otpRequired: true as const, expiresAt: challenge.expiresAt, verificationMethod: "console" as const,
+          delivery: { ...recipient, challengeId: challenge.id, code: challenge.code, expiresAt: challenge.expiresAt } };
+      }
       if (!factor?.enabled_at) {
         const pending = await createPendingAdminSession(client, { adminUserId: user.id, otpChallengeId: null,
           ttlMinutes: app.config.adminPendingSessionTtlMinutes, ipAddress: request.ip,
@@ -85,15 +101,24 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
       const session = await createPendingAdminSession(client, { adminUserId: user.id, otpChallengeId: challenge.id,
         ttlMinutes: app.config.adminPendingSessionTtlMinutes, ipAddress: request.ip,
         userAgent: (request.headers["user-agent"] as string | undefined) ?? null });
-      return { session, otpRequired: true as const, expiresAt: challenge.expiresAt };
+      return { session, otpRequired: true as const, expiresAt: challenge.expiresAt, verificationMethod: "totp" as const };
     });
+
+    if ("delivery" in result && result.delivery) {
+      try {
+        await deliverOtpEmail(app.log, app.config, result.delivery);
+      } catch (error) {
+        await revokeAdminSession(app.db, result.session.id);
+        throw error;
+      }
+    }
 
     reply.setCookie(app.config.adminCookieName, result.session.rawToken, {
       httpOnly: true, path: "/", sameSite: "lax", secure: app.config.cookieSecure,
       maxAge: result.otpRequired ? app.config.adminPendingSessionTtlMinutes * 60 : app.config.adminSessionTtlHours * 3_600,
     });
     reply.code(200).send(result.otpRequired
-      ? { otpRequired: true, verificationMethod: "totp", otpExpiresAt: result.expiresAt.toISOString() }
+      ? { otpRequired: true, authenticated: false, verificationMethod: result.verificationMethod, otpExpiresAt: result.expiresAt.toISOString() }
       : { otpRequired: false, authenticated: true });
   });
 
@@ -110,6 +135,7 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
     const verification = await withTransaction(app.db, async (client) => {
       const pending = await lookupPendingAdminSession(client, rawToken, true);
       if (!pending || !pending.otpChallengeId) throw new UnauthorizedError("no_pending_session");
+      await client.query(`SELECT id FROM admin_users WHERE id = $1 FOR UPDATE`, [pending.adminUserId]);
       const challengeResult = await client.query<{
         id: string;
         code_salt: string;
@@ -131,7 +157,9 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
         await revokeAdminSession(client, pending.adminSessionId);
         return { error: new TooManyRequestsError("too_many_attempts") } as const;
       }
-      const factorValid = await verifyAuthenticatorFactor(client, app.config, "admin", pending.adminUserId, code);
+      const factorValid = challenge.code_salt.startsWith("console:")
+          ? await verifyConsoleOtp(client, app.config, "admin", pending.adminUserId, code, challenge.code_salt, challenge.code_hash)
+          : await verifyAuthenticatorFactor(client, app.config, "admin", pending.adminUserId, code);
       if (factorValid !== true) {
         await client.query(`UPDATE admin_otp_challenges SET attempt_count = attempt_count + 1 WHERE id = $1`, [challenge.id]);
         return { error: new UnauthorizedError("invalid_code") } as const;

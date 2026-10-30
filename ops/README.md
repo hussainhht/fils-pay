@@ -164,3 +164,40 @@ nonempty `SETTLEMENT_INTERNAL_TOKEN`; there is no daemon token fallback.
 Production API requires an explicit webhook encryption key; Compose supplies a
 generated key in development as well. Reporting starts with the explicit
 `worker` subcommand.
+# Temporary demo console OTP
+
+On the existing HTTPS demo host, `/etc/filspay/api.env` explicitly enables:
+
+```dotenv
+OTP_DELIVERY_TRANSPORT=console
+TEST_OTP_MERCHANT_EMAILS=test-owner@filspay.example
+TEST_OTP_ADMIN_EMAILS=test-admin@filspay.example
+OTP_TTL_MINUTES=5
+ADMIN_OTP_TTL_MINUTES=5
+OTP_MAX_ATTEMPTS=5
+ADMIN_OTP_MAX_ATTEMPTS=5
+OTP_DEV_EXPOSE=false
+FEATURE_TOTP=false
+```
+
+Both password logins return an unauthenticated pending session and require a
+secure random six-digit OTP before session promotion. Only salted hashes are
+stored. Codes expire after five minutes, allow five attempts, and are single-use;
+a new login consumes earlier challenges. Existing challenge/password rate limits
+remain in effect. Console merchant delivery requires both the explicit email
+allowlist and `merchants.test_mode=true`; other unenrolled identities fail closed
+with 503 when console is the configured transport. Enrolled authenticators keep
+their existing policy and cannot be bypassed with console OTP. Eligibility is
+checked again at verification. No Resend configuration is needed for this mode.
+
+Read the temporary test codes with:
+
+```sh
+ssh -t dilmune@68.183.82.221 'sudo docker logs --since 5m -f filspay-api-1 2>&1 | grep --line-buffered "TEST OTP"'
+```
+
+Log access is restricted to server operators. Disabling console delivery also
+invalidates outstanding console challenges. With `disabled` transport, the
+existing password/authenticator policy applies; it does not retain console OTP
+enforcement. Replace this temporary transport with an explicitly implemented
+email-login policy before enabling general live-user email OTP.
