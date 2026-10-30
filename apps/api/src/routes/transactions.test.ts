@@ -326,3 +326,58 @@ test("POST /v1/refunds returns 501 not_implemented", async () => {
   assert.equal(res.statusCode, 501, res.body);
   assert.equal(res.json().error, "not_implemented");
 });
+
+test("BUG-025: capture against a missing, expired or released hold never reaches the acquirer", async () => {
+  const { rawKey } = await createApprovedMerchantWithApiKey("capture-hold-no-provider");
+  const original = app.acquirer.capture.bind(app.acquirer);
+  let providerCalls = 0;
+  app.acquirer.capture = async (req) => {
+    providerCalls += 1;
+    return original(req);
+  };
+  try {
+    for (const mode of ["missing", "expired", "released"] as const) {
+      const txn = await authorize(rawKey, 8000);
+      if (mode === "missing") await pool.query("DELETE FROM holds WHERE transaction_id = $1", [txn.id]);
+      else if (mode === "expired") await pool.query("UPDATE holds SET expires_at = now() - interval '1 minute' WHERE transaction_id = $1", [txn.id]);
+      else await pool.query("UPDATE holds SET status = 'released' WHERE transaction_id = $1", [txn.id]);
+      const res = await capture(rawKey, txn.id);
+      assert.equal(res.statusCode, 409, `${mode}: ${res.body}`);
+      assert.equal(res.json().error, "authorization_hold_expired");
+      const row = await pool.query("SELECT status, captured_fils FROM transactions WHERE id = $1", [txn.id]);
+      assert.equal(Number(row.rows[0].captured_fils), 0, mode);
+      assert.equal(row.rows[0].status, "authorized", mode);
+      const ledger = await pool.query("SELECT count(*)::int AS n FROM ledger_entries WHERE transaction_id = $1", [txn.id]);
+      assert.equal(ledger.rows[0].n, 0, mode);
+    }
+    assert.equal(providerCalls, 0, "rejected captures must not call the acquirer");
+
+    // A healthy authorization still reaches the acquirer exactly once.
+    const ok = await authorize(rawKey, 8000);
+    assert.equal((await capture(rawKey, ok.id)).statusCode, 200);
+    assert.equal(providerCalls, 1);
+  } finally {
+    app.acquirer.capture = original;
+  }
+});
+
+test("BUG-021: concurrent captures with one key post exactly one ledger group; the same key on another transaction is refused", async () => {
+  const { rawKey } = await createApprovedMerchantWithApiKey("capture-concurrent-key");
+  const first = await authorize(rawKey, 9000);
+  const second = await authorize(rawKey, 9000);
+  const key = randomUUID();
+
+  const results = await Promise.all(Array.from({ length: 5 }, () => capture(rawKey, first.id, {}, key)));
+  for (const r of results) assert.ok([200, 409].includes(r.statusCode), r.body);
+  assert.ok(results.some((r) => r.statusCode === 200), "at least one capture wins");
+
+  const groups = await pool.query("SELECT count(DISTINCT entry_group_id)::int AS n FROM ledger_entries WHERE transaction_id = $1", [first.id]);
+  assert.equal(groups.rows[0].n, 1, "exactly one ledger group for the concurrent same-key captures");
+  const row = await pool.query("SELECT captured_fils FROM transactions WHERE id = $1", [first.id]);
+  assert.equal(Number(row.rows[0].captured_fils), 9000);
+
+  const other = await capture(rawKey, second.id, {}, key);
+  assert.equal(other.statusCode, 422, other.body);
+  const otherLedger = await pool.query("SELECT count(*)::int AS n FROM ledger_entries WHERE transaction_id = $1", [second.id]);
+  assert.equal(otherLedger.rows[0].n, 0);
+});

@@ -449,26 +449,28 @@ export function MerchantDetailPage() {
       {kycReviews.length === 0 ? (
         <p className="admin-muted">No reviews recorded.</p>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Outcome</th>
-              <th>Reviewer</th>
-              <th>Notes</th>
-              <th>Reviewed at</th>
-            </tr>
-          </thead>
-          <tbody>
-            {kycReviews.map((review) => (
-              <tr key={review.id}>
-                <td>{review.outcome}</td>
-                <td>{review.reviewerIdentifier}</td>
-                <td>{review.notes ?? "-"}</td>
-                <td>{new Date(review.reviewedAt).toLocaleString()}</td>
+        <div className="fp-table-scroll" role="region" aria-label="Merchant Detail data 1" tabIndex={0}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Outcome</th>
+                <th>Reviewer</th>
+                <th>Notes</th>
+                <th>Reviewed at</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {kycReviews.map((review) => (
+                <tr key={review.id}>
+                  <td>{review.outcome}</td>
+                  <td>{review.reviewerIdentifier}</td>
+                  <td>{review.notes ?? "-"}</td>
+                  <td>{new Date(review.reviewedAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <h2>API keys</h2>
@@ -494,43 +496,45 @@ export function MerchantDetailPage() {
       {apiKeys.length === 0 ? (
         <p className="admin-muted">No API keys.</p>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Prefix</th>
-              <th>Label</th>
-              <th>Created</th>
-              <th>Last used</th>
-              <th>Revoked</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {apiKeys.map((key) => (
-              <tr key={key.id}>
-                <td>
-                  <code>{key.prefix}</code>
-                </td>
-                <td>{key.label ?? "-"}</td>
-                <td>{new Date(key.createdAt).toLocaleDateString()}</td>
-                <td>{key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : "never"}</td>
-                <td>{key.revokedAt ? new Date(key.revokedAt).toLocaleString() : "-"}</td>
-                <td>
-                  {key.revokedAt ? null : (
-                    <RequireRole
-                      allow={["finance", "super_admin"]}
-                      fallback={<span className="admin-muted">finance role required</span>}
-                    >
-                      <button type="button" onClick={() => setPendingRotation(key.id)}>
-                        Rotate
-                      </button>
-                    </RequireRole>
-                  )}
-                </td>
+        <div className="fp-table-scroll" role="region" aria-label="Merchant Detail data 2" tabIndex={0}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Prefix</th>
+                <th>Label</th>
+                <th>Created</th>
+                <th>Last used</th>
+                <th>Revoked</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {apiKeys.map((key) => (
+                <tr key={key.id}>
+                  <td>
+                    <code>{key.prefix}</code>
+                  </td>
+                  <td>{key.label ?? "-"}</td>
+                  <td>{new Date(key.createdAt).toLocaleDateString()}</td>
+                  <td>{key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : "never"}</td>
+                  <td>{key.revokedAt ? new Date(key.revokedAt).toLocaleString() : "-"}</td>
+                  <td>
+                    {key.revokedAt ? null : (
+                      <RequireRole
+                        allow={["finance", "super_admin"]}
+                        fallback={<span className="admin-muted">finance role required</span>}
+                      >
+                        <button type="button" onClick={() => setPendingRotation(key.id)}>
+                          Rotate
+                        </button>
+                      </RequireRole>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {pendingRotation ? (
@@ -567,28 +571,30 @@ export function MerchantDetailPage() {
       {webhookEndpoints.length === 0 ? (
         <p className="admin-muted">No endpoints registered.</p>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>URL</th>
-              <th>Status</th>
-              <th>Secret prefix</th>
-              <th>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {webhookEndpoints.map((endpoint) => (
-              <tr key={endpoint.id}>
-                <td>{endpoint.url}</td>
-                <td>{endpoint.status}</td>
-                <td>
-                  <code>{endpoint.secretPrefix}</code>
-                </td>
-                <td>{new Date(endpoint.createdAt).toLocaleDateString()}</td>
+        <div className="fp-table-scroll" role="region" aria-label="Merchant Detail data 3" tabIndex={0}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>URL</th>
+                <th>Status</th>
+                <th>Secret prefix</th>
+                <th>Created</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {webhookEndpoints.map((endpoint) => (
+                <tr key={endpoint.id}>
+                  <td>{endpoint.url}</td>
+                  <td>{endpoint.status}</td>
+                  <td>
+                    <code>{endpoint.secretPrefix}</code>
+                  </td>
+                  <td>{new Date(endpoint.createdAt).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       <p>
         <Link to={`/webhooks/${merchant.id}`}>Replay a batch of deliveries for this merchant</Link>
@@ -598,28 +604,30 @@ export function MerchantDetailPage() {
       {batches.length === 0 ? (
         <p className="admin-muted">No batches yet.</p>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Gross</th>
-              <th>Fee</th>
-              <th>Net payout</th>
-            </tr>
-          </thead>
-          <tbody>
-            {batches.map((batch) => (
-              <tr key={batch.id}>
-                <td>{batch.batchDate}</td>
-                <td>{batch.status}</td>
-                <td>{bhd(batch.grossFils)}</td>
-                <td>{bhd(batch.feeFils)}</td>
-                <td>{bhd(batch.netPayoutFils)}</td>
+        <div className="fp-table-scroll" role="region" aria-label="Merchant Detail data 4" tabIndex={0}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Status</th>
+                <th className="fp-numeric">Gross</th>
+                <th className="fp-numeric">Fee</th>
+                <th className="fp-numeric">Net payout</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {batches.map((batch) => (
+                <tr key={batch.id}>
+                  <td>{batch.batchDate}</td>
+                  <td>{batch.status}</td>
+                  <td className="fp-numeric">{bhd(batch.grossFils)}</td>
+                  <td className="fp-numeric">{bhd(batch.feeFils)}</td>
+                  <td className="fp-numeric">{bhd(batch.netPayoutFils)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <h2>Recompute transaction statuses</h2>

@@ -200,11 +200,11 @@ test("BUG-019: reporting scope prevents split parent from querying other parent'
 
   // Register child relations
   await pool.query(
-    "INSERT INTO merchant_split_children (parent_merchant_id, child_merchant_id, weight_bps) VALUES ($1, $2, 5000)",
+    "INSERT INTO merchant_split_children (parent_merchant_id, child_merchant_id, split_weight_bps) VALUES ($1, $2, 5000)",
     [parentA.merchantId, childA.merchantId],
   );
   await pool.query(
-    "INSERT INTO merchant_split_children (parent_merchant_id, child_merchant_id, weight_bps) VALUES ($1, $2, 5000)",
+    "INSERT INTO merchant_split_children (parent_merchant_id, child_merchant_id, split_weight_bps) VALUES ($1, $2, 5000)",
     [parentB.merchantId, childB.merchantId],
   );
 
@@ -300,7 +300,12 @@ test("BUG-004: impersonation session cannot execute capture, void, refund or cre
     headers: { cookie: impCookie },
     payload: { label: "HackedKey" },
   });
-  assert.equal(keyRes.statusCode, 403, "Impersonation must not allow issuing API keys");
+  // api-keys routes accept merchant sessions only (requireSession), so an
+  // impersonation cookie is refused as unauthenticated (401) rather than 403.
+  // Either way no key may be issued.
+  assert.ok([401, 403].includes(keyRes.statusCode), `Impersonation must not allow issuing API keys: ${keyRes.statusCode}`);
+  const keyCount = await pool.query<{ n: string }>("SELECT count(*) AS n FROM api_keys WHERE merchant_id = $1 AND label = 'HackedKey'", [merchant.merchantId]);
+  assert.equal(keyCount.rows[0]!.n, "0", "no API key was created under impersonation");
 });
 
 // BUG-017: Suspended merchant credential invalidation

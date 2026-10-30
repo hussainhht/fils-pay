@@ -145,30 +145,32 @@ export function AdjustmentImportPage() {
       {imports.length === 0 ? (
         <p className="admin-muted">No imports yet.</p>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Applied</th>
-              <th>File</th>
-              <th>Rows</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {imports.map((item) => (
-              <tr key={item.id}>
-                <td>{item.appliedAt}</td>
-                <td>{item.originalFilename}</td>
-                <td>{item.rowCount}</td>
-                <td>
-                  <button type="button" onClick={() => void handleOpenRows(item.id)}>
-                    {openImportId === item.id ? "Hide rows" : "View rows"}
-                  </button>
-                </td>
+        <div className="fp-table-scroll" role="region" aria-label="Adjustment Import data 1" tabIndex={0}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Applied</th>
+                <th>File</th>
+                <th>Rows</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {imports.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.appliedAt}</td>
+                  <td>{item.originalFilename}</td>
+                  <td>{item.rowCount}</td>
+                  <td>
+                    <button type="button" onClick={() => void handleOpenRows(item.id)}>
+                      {openImportId === item.id ? "Hide rows" : "View rows"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {rowsError ? <p className="admin-error">{rowsError}</p> : null}
@@ -176,30 +178,32 @@ export function AdjustmentImportPage() {
       {openImportId ? (
         <div>
           <h3>Rows</h3>
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Merchant</th>
-                <th>CSV amount</th>
-                <th>Posted</th>
-                <th>Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.rowNumber}>
-                  <td>{row.rowNumber}</td>
-                  <td>{row.merchantId}</td>
-                  <td>
-                    <code>{row.rawAmountText}</code>
-                  </td>
-                  <td>{bhd(row.parsedAmountFils)}</td>
-                  <td>{row.reason ?? ""}</td>
+          <div className="fp-table-scroll" role="region" aria-label="Adjustment Import data 2" tabIndex={0}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Merchant</th>
+                  <th>CSV amount</th>
+                  <th>Posted</th>
+                  <th>Reason</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.rowNumber}>
+                    <td>{row.rowNumber}</td>
+                    <td>{row.merchantId}</td>
+                    <td>
+                      <code>{row.rawAmountText}</code>
+                    </td>
+                    <td className="fp-numeric">{bhd(row.parsedAmountFils)}</td>
+                    <td>{row.reason ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
     </section>

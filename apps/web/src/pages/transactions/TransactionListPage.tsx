@@ -128,41 +128,43 @@ export function TransactionListPage() {
 
       <p>{pluralize(transactions.length, "transaction")} loaded</p>
 
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>Occurred</th>
-            <th>Reference</th>
-            <th>Status</th>
-            <th>Authorized</th>
-            <th>Captured</th>
-            <th>Acquirer reference</th>
-          </tr>
-        </thead>
-        <tbody>
-          {transactions.map((txn) => (
-            <tr key={txn.id}>
-              <td>
-                <Link to={`/dashboard/transactions/${txn.id}`}>{dateTime(txn.occurredAt)}</Link>
-              </td>
-              <td>{dash(txn.reference)}</td>
-              <td>
-                <span className={classNames("dash-status", `dash-status-${txn.status}`)}>{txn.status}</span>
-              </td>
-              <td>{bhd(txn.amountFils)}</td>
-              <td>{bhd(txn.capturedFils)}</td>
-              <td>
-                <code>{truncateMiddle(txn.acquirerReference, 20)}</code>
-              </td>
-            </tr>
-          ))}
-          {transactions.length === 0 && !loading ? (
+      <div className="fp-table-scroll" role="region" aria-label="Transaction List data 1" tabIndex={0}>
+        <table className="dash-table">
+          <thead>
             <tr>
-              <td colSpan={6}>No transactions match these filters.</td>
+              <th>Occurred</th>
+              <th>Reference</th>
+              <th>Status</th>
+              <th className="fp-numeric">Authorized</th>
+              <th className="fp-numeric">Captured</th>
+              <th>Acquirer reference</th>
             </tr>
-          ) : null}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {transactions.map((txn) => (
+              <tr key={txn.id}>
+                <td>
+                  <Link to={`/dashboard/transactions/${txn.id}`}>{dateTime(txn.occurredAt)}</Link>
+                </td>
+                <td>{dash(txn.reference)}</td>
+                <td>
+                  <span className={classNames("dash-status", `dash-status-${txn.status}`)}>{txn.status}</span>
+                </td>
+                <td className="fp-numeric">{bhd(txn.amountFils)}</td>
+                <td className="fp-numeric">{bhd(txn.capturedFils)}</td>
+                <td>
+                  <code>{truncateMiddle(txn.acquirerReference, 20)}</code>
+                </td>
+              </tr>
+            ))}
+            {transactions.length === 0 && !loading ? (
+              <tr>
+                <td colSpan={6}>No transactions match these filters.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
 
       {loading ? <p>Loading...</p> : null}
 

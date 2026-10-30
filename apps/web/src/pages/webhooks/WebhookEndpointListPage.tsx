@@ -97,56 +97,58 @@ export function WebhookEndpointListPage() {
 
       {error ? <p className="dash-error">{error}</p> : null}
 
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>URL</th>
-            <th>Secret prefix</th>
-            <th>Status</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {endpoints.map((endpoint) => (
-            <tr key={endpoint.id}>
-              <td>
-                <Link to={`/dashboard/webhooks/${endpoint.id}`}>{endpoint.url}</Link>
-              </td>
-              <td>
-                <code>{endpoint.secretPrefix}</code>
-              </td>
-              <td>
-                <span className={`dash-status dash-status-${endpoint.status}`}>{endpoint.status}</span>
-              </td>
-              <td>{dateTime(endpoint.createdAt)}</td>
-              <td>
-                <button
-                  type="button"
-                  className="dash-button"
-                  disabled={busyId === endpoint.id}
-                  onClick={() => void handleToggle(endpoint)}
-                >
-                  {endpoint.status === "active" ? "Disable" : "Enable"}
-                </button>{" "}
-                <button
-                  type="button"
-                  className="dash-button"
-                  disabled={busyId === endpoint.id}
-                  onClick={() => void handleDelete(endpoint)}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-          {endpoints.length === 0 && !loading && !error ? (
+      <div className="fp-table-scroll" role="region" aria-label="Webhook Endpoint List data 1" tabIndex={0}>
+        <table className="dash-table">
+          <thead>
             <tr>
-              <td colSpan={5}>No webhook endpoints registered.</td>
+              <th>URL</th>
+              <th>Secret prefix</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Actions</th>
             </tr>
-          ) : null}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {endpoints.map((endpoint) => (
+              <tr key={endpoint.id}>
+                <td>
+                  <Link to={`/dashboard/webhooks/${endpoint.id}`}>{endpoint.url}</Link>
+                </td>
+                <td>
+                  <code>{endpoint.secretPrefix}</code>
+                </td>
+                <td>
+                  <span className={`dash-status dash-status-${endpoint.status}`}>{endpoint.status}</span>
+                </td>
+                <td>{dateTime(endpoint.createdAt)}</td>
+                <td>
+                  <button
+                    type="button"
+                    className="dash-button"
+                    disabled={busyId === endpoint.id}
+                    onClick={() => void handleToggle(endpoint)}
+                  >
+                    {endpoint.status === "active" ? "Disable" : "Enable"}
+                  </button>{" "}
+                  <button
+                    type="button"
+                    className="dash-button"
+                    disabled={busyId === endpoint.id}
+                    onClick={() => void handleDelete(endpoint)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {endpoints.length === 0 && !loading && !error ? (
+              <tr>
+                <td colSpan={5}>No webhook endpoints registered.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
 
       {loading ? <p>Loading...</p> : null}
     </section>

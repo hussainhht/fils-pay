@@ -27,9 +27,10 @@ export function DashboardLayout() {
 
   return (
     <div className="dash-shell">
+      <a className="fp-skip-link" href="#main-content">Skip to content</a>
       <header className="dash-header">
         <div className="dash-brand">FilsPay</div>
-        <nav className="dash-nav">
+        <nav className="dash-nav" aria-label="Merchant navigation">
           <NavLink to="/dashboard/transactions">Transactions</NavLink>
           <NavLink to="/dashboard/payment-links">Payment links</NavLink>
           {/* Every webhook route — including the plain list read — is
@@ -59,7 +60,7 @@ export function DashboardLayout() {
 
       {error ? <p className="dash-error">{error}</p> : null}
 
-      <main className="dash-main">
+      <main className="dash-main" id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
     </div>

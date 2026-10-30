@@ -25,11 +25,12 @@ export function AdminLayout() {
 
   return (
     <div className="admin-shell">
+      <a className="fp-skip-link" href="#main-content">Skip to content</a>
       <ImpersonationBanner />
 
       <header className="admin-header">
         <div className="admin-brand">FilsPay Admin</div>
-        <nav className="admin-nav">
+        <nav className="admin-nav" aria-label="Administration navigation">
           <NavLink to="/merchants">Merchants</NavLink>
           <NavLink to="/credits">Credits</NavLink>
           <NavLink to="/settlement">Settlement ops</NavLink>
@@ -57,7 +58,7 @@ export function AdminLayout() {
         // itself does not depend on it — /v1/admin/* never reads the
         // impersonation cookie, and the merchant side never reads the admin
         // session cookie.
-        <main className="admin-main">
+        <main className="admin-main" id="main-content" tabIndex={-1}>
           <h1>Admin screens are paused</h1>
           <p>
             An impersonation grant is active. Use <strong>Exit impersonation</strong> above to end it
@@ -68,7 +69,7 @@ export function AdminLayout() {
           </p>
         </main>
       ) : (
-        <main className="admin-main">
+        <main className="admin-main" id="main-content" tabIndex={-1}>
           <Outlet />
         </main>
       )}

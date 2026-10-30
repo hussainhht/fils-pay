@@ -132,69 +132,71 @@ export function CreditsPage() {
       {items.length === 0 ? (
         <p className="admin-muted">Nothing here.</p>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Requested by</th>
-              <th>Merchant</th>
-              <th>Reason</th>
-              <th>Base</th>
-              <th>Fee reversal</th>
-              <th>Posted total</th>
-              <th>Effective date</th>
-              <th>Approved by</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td>{item.requestedByDisplayName}</td>
-                <td>
-                  <Link to={`/merchants/${item.merchantId}`}>
-                    <code>{item.merchantId.slice(0, 8)}</code>
-                  </Link>
-                </td>
-                <td>
-                  {item.reasonCode}
-                  {item.memo ? <div className="admin-muted">{item.memo}</div> : null}
-                </td>
-                <td>{bhd(item.baseAmountFils)}</td>
-                <td>{item.feeReversalFils > 0 ? bhd(item.feeReversalFils) : "-"}</td>
-                <td>
-                  <strong>{bhd(item.postedAmountFils)}</strong>
-                </td>
-                <td>{item.effectiveDate}</td>
-                <td>{item.approvedByDisplayName ?? "-"}</td>
-                <td>
-                  {item.status === "pending_approval" ? (
-                    <RequireRole
-                      allow={["finance", "super_admin"]}
-                      fallback={<span className="admin-muted">finance role required</span>}
-                    >
-                      <button
-                        type="button"
-                        disabled={busyId === item.id}
-                        onClick={() => void handleApprove(item.id)}
-                      >
-                        Approve
-                      </button>{" "}
-                      <button
-                        type="button"
-                        disabled={busyId === item.id}
-                        onClick={() => setPendingReject(item.id)}
-                      >
-                        Reject
-                      </button>
-                    </RequireRole>
-                  ) : (
-                    item.status
-                  )}
-                </td>
+        <div className="fp-table-scroll" role="region" aria-label="Credits data 1" tabIndex={0}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Requested by</th>
+                <th>Merchant</th>
+                <th>Reason</th>
+                <th>Base</th>
+                <th>Fee reversal</th>
+                <th>Posted total</th>
+                <th>Effective date</th>
+                <th>Approved by</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.requestedByDisplayName}</td>
+                  <td>
+                    <Link to={`/merchants/${item.merchantId}`}>
+                      <code>{item.merchantId.slice(0, 8)}</code>
+                    </Link>
+                  </td>
+                  <td>
+                    {item.reasonCode}
+                    {item.memo ? <div className="admin-muted">{item.memo}</div> : null}
+                  </td>
+                  <td className="fp-numeric">{bhd(item.baseAmountFils)}</td>
+                  <td>{item.feeReversalFils > 0 ? bhd(item.feeReversalFils) : "-"}</td>
+                  <td>
+                    <strong>{bhd(item.postedAmountFils)}</strong>
+                  </td>
+                  <td>{item.effectiveDate}</td>
+                  <td>{item.approvedByDisplayName ?? "-"}</td>
+                  <td>
+                    {item.status === "pending_approval" ? (
+                      <RequireRole
+                        allow={["finance", "super_admin"]}
+                        fallback={<span className="admin-muted">finance role required</span>}
+                      >
+                        <button
+                          type="button"
+                          disabled={busyId === item.id}
+                          onClick={() => void handleApprove(item.id)}
+                        >
+                          Approve
+                        </button>{" "}
+                        <button
+                          type="button"
+                          disabled={busyId === item.id}
+                          onClick={() => setPendingReject(item.id)}
+                        >
+                          Reject
+                        </button>
+                      </RequireRole>
+                    ) : (
+                      item.status
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {pendingReject ? (

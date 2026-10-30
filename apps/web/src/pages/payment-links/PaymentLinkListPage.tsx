@@ -90,41 +90,43 @@ export function PaymentLinkListPage() {
 
       {error ? <p className="dash-error">{error}</p> : null}
 
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>Reference</th>
-            <th>Description</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Expires</th>
-            <th>Paid</th>
-            <th>Canceled</th>
-          </tr>
-        </thead>
-        <tbody>
-          {links.map((link) => (
-            <tr key={link.id}>
-              <td>
-                <Link to={`/dashboard/payment-links/${link.id}`}>{dash(link.reference)}</Link>
-              </td>
-              <td>{dash(link.description)}</td>
-              <td>{bhd(link.amountFils)}</td>
-              <td>
-                <span className={`dash-status dash-status-${link.status}`}>{link.status}</span>
-              </td>
-              <td>{dateTime(link.expiresAt)}</td>
-              <td>{dateTime(link.paidAt)}</td>
-              <td>{dateTime(link.canceledAt)}</td>
-            </tr>
-          ))}
-          {links.length === 0 && !loading ? (
+      <div className="fp-table-scroll" role="region" aria-label="Payment Link List data 1" tabIndex={0}>
+        <table className="dash-table">
+          <thead>
             <tr>
-              <td colSpan={7}>No payment links match these filters.</td>
+              <th>Reference</th>
+              <th>Description</th>
+              <th className="fp-numeric">Amount</th>
+              <th>Status</th>
+              <th>Expires</th>
+              <th>Paid</th>
+              <th>Canceled</th>
             </tr>
-          ) : null}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {links.map((link) => (
+              <tr key={link.id}>
+                <td>
+                  <Link to={`/dashboard/payment-links/${link.id}`}>{dash(link.reference)}</Link>
+                </td>
+                <td>{dash(link.description)}</td>
+                <td className="fp-numeric">{bhd(link.amountFils)}</td>
+                <td>
+                  <span className={`dash-status dash-status-${link.status}`}>{link.status}</span>
+                </td>
+                <td>{dateTime(link.expiresAt)}</td>
+                <td>{dateTime(link.paidAt)}</td>
+                <td>{dateTime(link.canceledAt)}</td>
+              </tr>
+            ))}
+            {links.length === 0 && !loading ? (
+              <tr>
+                <td colSpan={7}>No payment links match these filters.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
 
       {loading ? <p>Loading...</p> : null}
 

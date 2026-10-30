@@ -225,28 +225,29 @@ export function TransactionDetailPage() {
       </RequireRole>
 
       <h2>Event timeline</h2>
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>Occurred</th>
-            <th>Event</th>
-            <th>Amount</th>
-            <th>Actor</th>
-          </tr>
-        </thead>
-        <tbody>
-          {/* Already ordered oldest-first by the endpoint — never re-sorted
-              here, so the page can't disagree with the API about history. */}
-          {events.map((event) => (
-            <tr key={event.id}>
-              <td>{dateTime(event.occurredAt)}</td>
-              <td>{event.eventType}</td>
-              <td>{event.amountFils === null ? "—" : bhd(event.amountFils)}</td>
-              <td>
-                {event.actorType}
-                {event.actorId ? (
-                  <div className="dash-muted">
-                    <code>{event.actorId}</code>
+      <div className="fp-table-scroll" role="region" aria-label="Transaction Detail data 1" tabIndex={0}>
+        <table className="dash-table">
+          <thead>
+            <tr>
+              <th>Occurred</th>
+              <th>Event</th>
+              <th className="fp-numeric">Amount</th>
+              <th>Actor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* Already ordered oldest-first by the endpoint — never re-sorted
+                here, so the page can't disagree with the API about history. */}
+            {events.map((event) => (
+              <tr key={event.id}>
+                <td>{dateTime(event.occurredAt)}</td>
+                <td>{event.eventType}</td>
+                <td>{event.amountFils === null ? "—" : bhd(event.amountFils)}</td>
+                <td>
+                  {event.actorType}
+                  {event.actorId ? (
+                    <div className="dash-muted">
+                      <code>{event.actorId}</code>
                   </div>
                 ) : null}
               </td>
@@ -259,6 +260,7 @@ export function TransactionDetailPage() {
           ) : null}
         </tbody>
       </table>
+      </div>
 
       <p>
         <Link to="/dashboard/transactions">Back to transactions</Link>

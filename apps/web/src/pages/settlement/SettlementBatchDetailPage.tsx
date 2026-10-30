@@ -127,41 +127,43 @@ export function SettlementBatchDetailPage() {
       </dl>
 
       <h2>Included transactions</h2>
-      <table className="dash-table">
-        <thead>
-          <tr>
-            <th>Line</th>
-            <th>Transaction</th>
-            <th>Reference</th>
-            <th>Status</th>
-            <th>Authorized</th>
-            <th>Captured</th>
-            <th>Scheme amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((line) => (
-            <tr key={`${line.transactionId}-${line.lineSequence}`}>
-              <td>{line.lineSequence}</td>
-              <td>
-                <Link to={`/dashboard/transactions/${line.transactionId}`}>
-                  <code>{line.transactionId}</code>
-                </Link>
-              </td>
-              <td>{dash(line.reference)}</td>
-              <td>{line.status}</td>
-              <td>{bhd(line.authorizedFils)}</td>
-              <td>{bhd(line.capturedFils)}</td>
-              <td>{bhd(line.schemeAmountFils)}</td>
-            </tr>
-          ))}
-          {lines.length === 0 ? (
+      <div className="fp-table-scroll" role="region" aria-label="Settlement Batch Detail data 1" tabIndex={0}>
+        <table className="dash-table">
+          <thead>
             <tr>
-              <td colSpan={7}>No scheme export lines in this batch.</td>
+              <th>Line</th>
+              <th>Transaction</th>
+              <th>Reference</th>
+              <th>Status</th>
+              <th className="fp-numeric">Authorized</th>
+              <th className="fp-numeric">Captured</th>
+              <th>Scheme amount</th>
             </tr>
-          ) : null}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {lines.map((line) => (
+              <tr key={`${line.transactionId}-${line.lineSequence}`}>
+                <td>{line.lineSequence}</td>
+                <td>
+                  <Link to={`/dashboard/transactions/${line.transactionId}`}>
+                    <code>{line.transactionId}</code>
+                  </Link>
+                </td>
+                <td>{dash(line.reference)}</td>
+                <td>{line.status}</td>
+                <td className="fp-numeric">{bhd(line.authorizedFils)}</td>
+                <td className="fp-numeric">{bhd(line.capturedFils)}</td>
+                <td className="fp-numeric">{bhd(line.schemeAmountFils)}</td>
+              </tr>
+            ))}
+            {lines.length === 0 ? (
+              <tr>
+                <td colSpan={7}>No scheme export lines in this batch.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
       <p className="dash-muted">
         The scheme amount is the card-network export figure, quantized to two
         decimal places at that boundary — it can be up to 9 fils below the

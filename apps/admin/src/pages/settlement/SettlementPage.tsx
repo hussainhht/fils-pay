@@ -173,36 +173,38 @@ export function SettlementPage() {
             {runResults.length === 1 ? "" : "s"} processed.
           </p>
           {runResults.length > 0 ? (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Merchant</th>
-                  <th>Batch</th>
-                  <th>Gross</th>
-                  <th>Fee</th>
-                  <th>Net payout</th>
-                  <th>Already closed</th>
-                  <th>Already paid</th>
-                </tr>
-              </thead>
-              <tbody>
-                {runResults.map((outcome) => (
-                  <tr key={`${outcome.merchantId}-${outcome.batchId}`}>
-                    <td>
-                      <code>{outcome.merchantId}</code>
-                    </td>
-                    <td>
-                      <code>{outcome.batchId}</code>
-                    </td>
-                    <td>{bhd(outcome.grossFils)}</td>
-                    <td>{bhd(outcome.feeFils)}</td>
-                    <td>{bhd(outcome.netPayoutFils)}</td>
-                    <td>{outcome.alreadyClosed ? "yes" : "no"}</td>
-                    <td>{outcome.alreadyPaid ? "yes" : "no"}</td>
+            <div className="fp-table-scroll" role="region" aria-label="Settlement data 1" tabIndex={0}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Merchant</th>
+                    <th>Batch</th>
+                    <th className="fp-numeric">Gross</th>
+                    <th className="fp-numeric">Fee</th>
+                    <th className="fp-numeric">Net payout</th>
+                    <th>Already closed</th>
+                    <th>Already paid</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {runResults.map((outcome) => (
+                    <tr key={`${outcome.merchantId}-${outcome.batchId}`}>
+                      <td>
+                        <code>{outcome.merchantId}</code>
+                      </td>
+                      <td>
+                        <code>{outcome.batchId}</code>
+                      </td>
+                      <td className="fp-numeric">{bhd(outcome.grossFils)}</td>
+                      <td className="fp-numeric">{bhd(outcome.feeFils)}</td>
+                      <td className="fp-numeric">{bhd(outcome.netPayoutFils)}</td>
+                      <td>{outcome.alreadyClosed ? "yes" : "no"}</td>
+                      <td>{outcome.alreadyPaid ? "yes" : "no"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -250,26 +252,28 @@ export function SettlementPage() {
             {(rebuildResult.changed ?? []).length} changed.
           </p>
           {(rebuildResult.changed ?? []).length > 0 ? (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Merchant</th>
-                  <th>Before</th>
-                  <th>After</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(rebuildResult.changed ?? []).map((change) => (
-                  <tr key={change.merchantId}>
-                    <td>
-                      <code>{change.merchantId}</code>
-                    </td>
-                    <td>{bhd(change.before)}</td>
-                    <td>{bhd(change.after)}</td>
+            <div className="fp-table-scroll" role="region" aria-label="Settlement data 2" tabIndex={0}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Merchant</th>
+                    <th className="fp-numeric">Before</th>
+                    <th className="fp-numeric">After</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(rebuildResult.changed ?? []).map((change) => (
+                    <tr key={change.merchantId}>
+                      <td>
+                        <code>{change.merchantId}</code>
+                      </td>
+                      <td className="fp-numeric">{bhd(change.before)}</td>
+                      <td className="fp-numeric">{bhd(change.after)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="admin-muted">Every cached balance already matched the ledger.</p>
           )}
@@ -378,28 +382,30 @@ export function SettlementPage() {
             change.
           </p>
           {mdrAdjusted.length > 0 ? (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Batch date</th>
-                  <th>Status</th>
-                  <th>Old fee</th>
-                  <th>New fee</th>
-                  <th>Difference</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mdrAdjusted.map((adjustment) => (
-                  <tr key={adjustment.batchId}>
-                    <td>{adjustment.batchDate}</td>
-                    <td>{adjustment.status}</td>
-                    <td>{bhd(adjustment.oldFeeFils)}</td>
-                    <td>{bhd(adjustment.newFeeFils)}</td>
-                    <td>{bhd(adjustment.diffFils)}</td>
+            <div className="fp-table-scroll" role="region" aria-label="Settlement data 3" tabIndex={0}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Batch date</th>
+                    <th>Status</th>
+                    <th className="fp-numeric">Old fee</th>
+                    <th className="fp-numeric">New fee</th>
+                    <th className="fp-numeric">Difference</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {mdrAdjusted.map((adjustment) => (
+                    <tr key={adjustment.batchId}>
+                      <td>{adjustment.batchDate}</td>
+                      <td>{adjustment.status}</td>
+                      <td className="fp-numeric">{bhd(adjustment.oldFeeFils)}</td>
+                      <td className="fp-numeric">{bhd(adjustment.newFeeFils)}</td>
+                      <td className="fp-numeric">{bhd(adjustment.diffFils)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p className="admin-muted">Every batch in range already matched the current rate.</p>
           )}

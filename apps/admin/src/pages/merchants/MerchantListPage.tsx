@@ -154,42 +154,43 @@ export function MerchantListPage() {
         </div>
       ) : null}
 
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                aria-label="Select all loaded merchants"
-                checked={allLoadedSelected}
-                disabled={merchants.length === 0}
-                onChange={toggleSelectAllLoaded}
-              />
-            </th>
-            <th>Merchant</th>
-            <th>Status</th>
-            <th>Onboarding</th>
-            <th>KYC</th>
-            <th>MDR</th>
-            <th>Mode</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {merchants.map((merchant) => (
-            <tr key={merchant.id}>
-              <td>
+      <div className="fp-table-scroll" role="region" aria-label="Merchant List data 1" tabIndex={0}>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>
                 <input
                   type="checkbox"
-                  aria-label={`Select ${merchant.displayName}`}
-                  checked={selectedIds.has(merchant.id)}
-                  onChange={() => toggleSelected(merchant.id)}
+                  aria-label="Select all loaded merchants"
+                  checked={allLoadedSelected}
+                  disabled={merchants.length === 0}
+                  onChange={toggleSelectAllLoaded}
                 />
-              </td>
-              <td>
-                <Link to={`/merchants/${merchant.id}`}>{merchant.displayName}</Link>
-                <div className="admin-muted">
-                  <code>{merchant.id}</code>
+              </th>
+              <th>Merchant</th>
+              <th>Status</th>
+              <th>Onboarding</th>
+              <th>KYC</th>
+              <th>MDR</th>
+              <th>Mode</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {merchants.map((merchant) => (
+              <tr key={merchant.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${merchant.displayName}`}
+                    checked={selectedIds.has(merchant.id)}
+                    onChange={() => toggleSelected(merchant.id)}
+                  />
+                </td>
+                <td>
+                  <Link to={`/merchants/${merchant.id}`}>{merchant.displayName}</Link>
+                  <div className="admin-muted">
+                    <code>{merchant.id}</code>
                 </div>
               </td>
               <td>{merchant.status}</td>
@@ -207,6 +208,7 @@ export function MerchantListPage() {
           ) : null}
         </tbody>
       </table>
+      </div>
 
       {loading ? <p>Loading...</p> : null}
 
