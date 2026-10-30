@@ -1,5 +1,7 @@
 # BUG-034 — Scheme Export Rounds Amounts While Ledger Truncates Creating Persistent Surplus
 
+**Still open. Hosted runtime (2026-10-30):** closed batch `317d557d-aa82-47ab-a372-220e31701ef9` (Alpha Retail, `2026-08-31`) shows captured `150.031 BHD` and scheme amount `150.030 BHD` on `alpha-retail-txn-0001`. The same one-fil shortfall appears on the other lines. Batch totals still match the database: gross `7326.913`, fee `183.174`, net `7143.739`.
+
 ## 1. Summary
 
 Two representations of the same line.
@@ -49,7 +51,7 @@ Two representations of the same line. When `gross % 10 >= 5`, `amount` (2dp BD) 
 
 ## 9. Runtime Evidence
 
-No runtime reproduction artifact exists; defect verified through static source code and architectural analysis.
+Hosted merchant settlement detail, 2026-10-30, batch `317d557d-aa82-47ab-a372-220e31701ef9`. Line 1 reference `alpha-retail-txn-0001`: authorized and captured `150.031 BHD`, scheme amount `150.030 BHD`. Further lines show the same truncation (`426.987` captured vs `426.980` scheme, `140.185` vs `140.180`).
 
 ## 10. Security / Financial / Functional Impact
 

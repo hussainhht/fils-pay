@@ -1,5 +1,7 @@
 # BUG-027 — POST /v1/refunds Route Returns 501 Not Implemented (Unfinished Feature)
 
+**Still open. Hosted runtime (2026-10-30):** captured transaction `fd905fb1-09f9-44d3-9cef-b2cba455c0b6` (`hosted-test`, `1.000 BHD`) has no refund control on the detail page. `POST /v1/refunds` for that id returned 501 `{ "error": "not_implemented" }`.
+
 ## 1. Summary
 
 The route exists, auth is wired, helpers and tests exist, and the ledger/fee-reversal logic is written — but the handler always sends `{ error: "not_implemented" }`.
@@ -51,7 +53,7 @@ The route exists, auth is wired, helpers and tests exist, and the ledger/fee-rev
 
 ## 9. Runtime Evidence
 
-No runtime reproduction artifact exists; defect verified through static source code and architectural analysis.
+Hosted preview, 2026-10-30. Transaction detail `e6b3cdd6-b2b8-4e42-a93a-f5288fd256e8` rendered amounts and “No events recorded” and no refund action. `POST /v1/refunds` with the later captured id `fd905fb1-09f9-44d3-9cef-b2cba455c0b6` returned 501 `not_implemented`. `RefundDrawer.tsx` remains unwired.
 
 ## 10. Security / Financial / Functional Impact
 

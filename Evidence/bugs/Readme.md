@@ -1,10 +1,10 @@
 # FilsPay — Master Bug Registry
 
-One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential and unique (`BUG-001` through `BUG-084`).
+One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential and unique (`BUG-001` through `BUG-086`).
 
 **Ground truth is always the code.** Tickets, ADRs, and comments are leads. They are not proof.
 
-**Implementation update (2026-10-30):** BUG-001/002/015/016/017/029, fresh/unapplied BUG-014, local-boot BUG-058, and seed-safety BUG-054 have validated fixes; BUG-057 has code/config remediation with external credential rotation outstanding. Per-report status lines and [wave 1 validation](../implementation/wave1-validation.md) record limits. The catalog and investigation counts below describe the original audit snapshot.
+**Implementation update (2026-10-30):** BUG-001/002/015/016/017/029, fresh/unapplied BUG-014, local-boot BUG-058, and seed-safety BUG-054 have validated fixes; BUG-057 has code/config remediation with external credential rotation outstanding. Per-report status lines and [wave 1 validation](../implementation/wave1-validation.md) record limits. Hosted preview the same day rechecked BUG-001 and recorded runtime on still-open BUG-022, BUG-027, BUG-034, BUG-051, BUG-059, BUG-071, BUG-076, and BUG-083. New reports: [BUG-085](bug-085-dashboard-document-title-says-checkout.md) and [BUG-086](bug-086-credit-reversal-uses-merchant-mdr-column.md). The catalog and investigation counts below describe the original audit snapshot.
 
 ---
 
@@ -44,7 +44,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | Fixed (fresh DB) | 1 |
 | Fixed (local boot) | 1 |
 | Partial | 1 |
-| Open | 74 |
+| Open | 76 |
 
 <!-- implementation-status:end -->
 
@@ -136,6 +136,8 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-082** | Settlement Progress Bar Divides Fils by 10,000 Instead of 1,000 Distorting Ratio | `Low` | STATICALLY CONFIRMED | Open | Frontend | [BUG-082](bug-082-settlement-progress-divides-fils-by-10000.md) |
 | **BUG-083** | View as Merchant Action Opens Unregistered Web Root Route | `Low` | STATICALLY CONFIRMED | Open | Frontend | [BUG-083](bug-083-impersonation-opens-unregistered-web-root.md) |
 | **BUG-084** | Recent Ledger Activity Query Includes Entire Exclusive End Date | `Low` | STATICALLY CONFIRMED | Open | Reporting and analytics | [BUG-084](bug-084-ledger-activity-includes-exclusive-end-date.md) |
+| **BUG-085** | Merchant Dashboard Document Title Says Checkout | `Low` | RUNTIME REPRODUCED | Open | Frontend | [BUG-085](bug-085-dashboard-document-title-says-checkout.md) |
+| **BUG-086** | Credit Fee Reversal Uses the Merchant MDR Column, Not the Effective Schedule | `High` | RUNTIME REPRODUCED | Open | Admin console and controls | [BUG-086](bug-086-credit-reversal-uses-merchant-mdr-column.md) |
 
 ---
 
@@ -213,7 +215,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-066** | Pending Reconciliation Replaces Actual Capture Fees with Default MDR Estimator | `Medium` | STATICALLY CONFIRMED | Open | [bug-066-pending-reconciliation-reprices-captures-with-default-mdr.md](bug-066-pending-reconciliation-reprices-captures-with-default-mdr.md) |
 | **BUG-067** | Single-Merchant Balance Rebuild CLI Calculates Balance but Never Persists | `Medium` | STATICALLY CONFIRMED | Open | [bug-067-single-merchant-cli-rebuild-never-persists.md](bug-067-single-merchant-cli-rebuild-never-persists.md) |
 
-### Admin console and controls (9)
+### Admin console and controls (10)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
@@ -226,6 +228,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-042** | Bulk KYC Approval Transitions Pending Merchants Directly to Approved | `High` | STATICALLY CONFIRMED | Open | [bug-042-bulk-kyc-approve-bypasses-review.md](bug-042-bulk-kyc-approve-bypasses-review.md) |
 | **BUG-043** | Manual Credit Creation Allows Backdating Into Closed Settlement Periods | `High` | STATICALLY CONFIRMED | Open | [bug-043-credits-backdated-and-threshold-split.md](bug-043-credits-backdated-and-threshold-split.md) |
 | **BUG-044** | Adjustment CSV Import Lacks Deduplication Posting Duplicate Ledger Entries | `High` | RUNTIME REPRODUCED | Open | [bug-044-csv-import-applies-twice.md](bug-044-csv-import-applies-twice.md) |
+| **BUG-086** | Credit Fee Reversal Uses the Merchant MDR Column, Not the Effective Schedule | `High` | RUNTIME REPRODUCED | Open | [bug-086-credit-reversal-uses-merchant-mdr-column.md](bug-086-credit-reversal-uses-merchant-mdr-column.md) |
 
 ### Webhooks (10)
 
@@ -264,7 +267,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-055** | Double-Entry Ledger and Audit Tables Lack Immutability Database Triggers | `High` | STATICALLY CONFIRMED | Open | [bug-055-ledger-and-audit-not-immutable.md](bug-055-ledger-and-audit-not-immutable.md) |
 | **BUG-081** | Migration Runner Lacks Checksum Verification Allowing Retroactive File Edits | `Low` | STATICALLY CONFIRMED | Open | [bug-081-migration-runner-has-no-checksum.md](bug-081-migration-runner-has-no-checksum.md) |
 
-### Frontend (7)
+### Frontend (8)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
@@ -275,6 +278,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-078** | Bulk KYC Selection State Retains Hidden Selections Across Tab Changes | `Medium` | STATICALLY CONFIRMED | Open | [bug-078-bulk-kyc-retains-hidden-filter-selections.md](bug-078-bulk-kyc-retains-hidden-filter-selections.md) |
 | **BUG-082** | Settlement Progress Bar Divides Fils by 10,000 Instead of 1,000 Distorting Ratio | `Low` | STATICALLY CONFIRMED | Open | [bug-082-settlement-progress-divides-fils-by-10000.md](bug-082-settlement-progress-divides-fils-by-10000.md) |
 | **BUG-083** | View as Merchant Action Opens Unregistered Web Root Route | `Low` | STATICALLY CONFIRMED | Open | [bug-083-impersonation-opens-unregistered-web-root.md](bug-083-impersonation-opens-unregistered-web-root.md) |
+| **BUG-085** | Merchant Dashboard Document Title Says Checkout | `Low` | RUNTIME REPRODUCED | Open | [bug-085-dashboard-document-title-says-checkout.md](bug-085-dashboard-document-title-says-checkout.md) |
 
 ### Infrastructure and configuration (4)
 
@@ -408,7 +412,7 @@ Every report must follow the standardized 17-section structure:
 
 1. Ensure the defect has been verified against the actual codebase.
 2. Check existing entries in the Master Bug Index to prevent duplicates.
-3. Assign the next available sequential ID (`BUG-085`).
+3. Assign the next available sequential ID (`BUG-087`).
 4. Follow the 17-section template.
 5. Add an entry to the Master Bug Index and the relevant Category section in this `Readme.md`.
 

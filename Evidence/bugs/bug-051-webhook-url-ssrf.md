@@ -1,5 +1,7 @@
 # BUG-051 — Webhook URL Registration Lacks Private Network and Localhost Validation (SSRF)
 
+**Still open. Hosted runtime (2026-10-30):** authenticated `POST /v1/merchants/9972daab-2c86-459f-9d78-3fe1be4e3280/webhook-endpoints` with `url` `http://127.0.0.1:9/filspay-probe` returned 201 and `status: active`. That row was deleted afterward so the worker would not keep calling it.
+
 ## 1. Summary
 
 A merchant (or anyone who can create an endpoint) can set `url` to `http://settlement:8091/…`, `http://169.254.169.254/`, etc.
@@ -49,7 +51,7 @@ A merchant (or anyone who can create an endpoint) can set `url` to `http://settl
 
 ## 9. Runtime Evidence
 
-No runtime reproduction artifact exists; defect verified through static source code and architectural analysis.
+Hosted preview, 2026-10-30, Alpha Retail owner session. Creating a webhook endpoint whose URL was `http://127.0.0.1:9/filspay-probe` returned 201. No private-network rejection. The endpoint row was removed after the check. The one-time signing secret from that response is not recorded here.
 
 ## 10. Security / Financial / Functional Impact
 

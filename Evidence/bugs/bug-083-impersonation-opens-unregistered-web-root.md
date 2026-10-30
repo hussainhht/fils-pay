@@ -1,5 +1,7 @@
 # BUG-083 — View as Merchant Action Opens Unregistered Web Root Route
 
+**Still open. Hosted runtime (2026-10-30):** “View as merchant” ran `window.open` on `http://localhost:5173` (no dashboard path). The new tab landed on `/dashboard/transactions` only because an owner session cookie was already present. The admin fallback text was “Merchant screens are at http://localhost:5173”.
+
 ## 1. Summary
 
 The action opens WEB_BASE_URL verbatim, defaulting to the web origin http://localhost:5173. The merchant router has no '/' route or redirect.
@@ -43,7 +45,7 @@ The source path and concrete input/ordering conditions above establish the resul
 
 ## 9. Runtime Evidence
 
-Not runtime-tested in this investigation. No matching existing runtime reproduction available.
+Hosted admin, 2026-10-30, Alpha Retail detail. “View as merchant” opened a tab whose first resolved URL was `http://localhost:5173/dashboard/transactions`. The paused admin screen stated merchant screens are at `http://localhost:5173`. The merchant router still has no `/` route; the existing session’s guard redirected into `/dashboard`. Identity mismatch is [BUG-059](bug-059-dashboard-identity-rejects-impersonation.md).
 
 ## 10. Security / Financial / Functional Impact
 

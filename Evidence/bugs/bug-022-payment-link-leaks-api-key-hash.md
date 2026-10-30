@@ -1,5 +1,7 @@
 # BUG-022 — Public Payment Link Endpoint Leaks Live Merchant API Key Hash
 
+**Still open. Hosted runtime (2026-10-30):** unauthenticated `GET /v1/payment-links/plink_IryLiGv5BKsZGEpBuWadUK` returned `merchantIntegrationId` equal to Alpha Retail’s `api_keys.key_hash`, and `merchantPublicKey` equal to prefix `fp_test_jghGsQ9A`. The checkout page itself showed only the merchant name and amount.
+
 ## 1. Summary
 
 The public checkout payload includes the SHA-256 of a live merchant API key (`merchantIntegrationId`) plus the key prefix.
@@ -47,7 +49,7 @@ The public checkout payload includes the SHA-256 of a live merchant API key (`me
 
 ## 9. Runtime Evidence
 
-No runtime reproduction artifact exists; defect verified through static source code and architectural analysis.
+Hosted preview, 2026-10-30. Public `GET /v1/payment-links/plink_IryLiGv5BKsZGEpBuWadUK` returned 200 with `merchantIntegrationId` and `merchantPublicKey`. `api_keys.key_hash` for merchant `9972daab-2c86-459f-9d78-3fe1be4e3280` matched `merchantIntegrationId`. `key_prefix` was `fp_test_jghGsQ9A`. The hash value is omitted here.
 
 ## 10. Security / Financial / Functional Impact
 

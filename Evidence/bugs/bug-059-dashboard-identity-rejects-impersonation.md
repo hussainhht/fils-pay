@@ -1,5 +1,7 @@
 # BUG-059 — Merchant Dashboard Bootstrap Endpoint Rejects Valid Impersonation Grants
 
+**Still open. Hosted runtime (2026-10-30):** after “View as merchant” on Alpha Retail, the admin banner said the dashboard was acting as that merchant’s support user. The opened tab’s `GET /v1/auth/me` still returned `owner@alpharetail.example`, role `owner`, and the nav still included Webhooks. An existing owner `fp_sid` kept the identity. Impersonation was then exited.
+
 ## 1. Summary
 
 Dashboard bootstrap uses /v1/auth/me, whose requireSession hook reads only fp_sid. Impersonation creates fp_impersonation instead. Merchant data routes accept that grant, but the identity bootstrap does not.
@@ -43,7 +45,7 @@ The source path and concrete input/ordering conditions above establish the resul
 
 ## 9. Runtime Evidence
 
-Not runtime-tested in this investigation. No matching existing runtime reproduction available.
+Hosted preview, 2026-10-30. Super-admin started impersonation for Alpha Retail. Admin copy: “Merchant screens in the dashboard are acting with this merchant's least-privileged (support) role.” The new tab at `http://localhost:5173/dashboard/transactions` answered `/v1/auth/me` with role `owner` and email `owner@alpharetail.example`. Webhooks and Reconciliation stayed in the nav. Grant was exited from the admin banner.
 
 ## 10. Security / Financial / Functional Impact
 

@@ -1,5 +1,7 @@
 # BUG-076 — Dashboard Date Filter Generates UTC Midnight Instead of Bahrain Midnight
 
+**Still open. Hosted runtime (2026-10-30):** Alpha Retail, From `2026-08-26` and To `2026-08-27` (exclusive), included `alpha-retail-txn-0022`, displayed as `8/27/2026, 1:03:30 AM`. That row is `2026-08-26 22:03:30+00`, which is `2026-08-27 01:03:30` Asia/Bahrain.
+
 ## 1. Summary
 
 A merchant picking 30 Oct sends `2026-10-30T00:00:00.000Z`, which is 03:00 Bahrain.
@@ -63,7 +65,7 @@ A merchant picking 30 Oct sends `2026-10-30T00:00:00.000Z`, which is 03:00 Bahra
 
 ## 9. Runtime Evidence
 
-No runtime reproduction artifact exists; defect verified through static source code and architectural analysis.
+Hosted merchant dashboard, 2026-10-30, merchant `9972daab-2c86-459f-9d78-3fe1be4e3280`. Filter From `2026-08-26`, To `2026-08-27` exclusive returned 6 rows. One of them was `alpha-retail-txn-0022` (`occurred_at` `2026-08-26 22:03:30+00`), labeled `8/27/2026, 1:03:30 AM` in the browser (UTC+3). `dayStartIso` still appends `Z`.
 
 ## 10. Security / Financial / Functional Impact
 

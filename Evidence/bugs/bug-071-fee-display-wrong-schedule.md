@@ -1,5 +1,7 @@
 # BUG-071 — Dashboard Fee Display Queries Newest Created Row Instead of Effective Schedule
 
+**Still open. Hosted runtime (2026-10-30):** Alpha Retail admin detail shows “Current negotiated rate” `2.45%` (245 bps), effective `3/1/2026`. `fee_schedules` for that merchant has `245` bps effective `2026-03-01` created `2026-08-15`, and `225` bps effective `2026-08-01` created `2026-08-01`. The row in force on 2026-10-30 is `225` bps. The credit checkbox on the same page uses `merchants.mdr_bps` (`2.50%`); that path is [BUG-086](bug-086-credit-reversal-uses-merchant-mdr-column.md).
+
 ## 1. Summary
 
 A backfill row created later with an earlier `effective_from` (245 bps) wins the dashboard.
@@ -47,7 +49,7 @@ A backfill row created later with an earlier `effective_from` (245 bps) wins the
 
 ## 9. Runtime Evidence
 
-No runtime reproduction artifact exists; defect verified through static source code and architectural analysis.
+Hosted admin merchant detail, 2026-10-30, Alpha Retail `9972daab-2c86-459f-9d78-3fe1be4e3280`. Screen text: MDR `2.50% (250 bps)`; current negotiated rate `2.45% (245 bps), effective 3/1/2026`. Database `fee_schedules`: `225` bps effective `2026-08-01` (created `2026-08-01`) and `245` bps effective `2026-03-01` (created `2026-08-15`). Display followed the later `created_at`.
 
 ## 10. Security / Financial / Functional Impact
 

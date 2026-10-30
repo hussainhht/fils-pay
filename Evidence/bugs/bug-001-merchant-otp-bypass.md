@@ -2,6 +2,8 @@
 
 **Fixed (2026-10-30):** `apps/api/src/auth/sessions.ts` requires authenticated, active-merchant sessions; pending-cookie HTTP rejection is covered by `routes/auth-security.new.test.ts` and the live smoke check. See [validation](../implementation/wave1-validation.md).
 
+**Hosted recheck (2026-10-30):** on the running preview, a merchant password step still leaves `/v1/auth/me` at 401, and the dashboard opens only after OTP. The admin pending cookie does the same against `/v1/admin/auth/me`.
+
 ## 1. Summary
 
 `POST /v1/auth/login` checks the password, then sets `fp_sid` to a **pending** session (`authenticated = false`).
@@ -53,7 +55,7 @@ Technical details:
 
 ## 9. Runtime Evidence
 
-No runtime reproduction artifact exists; defect verified through static source code and architectural analysis.
+Hosted preview, 2026-10-30: after `owner@alpharetail.example` passed the password step and before OTP, `GET /v1/auth/me` returned 401. The same check on `superadmin@filspay.test` returned 401 from `GET /v1/admin/auth/me`. Both dashboards opened only after the development OTP.
 
 ## 10. Security / Financial / Functional Impact
 
