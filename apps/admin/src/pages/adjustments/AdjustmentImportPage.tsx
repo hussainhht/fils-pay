@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { formatBhd, toFils } from "@filspay/money";
 import {
@@ -97,7 +98,7 @@ export function AdjustmentImportPage() {
 
   return (
     <section>
-      <h1>Import adjustments</h1>
+      <PageHeading title="Import adjustments" />
       <p className="admin-muted">
         Applies a CSV of manual balance corrections immediately — one balanced ledger posting per
         row. Uploading is gated server-side to the <code>finance</code> and{" "}

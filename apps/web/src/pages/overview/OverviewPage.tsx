@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getPayoutTrends, getTopLinks, getVolumes } from "../../api/analytics.js";
@@ -67,7 +68,7 @@ export function OverviewPage() {
 
   return (
     <section>
-      <h1>Overview</h1>
+      <PageHeading title="Overview" description="Captured volume, settlement payouts and paid links for your selected period." />
 
       <form
         className="dash-form dash-form-inline"

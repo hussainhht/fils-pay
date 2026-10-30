@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { cancelPaymentLink, listPaymentLinks } from "../../api/paymentLinks.js";
@@ -83,11 +84,11 @@ export function PaymentLinkDetailPage() {
     }
   }
 
-  if (state.kind === "loading") return <p>Loading...</p>;
+  if (state.kind === "loading") return <p className="fp-loading-state" role="status">Loading...</p>;
   if (state.kind === "error") {
     return (
       <section>
-        <h1>Payment link</h1>
+        <PageHeading title="Payment link" />
         <p className="dash-error">{state.message}</p>
       </section>
     );
@@ -95,7 +96,7 @@ export function PaymentLinkDetailPage() {
   if (state.kind === "not_found") {
     return (
       <section>
-        <h1>Payment link not found</h1>
+        <PageHeading title="Payment link not found" />
         <p>
           This link is not among your {LOOKUP_LIMIT} most recent payment links.{" "}
           <Link to="/dashboard/payment-links">Back to payment links</Link>
@@ -108,7 +109,7 @@ export function PaymentLinkDetailPage() {
 
   return (
     <section>
-      <h1>Payment link</h1>
+      <PageHeading title="Payment link" />
       <p className="dash-muted">
         <code>{link.id}</code>
       </p>

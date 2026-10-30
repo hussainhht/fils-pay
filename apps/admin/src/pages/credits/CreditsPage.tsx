@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatBhd, toFils } from "@filspay/money";
@@ -105,19 +106,20 @@ export function CreditsPage() {
 
   return (
     <section>
-      <h1>Merchant credits</h1>
+      <PageHeading title="Merchant credits" />
       <p className="admin-muted">
         Manual credits are journaled to <code>ledger_entries</code> like any other money movement.
         A credit above the approval limit cannot post until a second <code>finance</code> or{" "}
         <code>super_admin</code> operator — not the one who raised it — approves it.
       </p>
 
-      <nav className="admin-nav">
+      <nav className="fp-segmented" aria-label="Credit request status">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.value}
             type="button"
             disabled={tab.value === status}
+            aria-current={tab.value === status ? "true" : undefined}
             onClick={() => setStatus(tab.value)}
           >
             {tab.label}
@@ -139,9 +141,9 @@ export function CreditsPage() {
                 <th>Requested by</th>
                 <th>Merchant</th>
                 <th>Reason</th>
-                <th>Base</th>
-                <th>Fee reversal</th>
-                <th>Posted total</th>
+                <th className="fp-numeric">Base</th>
+                <th className="fp-numeric">Fee reversal</th>
+                <th className="fp-numeric">Posted total</th>
                 <th>Effective date</th>
                 <th>Approved by</th>
                 <th />
@@ -161,8 +163,8 @@ export function CreditsPage() {
                     {item.memo ? <div className="admin-muted">{item.memo}</div> : null}
                   </td>
                   <td className="fp-numeric">{bhd(item.baseAmountFils)}</td>
-                  <td>{item.feeReversalFils > 0 ? bhd(item.feeReversalFils) : "-"}</td>
-                  <td>
+                  <td className="fp-numeric">{item.feeReversalFils > 0 ? bhd(item.feeReversalFils) : "-"}</td>
+                  <td className="fp-numeric">
                     <strong>{bhd(item.postedAmountFils)}</strong>
                   </td>
                   <td>{item.effectiveDate}</td>

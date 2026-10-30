@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useState } from "react";
 import { formatBhd, toFils } from "@filspay/money";
 import { rebuildAnalytics, rebuildBalances, runBatch } from "../../api/settlement.js";
@@ -123,7 +124,7 @@ export function SettlementPage() {
 
   return (
     <section>
-      <h1>Settlement ops</h1>
+      <PageHeading title="Settlement ops" />
       <p className="admin-muted">
         Every action below is money-adjacent and is gated server-side to the <code>finance</code>{" "}
         and <code>super_admin</code> roles. Every invocation is written to the admin audit log before

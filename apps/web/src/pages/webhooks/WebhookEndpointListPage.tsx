@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -87,13 +88,13 @@ export function WebhookEndpointListPage() {
 
   return (
     <section>
-      <h1>Webhook endpoints</h1>
-
-      <p>
+      <PageHeading title="Webhook endpoints" description="Manage delivery endpoints and review their activity."
+        actions={<>
         <Link className="dash-button-link" to="/dashboard/webhooks/new">
           New endpoint
         </Link>
-      </p>
+      </>}
+      />
 
       {error ? <p className="dash-error">{error}</p> : null}
 
@@ -150,7 +151,7 @@ export function WebhookEndpointListPage() {
         </table>
       </div>
 
-      {loading ? <p>Loading...</p> : null}
+      {loading ? <p className="fp-loading-state" role="status">Loading...</p> : null}
     </section>
   );
 }

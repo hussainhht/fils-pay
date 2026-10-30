@@ -4,6 +4,7 @@ import { login, verifyOtp } from "../../api/auth.js";
 import { describeError } from "../../api/client.js";
 import { useAdminAuth } from "../../auth/AdminAuthContext.js";
 import type { AdminLoginResponse } from "../../types.js";
+import { Brand } from "../../../../ui/Brand.js";
 
 type Step =
   | { kind: "credentials" }
@@ -71,10 +72,12 @@ export function LoginPage() {
 
   return (
     <main className="admin-centered">
-      <h1>FilsPay Admin</h1>
+      <Brand />
+      <p className="fp-auth-eyebrow">Administration</p>
+      <h1>{step.kind === "credentials" ? "Sign in to the console" : "Verify your sign-in"}</h1>
       <p className="admin-muted">Internal operations console.</p>
 
-      {error ? <p className="admin-error">{error}</p> : null}
+      {error ? <p className="admin-error" role="alert">{error}</p> : null}
 
       {step.kind === "credentials" ? (
         <form onSubmit={(e) => void handleCredentials(e)} className="admin-form">

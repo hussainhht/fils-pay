@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { getReconciliation } from "../../api/settlement.js";
 import { ApiError, describeError } from "../../api/client.js";
@@ -68,7 +69,7 @@ export function ReconciliationPage() {
   if (forbidden) {
     return (
       <section>
-        <h1>Reconciliation</h1>
+        <PageHeading title="Reconciliation" description="Compare ledger totals with settled and pending amounts." />
         <p className="dash-error">
           You don&apos;t have permission to view this report — ask an owner or
           finance user on your account.
@@ -79,7 +80,7 @@ export function ReconciliationPage() {
 
   return (
     <section>
-      <h1>Reconciliation</h1>
+      <PageHeading title="Reconciliation" description="Compare ledger totals with settled and pending amounts." />
 
       <form
         className="dash-form dash-form-inline"
@@ -139,7 +140,7 @@ export function ReconciliationPage() {
         </>
       ) : null}
 
-      {loading && !report ? <p>Loading...</p> : null}
+      {loading && !report ? <p className="fp-loading-state" role="status">Loading...</p> : null}
     </section>
   );
 }

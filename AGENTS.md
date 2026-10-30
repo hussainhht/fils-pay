@@ -131,4 +131,42 @@ Track each issue with exactly one status: `historical-report`, `confirmed-curren
 
 ## 11. Definition of Done
 
-A task is done only when: the defect/feature is confirmed against current code; the change is minimal and follows §5–6; a regression test exists and passes (or its inability to run is stated); `npm run typecheck` passes; relevant runtime path verified per §4 or limits stated; no unrelated files touched; no secrets exposed; the Evidence report is updated; and the final summary lists files changed, commands run with outcomes, bug status before/after, and unverified items.
+A task is done only when: the defect/feature is confirmed against current code; the change is minimal and follows §5–6; a regression test exists and passes (or its inability to run is stated); `npm run typecheck` passes; relevant runtime path verified per §4 or limits stated; no unrelated files touched; no secrets exposed; the Evidence report is updated; affected context documentation in `context/` is reviewed and refreshed per §12; and the final summary lists files changed, commands run with outcomes, bug status before/after, and unverified items.
+
+## 12. Persistent Context Protocol
+
+The `context/` directory is the authoritative, persistent knowledge base and shared memory for all AI agents (Gemini, Claude Code, Codex, Cursor) and engineers.
+
+### Before every task
+1. Read `context/README.md` first.
+2. Identify the relevant context documents using the task-to-context router table.
+3. Read **only** those relevant documents.
+4. Determine the affected modules and dependencies from `context/DEPENDENCY_MAP.md`.
+5. Inspect the specific source files necessary for the task.
+6. Check whether context is stale or contradicts current code (code is always ground truth).
+7. Follow all existing repository, financial, and security restrictions (§5–6).
+Do not perform a full repository-wide investigation by default when reliable context already exists.
+
+### During implementation
+- Use context for navigation and architectural understanding.
+- Verify critical behavior against source code.
+- Follow documented business invariants and accounting rules.
+- Maintain compatibility with affected upstream and downstream modules.
+- Never treat context as a replacement for tests or source verification.
+- Avoid unnecessary exploration of unrelated code.
+
+### After implementation (Mandatory Context Maintenance)
+Context maintenance is a mandatory part of completing every coding task. For every meaningful change:
+1. Identify affected context documents under `context/` (including `context/modules/`).
+2. Update their technical descriptions, schemas, or route tables to match the implementation.
+3. Update module dependencies in `context/DEPENDENCY_MAP.md` when necessary.
+4. Record architectural or behavioral changes in `context/ARCHITECTURE.md` or `context/DECISIONS.md`.
+5. Update documented tests and verification status in `context/TESTING.md`.
+6. Update known issues in `context/KNOWN_ISSUES.md` when bugs are fixed, partially resolved, or discovered.
+7. Add a dated entry to `context/CHANGELOG.md`.
+8. Check cross-references for contradictions.
+
+If the change does not affect any existing context documentation, record that conclusion in the agent's completion summary.
+
+**A coding task is not complete until its affected context documentation has been reviewed and updated as necessary.**
+

@@ -5,6 +5,7 @@ import { getPaymentLink, payPaymentLink } from "../../api/paymentLinks.js";
 import { ApiError } from "../../api/client.js";
 import type { PaymentLinkPublicDto, PayPaymentLinkResponse, SimulatedCardInput } from "../../types.js";
 import "./CheckoutPage.css";
+import { CheckoutFrame } from "./CheckoutFrame.js";
 
 type LoadState =
   | { kind: "loading" }
@@ -89,18 +90,18 @@ export function CheckoutPage() {
 
   if (loadState.kind === "loading") {
     return (
-      <main className="checkout-page">
-        <p>Loading...</p>
-      </main>
+      <CheckoutFrame>
+        <p className="fp-loading-state" role="status">Loading...</p>
+      </CheckoutFrame>
     );
   }
 
   if (loadState.kind === "not_found") {
     return (
-      <main className="checkout-page">
+      <CheckoutFrame>
         <h1>Payment link not found</h1>
         <p>This payment link does not exist.</p>
-      </main>
+      </CheckoutFrame>
     );
   }
 
@@ -108,7 +109,7 @@ export function CheckoutPage() {
 
   if (payState.kind === "success") {
     return (
-      <main className="checkout-page">
+      <CheckoutFrame>
         <h1>Payment successful</h1>
         <p>Thank you — your payment has been received.</p>
         <dl>
@@ -117,49 +118,49 @@ export function CheckoutPage() {
           <dt>Paid at</dt>
           <dd>{payState.result.paidAt}</dd>
         </dl>
-      </main>
+      </CheckoutFrame>
     );
   }
 
   if (payState.kind === "terminal") {
     return (
-      <main className="checkout-page">
+      <CheckoutFrame>
         <h1>Unable to pay</h1>
         <p>{payState.message}</p>
-      </main>
+      </CheckoutFrame>
     );
   }
 
   if (link.status === "paid") {
     return (
-      <main className="checkout-page">
+      <CheckoutFrame>
         <h1>Already paid</h1>
         <p>This invoice has already been paid.</p>
-      </main>
+      </CheckoutFrame>
     );
   }
   if (link.status === "expired") {
     return (
-      <main className="checkout-page">
+      <CheckoutFrame>
         <h1>Link expired</h1>
         <p>This payment link has expired.</p>
-      </main>
+      </CheckoutFrame>
     );
   }
   if (link.status === "canceled") {
     return (
-      <main className="checkout-page">
+      <CheckoutFrame>
         <h1>No longer available</h1>
         <p>This payment link is no longer available.</p>
-      </main>
+      </CheckoutFrame>
     );
   }
   if (link.status === "processing") {
     return (
-      <main className="checkout-page">
+      <CheckoutFrame>
         <h1>Payment processing</h1>
         <p>A payment is being processed for this link — please wait a moment and refresh.</p>
-      </main>
+      </CheckoutFrame>
     );
   }
 
@@ -168,13 +169,15 @@ export function CheckoutPage() {
   const submitting = payState.kind === "submitting";
 
   return (
-    <main className="checkout-page">
+    <CheckoutFrame>
+      <div className="checkout-summary">
       <h1>{link.merchantDisplayName}</h1>
       <p className="checkout-amount">{amount} BHD</p>
       {link.description ? <p className="checkout-description">{link.description}</p> : null}
       {link.reference ? <p className="checkout-reference">Reference: {link.reference}</p> : null}
+      </div>
 
-      {payState.kind === "declined" ? <p className="checkout-error">{payState.message}</p> : null}
+      {payState.kind === "declined" ? <p className="checkout-error" role="alert">{payState.message}</p> : null}
 
       <form onSubmit={handleSubmit} className="checkout-form">
         <label>
@@ -244,6 +247,6 @@ export function CheckoutPage() {
         <code>0002</code> always declines (do not honor); ending <code>0119</code> always declines
         (insufficient funds); ending <code>0069</code> always errors.
       </p>
-    </main>
+    </CheckoutFrame>
   );
 }

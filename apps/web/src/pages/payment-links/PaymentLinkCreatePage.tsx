@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createPaymentLink } from "../../api/paymentLinks.js";
@@ -70,7 +71,7 @@ export function PaymentLinkCreatePage() {
 
   return (
     <section>
-      <h1>New payment link</h1>
+      <PageHeading title="New payment link" />
 
       {error ? <p className="dash-error">{error}</p> : null}
 

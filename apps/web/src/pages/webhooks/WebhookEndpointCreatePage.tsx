@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createWebhookEndpoint } from "../../api/webhooks.js";
@@ -55,7 +56,7 @@ export function WebhookEndpointCreatePage() {
   if (created) {
     return (
       <section>
-        <h1>Endpoint created</h1>
+        <PageHeading title="Endpoint created" />
 
         <div className="dash-confirm">
           <h2>Signing secret — shown once</h2>
@@ -101,7 +102,7 @@ export function WebhookEndpointCreatePage() {
 
   return (
     <section>
-      <h1>New webhook endpoint</h1>
+      <PageHeading title="New webhook endpoint" />
 
       {error ? <p className="dash-error">{error}</p> : null}
 

@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getMerchant, listMerchants } from "../../api/merchants.js";
@@ -115,7 +116,7 @@ export function WebhookReplayPage() {
   if (!merchantId) {
     return (
       <section>
-        <h1>Webhook replay</h1>
+        <PageHeading title="Webhook replay" />
         <p className="admin-muted">Pick the merchant whose endpoint needs a replay.</p>
         {error ? <p className="admin-error">{error}</p> : null}
         <form className="admin-form admin-form-inline" onSubmit={(e) => void handleSearch(e)}>
@@ -151,7 +152,7 @@ export function WebhookReplayPage() {
       <p>
         <Link to="/webhooks">&larr; Pick a different merchant</Link>
       </p>
-      <h1>Webhook replay</h1>
+      <PageHeading title="Webhook replay" />
       <p>
         Merchant:{" "}
         {detail ? (

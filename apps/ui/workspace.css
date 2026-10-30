@@ -1,0 +1,170 @@
+/* Desktop workspace and its tablet/mobile navigation composition. */
+.fp-workspace {
+  display: grid;
+  grid-template-columns: var(--fp-sidebar-width) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+:is(.dash-header, .admin-header) {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  height: 100dvh;
+  padding: 28px 16px 20px;
+  border-inline-end: 1px solid var(--fp-border);
+  background: var(--fp-surface);
+  overflow-y: auto;
+}
+
+:is(.dash-brand, .admin-brand) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-inline: 12px;
+}
+
+.fp-plane-label {
+  padding: 4px 6px;
+  border: 1px solid var(--fp-border);
+  border-radius: 4px;
+  color: var(--fp-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+.fp-nav-caption {
+  margin: 42px 12px 12px;
+  color: var(--fp-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+:is(.dash-header, .admin-header) nav {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+:is(.dash-header, .admin-header) nav a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 44px;
+  padding: 11px 12px;
+  border-radius: 6px;
+  color: var(--fp-muted);
+  font-size: 13px;
+  font-weight: 550;
+  text-decoration: none;
+  transition: background-color var(--fp-transition), color var(--fp-transition);
+}
+
+:is(.dash-header, .admin-header) nav a:hover {
+  background: var(--fp-subtle);
+  color: var(--fp-primary-hover);
+}
+
+:is(.dash-header, .admin-header) nav a.active {
+  background: var(--fp-soft);
+  color: var(--fp-primary-hover);
+  font-weight: 650;
+  box-shadow: inset 3px 0 var(--fp-primary);
+}
+
+[dir="rtl"] :is(.dash-header, .admin-header) nav a.active {
+  box-shadow: inset -3px 0 var(--fp-primary);
+}
+
+:is(.dash-identity, .admin-identity) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  margin-block-start: auto;
+  padding: 24px 12px 0;
+  color: var(--fp-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+:is(.dash-identity, .admin-identity) > span {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 6px;
+  padding-block-start: 18px;
+  border-top: 1px solid var(--fp-border);
+}
+
+:is(.dash-identity, .admin-identity) button { justify-content: start; }
+.fp-workspace-content { min-width: 0; }
+
+.fp-workspace-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  min-height: 68px;
+  padding: 16px var(--fp-space-page);
+  border-bottom: 1px solid var(--fp-border);
+  background: var(--fp-surface);
+  font-size: 12px;
+}
+
+.fp-workspace-name { font-weight: 600; overflow-wrap: anywhere; }
+.fp-workspace-label { color: var(--fp-muted); }
+.admin-shell:has(.impersonation-banner) .admin-header { position: static; height: auto; }
+
+@media (max-width: 1024px) {
+  .fp-workspace { display: block; }
+
+  :is(.dash-header, .admin-header) {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    height: auto;
+    padding: 20px 24px 16px;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--fp-border);
+    overflow: visible;
+  }
+
+  :is(.dash-brand, .admin-brand) { padding: 0; }
+  .fp-nav-caption { display: none; }
+
+  :is(.dash-header, .admin-header) nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    order: 3;
+    width: 100%;
+    gap: 6px;
+  }
+
+  :is(.dash-identity, .admin-identity) {
+    flex-direction: row;
+    align-items: center;
+    margin-inline-start: auto;
+    margin-block-start: 0;
+    padding: 0;
+    max-width: 65%;
+  }
+
+  :is(.dash-identity, .admin-identity) > span { padding: 0; border: 0; }
+  :is(.dash-identity, .admin-identity) .fp-icon { display: none; }
+}
+
+@media (max-width: 600px) {
+  :is(.dash-header, .admin-header) { padding: 20px 16px 16px; }
+  :is(.dash-header, .admin-header) nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(.dash-header, .admin-header) nav a { padding: 10px; font-size: 12px; gap: 8px; }
+  :is(.dash-identity, .admin-identity) { order: 4; width: 100%; max-width: none; justify-content: space-between; margin: 0; }
+  :is(.dash-identity, .admin-identity) > span { flex: 1; min-width: 0; }
+  .fp-workspace-bar { min-height: 56px; padding: 14px 16px; flex-wrap: wrap; }
+}

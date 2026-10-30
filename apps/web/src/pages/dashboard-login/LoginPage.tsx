@@ -9,6 +9,7 @@ import {
 } from "../../auth/DashboardAuthContext.js";
 import type { DashboardLoginResponse } from "../../types.js";
 import "../../dashboard.css";
+import { Brand } from "../../../../ui/Brand.js";
 
 type Step = { kind: "credentials" } | { kind: "otp"; challenge: DashboardLoginResponse };
 
@@ -121,11 +122,13 @@ export function LoginPage() {
 
   return (
     <main className="dash-centered">
-      <h1>FilsPay dashboard</h1>
-      <p className="dash-muted">Merchant sign-in.</p>
+      <Brand />
+      <p className="fp-auth-eyebrow">Merchant dashboard</p>
+      <h1>{step.kind === "credentials" ? "Sign in to FilsPay" : "Verify your sign-in"}</h1>
+      <p className="dash-muted">{step.kind === "credentials" ? "Enter your merchant account details to continue." : "Enter the one-time code for your account."}</p>
 
-      {error ? <p className="dash-error">{error}</p> : null}
-      {notice ? <p className="dash-notice">{notice}</p> : null}
+      {error ? <p className="dash-error" role="alert">{error}</p> : null}
+      {notice ? <p className="dash-notice" role="status">{notice}</p> : null}
 
       {step.kind === "credentials" ? (
         <form onSubmit={(e) => void handleCredentials(e)} className="dash-form">

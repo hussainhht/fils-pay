@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listPaymentLinks } from "../../api/paymentLinks.js";
@@ -64,15 +65,13 @@ export function PaymentLinkListPage() {
 
   return (
     <section>
-      <h1>Payment links</h1>
-
-      <RequireRole allow={["owner", "finance"]}>
-        <p>
+      <PageHeading title="Payment links" description="Track link status, amounts and payment activity."
+        actions={<RequireRole allow={["owner", "finance"]}>
           <Link className="dash-button-link" to="/dashboard/payment-links/new">
             New payment link
           </Link>
-        </p>
-      </RequireRole>
+        </RequireRole>}
+      />
 
       <fieldset className="dash-filters">
         <legend>Status</legend>
@@ -128,7 +127,7 @@ export function PaymentLinkListPage() {
         </table>
       </div>
 
-      {loading ? <p>Loading...</p> : null}
+      {loading ? <p className="fp-loading-state" role="status">Loading...</p> : null}
 
       <Pagination nextCursor={nextCursor} loading={loading} onLoadMore={() => void load(nextCursor)} />
     </section>

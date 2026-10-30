@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getSettlementBatch, getSettlementBatchTransactions } from "../../api/settlement.js";
@@ -59,11 +60,11 @@ export function SettlementBatchDetailPage() {
     };
   }, [id]);
 
-  if (state.kind === "loading") return <p>Loading...</p>;
+  if (state.kind === "loading") return <p className="fp-loading-state" role="status">Loading...</p>;
   if (state.kind === "not_found") {
     return (
       <section>
-        <h1>Settlement batch not found</h1>
+        <PageHeading title="Settlement batch not found" />
         <p>
           No settlement batch with this id exists on your account.{" "}
           <Link to="/dashboard/settlement">Back to settlement batches</Link>
@@ -74,7 +75,7 @@ export function SettlementBatchDetailPage() {
   if (state.kind === "error") {
     return (
       <section>
-        <h1>Settlement batch</h1>
+        <PageHeading title="Settlement batch" />
         <p className="dash-error">{state.message}</p>
       </section>
     );
@@ -85,7 +86,7 @@ export function SettlementBatchDetailPage() {
 
   return (
     <section>
-      <h1>Settlement batch {batch.batchDate}</h1>
+      <PageHeading title={<>Settlement batch {batch.batchDate}</>} />
       {batch.status === "closed" && (
         <div className="dash-progress-bar" style={{ width: "100%", background: "#e0e0e0", height: 6, borderRadius: 3 }}>
           <div style={{ width: `${Math.min(displayProgress, 100)}%`, background: "#2563eb", height: 6, borderRadius: 3 }} />

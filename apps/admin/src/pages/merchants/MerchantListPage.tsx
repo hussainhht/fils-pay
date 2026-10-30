@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listMerchants } from "../../api/merchants.js";
@@ -102,7 +103,7 @@ export function MerchantListPage() {
 
   return (
     <section>
-      <h1>Merchants</h1>
+      <PageHeading title="Merchants" description="Review merchant profiles and onboarding status." />
 
       <form
         className="admin-form admin-form-inline"
@@ -210,7 +211,7 @@ export function MerchantListPage() {
       </table>
       </div>
 
-      {loading ? <p>Loading...</p> : null}
+      {loading ? <p className="fp-loading-state" role="status">Loading...</p> : null}
 
       {nextCursor ? (
         <button type="button" disabled={loading} onClick={() => void load(nextCursor)}>

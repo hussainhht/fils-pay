@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { formatBhd, parseBhdToFils, toFils } from "@filspay/money";
@@ -244,7 +245,7 @@ export function MerchantDetailPage() {
       <p>
         <Link to="/merchants">&larr; Merchants</Link>
       </p>
-      <h1>{merchant.displayName}</h1>
+      <PageHeading title={<>{merchant.displayName}</>} />
       <p className="admin-muted">
         <code>{merchant.id}</code>
       </p>

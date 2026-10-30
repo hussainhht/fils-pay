@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { listDeliveries, listWebhookEndpoints, replayDelivery } from "../../api/webhooks.js";
@@ -109,7 +110,7 @@ export function WebhookEndpointDetailPage() {
   if (endpointMissing) {
     return (
       <section>
-        <h1>Endpoint not found</h1>
+        <PageHeading title="Endpoint not found" />
         <p>
           No webhook endpoint with this id exists on your account.{" "}
           <Link to="/dashboard/webhooks">Back to webhook endpoints</Link>
@@ -120,7 +121,7 @@ export function WebhookEndpointDetailPage() {
 
   return (
     <section>
-      <h1>Webhook endpoint</h1>
+      <PageHeading title="Webhook endpoint" />
 
       {endpoint ? (
         <dl className="dash-dl">
@@ -240,7 +241,7 @@ export function WebhookEndpointDetailPage() {
         </table>
       </div>
 
-      {loading ? <p>Loading...</p> : null}
+      {loading ? <p className="fp-loading-state" role="status">Loading...</p> : null}
 
       <Pagination
         nextCursor={nextCursor}

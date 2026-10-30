@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listTransactions } from "../../api/transactions.js";
@@ -83,7 +84,7 @@ export function TransactionListPage() {
 
   return (
     <section>
-      <h1>Transactions</h1>
+      <PageHeading title="Transactions" description="Review payment activity and open a transaction for its details." />
 
       <fieldset className="dash-filters">
         <legend>Status</legend>
@@ -166,7 +167,7 @@ export function TransactionListPage() {
         </table>
       </div>
 
-      {loading ? <p>Loading...</p> : null}
+      {loading ? <p className="fp-loading-state" role="status">Loading...</p> : null}
 
       <Pagination nextCursor={nextCursor} loading={loading} onLoadMore={() => void load(nextCursor)} />
     </section>

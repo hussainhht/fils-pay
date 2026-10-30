@@ -26,7 +26,15 @@ Shared authority: **[AGENTS.md](AGENTS.md)**. Read it first and follow it fully 
 - Start servers and watchers with `run_in_background`; don't poll with sleep loops. Record the ports you started and stop only processes you started. Never kill an unfamiliar process that already holds 3000/5173/5174.
 - Keep the Evidence report incrementally updated so work survives context compaction.
 
+## Persistent Context Protocol
+
+Follow `AGENTS.md` §12:
+- **Before task:** Read `context/README.md` and consult only the task-relevant context files. Inspect only necessary source files. Do not initiate repository-wide file scans.
+- **During task:** Respect documented architectural invariants in `context/DEVELOPMENT_RULES.md` and dependencies in `context/DEPENDENCY_MAP.md`.
+- **After task:** Update affected documents in `context/`, update `context/KNOWN_ISSUES.md` if bugs were touched, and append an entry to `context/CHANGELOG.md`. Tasks are incomplete until context maintenance is done.
+
 ## Reporting
 
 - Progress: one or two sentences per milestone, stating what was found or changed.
 - Completion summary: files changed, commands run with real results, bug status before/after, what was not verified. No claims without evidence.
+

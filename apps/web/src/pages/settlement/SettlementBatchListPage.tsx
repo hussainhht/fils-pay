@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listSettlementBatches } from "../../api/settlement.js";
@@ -63,7 +64,7 @@ export function SettlementBatchListPage() {
 
   return (
     <section>
-      <h1>Settlement batches</h1>
+      <PageHeading title="Settlement batches" description="Review daily batches, fees and net payouts." />
 
       <fieldset className="dash-filters">
         <legend>Batch date</legend>
@@ -131,7 +132,7 @@ export function SettlementBatchListPage() {
         </table>
       </div>
 
-      {loading ? <p>Loading...</p> : null}
+      {loading ? <p className="fp-loading-state" role="status">Loading...</p> : null}
 
       <Pagination nextCursor={nextCursor} loading={loading} onLoadMore={() => void load(nextCursor)} />
     </section>

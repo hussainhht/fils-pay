@@ -1,3 +1,4 @@
+import { PageHeading } from "../../../../ui/PageHeading.js";
 import { RefundDrawer } from "./RefundDrawer.js";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -110,12 +111,12 @@ export function TransactionDetailPage() {
   }
 
   if (state.kind === "loading") {
-    return <p>Loading...</p>;
+    return <p className="fp-loading-state" role="status">Loading...</p>;
   }
   if (state.kind === "not_found") {
     return (
       <section>
-        <h1>Transaction not found</h1>
+        <PageHeading title="Transaction not found" />
         <p>
           No transaction with this id exists on your account.{" "}
           <Link to="/dashboard/transactions">Back to transactions</Link>
@@ -126,7 +127,7 @@ export function TransactionDetailPage() {
   if (state.kind === "error") {
     return (
       <section>
-        <h1>Transaction</h1>
+        <PageHeading title="Transaction" />
         <p className="dash-error">{state.message}</p>
       </section>
     );
@@ -138,7 +139,7 @@ export function TransactionDetailPage() {
 
   return (
     <section>
-      <h1>Transaction</h1>
+      <PageHeading title="Transaction" />
       <RefundDrawer txn={txn} onRefunded={load} />
       <p className="dash-muted">
         <code>{txn.id}</code>

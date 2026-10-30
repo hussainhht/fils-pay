@@ -1,0 +1,142 @@
+/* Page composition and component details shared by both financial workspaces. */
+.fp-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+  margin-block-end: 28px;
+}
+
+:is(.dash-main, .admin-main) .fp-page-heading h1 { margin: 0; }
+.fp-page-heading > div:first-child { min-width: 0; }
+.fp-page-heading p { max-width: 64ch; margin: 9px 0 0; color: var(--fp-muted); font-size: 13px; }
+.fp-heading-actions { display: flex; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+
+:is(.dash-main, .admin-main) :is(.dash-form, .admin-form):not(:is(.dash-form-inline, .admin-form-inline)) {
+  padding: 24px;
+  background: var(--fp-surface);
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius);
+}
+
+:is(.dash-main, .admin-main) :is(.dash-form-inline, .admin-form-inline) {
+  padding: 18px 20px;
+  background: var(--fp-surface);
+  border: 1px solid var(--fp-border);
+  border-radius: var(--fp-radius);
+  gap: 16px;
+}
+
+:is(.dash-form-inline, .admin-form-inline) label:has(input[type="search"]) { flex: 1 1 300px; }
+:is(.dash-filters, .admin-filters) { min-inline-size: 0; }
+:is(.dash-filters, .admin-filters) legend { padding-inline: 8px; color: var(--fp-muted); font-size: 11px; font-weight: 650; letter-spacing: .025em; }
+
+:is(.dash-shell, .admin-shell) :is(.dash-filters, .admin-filters) label:has(input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--fp-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+:is(.dash-filters, .admin-filters) label:has(input[type="checkbox"]:checked) {
+  background: var(--fp-soft);
+  border-color: #c5e2d3;
+  color: var(--fp-primary-hover);
+}
+
+:is(.dash-filters, .admin-filters) label:has(input[type="checkbox"]) input { margin: 0; flex: none; }
+:is(.dash-main, .admin-main) :is(input, select, textarea):hover:not(:disabled) { border-color: var(--fp-border-strong); }
+:is(.dash-main, .admin-main, .dash-centered, .admin-centered) :is(input, select, textarea):focus {
+  border-color: var(--fp-primary);
+  box-shadow: 0 0 0 3px rgb(8 127 91 / 8%);
+}
+
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(button, input, select, textarea, .dash-button-link) {
+  transition: border-color var(--fp-transition), background-color var(--fp-transition), box-shadow var(--fp-transition), color var(--fp-transition);
+}
+
+:is(.dash-table, .admin-table) th { padding-block: 12px; font-size: 11px; letter-spacing: .025em; }
+:is(.dash-table, .admin-table) td { vertical-align: middle; line-height: 1.5; }
+.admin-table :is(th, td) { padding-block: 11px; }
+:is(.dash-table, .admin-table) td:has(> input[type="checkbox"]) { min-width: 44px; width: 44px; }
+:is(.dash-table, .admin-table) tr:has(input[type="checkbox"]:checked) { background: var(--fp-soft); }
+:is(.dash-table, .admin-table) td[colspan] { padding-block: 44px; font-size: 13px; }
+:is(.dash-table, .admin-table) a { font-weight: 550; text-decoration: none; }
+:is(.dash-table, .admin-table) a:hover { text-decoration: underline; }
+:is(.dash-table, .admin-table) .fp-numeric { font-feature-settings: "tnum"; letter-spacing: -.15px; }
+.admin-table code { color: var(--fp-muted); font-size: 11px; }
+.fp-table-scroll { box-shadow: var(--fp-shadow); }
+
+.fp-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  margin: 8px 0 12px;
+  border: 1px solid var(--fp-border);
+  border-radius: 8px;
+  background: #edf2ef;
+}
+
+.admin-shell .fp-segmented button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--fp-muted);
+}
+
+.admin-shell .fp-segmented button[aria-current="true"] {
+  border-color: var(--fp-border);
+  background: #fff;
+  color: var(--fp-primary-hover);
+  box-shadow: 0 1px 3px rgb(19 46 34 / 5%);
+  opacity: 1;
+  cursor: default;
+}
+
+.fp-loading-state { display: flex; align-items: center; gap: 10px; color: var(--fp-muted); font-size: 13px; padding-block: 12px; }
+.fp-loading-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--fp-primary); flex: none; }
+.fp-refund-actions { align-items: stretch; }
+.fp-refund-actions > .dash-error { flex-basis: 100%; }
+.dash-shell .fp-refund-form { width: 100%; border-inline-start: 3px solid var(--fp-primary); }
+.fp-refund-form > label { flex: 1 1 300px; }
+.fp-refund-form .dash-muted { font-size: 13px; font-variant-numeric: tabular-nums; }
+
+:is(.dash-centered, .admin-centered) {
+  max-width: 464px;
+  margin-block-start: clamp(24px, 8vh, 88px);
+  padding: 36px 40px 24px;
+  border-top: 1px solid var(--fp-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 40px rgb(19 46 34 / 5%);
+}
+
+:is(.dash-centered, .admin-centered) .fp-brand { margin-bottom: 32px; }
+.fp-auth-eyebrow { margin: 0 0 10px; color: var(--fp-muted); font-size: 10px; font-weight: 650; letter-spacing: .09em; text-transform: uppercase; }
+:is(.dash-centered, .admin-centered) h1 { font-size: 25px; letter-spacing: -.7px; }
+:is(.dash-centered, .admin-centered) > .dash-muted, .admin-centered > .admin-muted { font-size: 13px; margin: 10px 0 24px; }
+:is(.dash-centered, .admin-centered) :is(.dash-form, .admin-form) { gap: 18px; margin-block: 24px 12px; }
+:is(.dash-centered, .admin-centered) form button[type="submit"] { margin-top: 6px; }
+
+@media (max-width: 800px) {
+  .fp-page-heading { align-items: start; }
+  .fp-heading-actions { flex-shrink: 1; }
+}
+
+@media (max-width: 600px) {
+  .fp-page-heading { flex-direction: column; align-items: stretch; gap: 16px; margin-bottom: 24px; }
+  .fp-page-heading p { font-size: 12px; }
+  :is(.dash-main, .admin-main) :is(.dash-form, .admin-form, .dash-filters, .admin-filters) { padding: 16px; }
+  :is(.dash-form-inline, .admin-form-inline) > label { flex-basis: 100%; }
+  :is(.dash-shell, .admin-shell) :is(.dash-filters, .admin-filters) > label:has(input[type="checkbox"]) { flex: 0 1 auto; }
+  :is(.dash-centered, .admin-centered) { padding: 28px 24px 20px; }
+  .fp-refund-form > button { flex: 1 1 100px; }
+}
