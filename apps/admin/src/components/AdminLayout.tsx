@@ -29,59 +29,54 @@ export function AdminLayout() {
     <div className="admin-shell">
       <a className="fp-skip-link" href="#main-content">Skip to content</a>
       <ImpersonationBanner />
-
       <div className="fp-workspace">
-      <header className="admin-header">
-        <div className="admin-brand"><Brand /><span className="fp-plane-label">Admin</span></div>
-        <p className="fp-nav-caption">Operations console</p>
-        <nav className="admin-nav" aria-label="Administration navigation">
-          <NavLink to="/merchants"><Icon name="merchants" />Merchants</NavLink>
-          <NavLink to="/credits"><Icon name="credits" />Credits</NavLink>
-          <NavLink to="/settlement"><Icon name="settlement" />Settlement ops</NavLink>
-          <NavLink to="/adjustment-imports"><Icon name="import" />Import adjustments</NavLink>
-          <NavLink to="/webhooks"><Icon name="webhooks" />Webhook replay</NavLink>
-        </nav>
-        <div className="admin-identity">
-          {admin ? (
-            <span>
-              {admin.email} <span className="admin-role-chip">{admin.role}</span>
-            </span>
-          ) : null}
-          <button type="button" onClick={() => void handleSignOut()}>
-            <Icon name="logout" />Log out
-          </button>
-        </div>
-      </header>
+        <header className="admin-header">
+          <div className="admin-brand"><Brand /><span className="fp-plane-label">Admin</span></div>
+          <p className="fp-nav-caption">Operations console</p>
+          <nav className="admin-nav" aria-label="Administration navigation">
+            <NavLink to="/merchants"><Icon name="merchants" />Merchants</NavLink>
+            <NavLink to="/credits"><Icon name="credits" />Credits</NavLink>
+            <NavLink to="/settlement"><Icon name="settlement" />Settlement ops</NavLink>
+            <NavLink to="/adjustment-imports"><Icon name="import" />Import adjustments</NavLink>
+            <NavLink to="/webhooks"><Icon name="webhooks" />Webhook replay</NavLink>
+          </nav>
+          <div className="admin-identity">
+            {admin ? (
+              <span>
+                {admin.email} <span className="admin-role-chip">{admin.role}</span>
+              </span>
+            ) : null}
+            <button type="button" onClick={() => void handleSignOut()}>
+              <Icon name="logout" />Log out
+            </button>
+          </div>
+        </header>
 
-      <div className="fp-workspace-content">
-      <div className="fp-workspace-bar">
-        <span className="fp-workspace-name">Operations console</span>
-        <span className="fp-workspace-label">Administration</span>
-      </div>
-      {error ? <p className="admin-error" role="alert">{error}</p> : null}
-      {impersonation ? (
-        // An explicit "exit view-as-merchant" action is required before
-        // admin-plane screens are shown again. This is a UX safeguard so the
-        // two modes are never confused on screen; the privilege boundary
-        // itself does not depend on it — /v1/admin/* never reads the
-        // impersonation cookie, and the merchant side never reads the admin
-        // session cookie.
-        <main className="admin-main" id="main-content" tabIndex={-1}>
-          <h1>Admin screens are paused</h1>
-          <p>
-            An impersonation grant is active. Use <strong>Exit impersonation</strong> above to end it
-            and return to the admin console.
-          </p>
-          <p>
-            Merchant screens are at <code>{WEB_BASE_URL}</code> while the grant lasts.
-          </p>
-        </main>
-      ) : (
-        <main className="admin-main" id="main-content" tabIndex={-1}>
-          <Outlet />
-        </main>
-      )}
-      </div>
+        <div className="fp-workspace-content">
+          <div className="fp-workspace-bar">
+            <span className="fp-workspace-name">Operations console</span>
+            <span className="fp-workspace-label">Administration</span>
+          </div>
+          {error ? <p className="admin-error" role="alert">{error}</p> : null}
+          {impersonation ? (
+            // An explicit exit action is required before showing admin screens.
+            // The privilege boundary is enforced by the API's separate sessions.
+            <main className="admin-main" id="main-content" tabIndex={-1}>
+              <h1>Admin screens are paused</h1>
+              <p>
+                An impersonation grant is active. Use <strong>Exit impersonation</strong> above to end it
+                and return to the admin console.
+              </p>
+              <p>
+                Merchant screens are at <code>{WEB_BASE_URL}</code> while the grant lasts.
+              </p>
+            </main>
+          ) : (
+            <main className="admin-main" id="main-content" tabIndex={-1}>
+              <Outlet />
+            </main>
+          )}
+        </div>
       </div>
     </div>
   );

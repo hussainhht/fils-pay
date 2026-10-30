@@ -20,7 +20,7 @@
 The migration runner is a lightweight, custom TypeScript script applying SQL migrations sequentially:
 - **Tracking Table:** `schema_migrations` (`filename TEXT PRIMARY KEY`, `applied_at TIMESTAMPTZ NOT NULL DEFAULT now()`).
 - **Execution Logic:** Reads `db/migrations/*.sql`, sorts filenames lexically, queries `schema_migrations`, and applies unapplied files inside individual transactions (`BEGIN` ... `COMMIT`).
-- **Numbering Gaps:** Gaps exist in the migration sequence (e.g., 0039, 0041, 0054–0056) from abandoned historical branches. The runner sorts lexically and ignores gaps.
+- **Numbering Gaps:** Gaps exist in the migration sequence (historical missing files: 0039, 0041, 0059, 0062, 0063, 0067; total 72 files ending at 0078). Note that 0054, 0055, and 0056 exist in the repo. The runner sorts lexically and ignores gaps, applying all present files sequentially.
 - **Known Risk (BUG-081):** The runner does not compute or verify file checksums. If an already-applied migration is altered on disk, the runner will not detect it. Never modify applied migration files!
 
 ---

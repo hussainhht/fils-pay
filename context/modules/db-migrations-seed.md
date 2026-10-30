@@ -30,7 +30,7 @@ The `db/` directory manages the schema evolution and baseline fixture data for P
   4. For each unapplied file: begins a PostgreSQL transaction, executes the raw SQL, inserts the filename into `schema_migrations`, and commits.
   5. Rolls back the transaction on any error and halts execution.
 - **Handling Numbering Gaps:**
-  - Historical branches left numbering gaps (e.g., 0039, 0041, 0054–0056).
+  - Historical branches left numbering gaps (missing numbers: 0039, 0041, 0059, 0062, 0063, 0067; total 72 files ending at 0078). Note that 0054_views.sql, 0055_chart_of_accounts_suspense.sql, and 0056_api_keys_revoke_after.sql exist on disk.
   - The runner sorts by string name and applies missing files sequentially; gaps do not disrupt the runner.
 
 ---
@@ -41,20 +41,22 @@ The `db/` directory manages the schema evolution and baseline fixture data for P
 - `0002_merchants.sql`: Core `merchants` table.
 - `0003_merchant_users.sql` & `0010_password_auth.sql`: Merchant user accounts and Argon2id hashes.
 - `0004_transactions.sql` & `0005_holds.sql`: Transaction ledger and authorization holds.
-- `0006_settlement_batches.sql`: Settlement batch records.
-- `0007_ledger_double_entry.sql`: `accounts`, `ledger_entries`, and zero-sum deferred constraint trigger.
-- `0008_scheme_export_lines.sql` & `0050`: Card scheme 2-decimal export table.
+- `0006_settlement_batches.sql`, `0024`, `0078_settlement_paid_once.sql`: Settlement batch records and payout locking.
+- `0007_ledger_double_entry.sql`, `0055_chart_of_accounts_suspense.sql`, `0061_goodwill.sql`, `0064_manual_adjustment.sql`: `accounts`, `ledger_entries`, and zero-sum deferred constraint trigger.
+- `0008_scheme_export_lines.sql`, `0026`, `0050`: Card scheme 2-decimal export table.
 - `0009_outbox_events.sql` & `0030`: Transactional outbox table and reporting cursor.
 - `0011_otp_challenges.sql` & `0012_sessions.sql`: 2FA OTP challenges and session cookies.
-- `0013_api_keys.sql`, `0037`, `0056`: API keys and rotation tracking.
+- `0013_api_keys.sql`, `0037`, `0056_api_keys_revoke_after.sql`: API keys and rotation tracking.
 - `0019_idempotency_keys.sql`: Idempotency responses for captures and refunds.
-- `0020_payment_links.sql` & `0074`: Payment links and reservation locks.
-- `0021_webhook_endpoints.sql` & `0022_webhook_deliveries.sql`: Webhook configuration and attempt logs.
+- `0020_payment_links.sql`, `0029`, `0074_payment_link_claims.sql`: Payment links and reservation locks.
+- `0021_webhook_endpoints.sql`, `0022_webhook_deliveries.sql`, `0068_archives.sql`: Webhook configuration, attempt logs, and delivery archives.
 - `0025_merchant_balances.sql`: Cached payable position.
-- `0031_admin_users.sql`, `0033`, `0034`, `0035`: Admin plane users, sessions, audit log, and impersonation grants.
-- `0042_refunds.sql`, `0043`, `0075`, `0077`: Refunds and pending refund reservations.
+- `0031_admin_users.sql`, `0032`, `0033`, `0034`, `0035_impersonation.sql`: Admin plane users, sessions, audit log, and impersonation grants.
+- `0042_refunds.sql`, `0043`, `0070`, `0071`, `0072`, `0075_refund_integrity.sql`, `0077_pending_refund_reservations.sql`: Refunds and reservations.
 - `0048_fee_schedules.sql`: Tiered MDR and fixed fee schedules.
+- `0054_views.sql`: Convenience views.
 - `0060_credit_requests.sql`: Two-person credit approval requests.
+- `0065_adjustment_imports.sql` & `0066_adjustment_import_rows.sql`: CSV balance adjustment batch imports.
 
 ---
 

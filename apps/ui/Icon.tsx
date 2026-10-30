@@ -1,3 +1,5 @@
+import React from "react";
+
 type IconName =
   | "transactions" | "links" | "webhooks" | "settlement" | "reconciliation"
   | "overview" | "merchants" | "credits" | "import" | "logout" | "arrow";

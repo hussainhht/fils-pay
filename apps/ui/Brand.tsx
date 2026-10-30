@@ -1,3 +1,5 @@
+import React from "react";
+
 export function Brand() {
   return (
     <span className="fp-brand">

@@ -12,6 +12,15 @@
 .fp-page-heading p { max-width: 64ch; margin: 9px 0 0; color: var(--fp-muted); font-size: 13px; }
 .fp-heading-actions { display: flex; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
 
+.admin-main h2 {
+  padding-block-start: 24px;
+  border-top: 1px solid var(--fp-border);
+  font-size: 16px;
+}
+
+:is(.dash-dl, .admin-dl) dt:last-of-type,
+:is(.dash-dl, .admin-dl) dd:last-of-type { border-bottom: 0; }
+
 :is(.dash-main, .admin-main) :is(.dash-form, .admin-form):not(:is(.dash-form-inline, .admin-form-inline)) {
   padding: 24px;
   background: var(--fp-surface);
@@ -66,6 +75,7 @@
 :is(.dash-table, .admin-table) td { vertical-align: middle; line-height: 1.5; }
 .admin-table :is(th, td) { padding-block: 11px; }
 :is(.dash-table, .admin-table) td:has(> input[type="checkbox"]) { min-width: 44px; width: 44px; }
+:is(.dash-table, .admin-table) th:has(> input[type="checkbox"]) { width: 44px; }
 :is(.dash-table, .admin-table) tr:has(input[type="checkbox"]:checked) { background: var(--fp-soft); }
 :is(.dash-table, .admin-table) td[colspan] { padding-block: 44px; font-size: 13px; }
 :is(.dash-table, .admin-table) a { font-weight: 550; text-decoration: none; }
