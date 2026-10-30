@@ -97,3 +97,7 @@ apps/admin/src/
 - **Form State Retention Across Navigation (BUG-056):** When switching between merchant detail pages, form inputs must reset explicitly via `useEffect` keys to avoid submitting data against the wrong merchant ID.
 - **Filter State Isolation (BUG-078):** Bulk selection checkboxes must clear when tabs or filter parameters change to prevent approving unintended merchants.
 - **Progress Ratio Scaling (BUG-082):** Progress indicators must divide fils by 1,000 (not 10,000) when calculating percentages against BD targets.
+
+## Authenticator UI (2026-10-30)
+
+Shared apps/ui/AuthenticatorSetup.tsx and authenticator.css provide Account security at /dashboard/security and /security, linked from each authenticated shell. Setup uses a locally generated PNG QR, optional manual key, new-code confirmation and one-time recovery-code display with explicit save acknowledgement. Secrets remain in component memory only; no localStorage, external QR service or secret-bearing URL. Replacement requires fresh password and old-factor/recovery proof. Login pages consume verificationMethod, show authenticator instructions/recovery toggle, and hide merchant email resend for TOTP. Microsoft Authenticator uses Other account; no Entra/push flow exists. Build/static correctness verified; actual device scan/interactive visual review remains unverified.

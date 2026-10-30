@@ -20,15 +20,12 @@
   - *Mitigation:* Ensure `expiredIds.length > 0` before constructing or executing the delete statement.
 
 ### 2. March 2026 Scheme Residue Sweep (`scripts/reconcile_march.ts`)
-- **Purpose:** One-off financial sweep writing off card scheme rounding residue (1–9 fils per transaction) for March 2026 to `scheme_rounding_residue`.
-- **Execution:** `DATABASE_URL=... npx tsx scripts/reconcile_march.ts`.
-- **Workflow:**
-  1. Identifies transactions with `captured_fils % 10 <> 0` within the March date window.
-  2. Groups residue by merchant.
-  3. Posts debit `merchant_payable`, credit `scheme_rounding_residue`.
-- **CRITICAL DEFECTS (BUG-033):**
-  - **Non-Idempotent:** The script generates a new random `entryGroupId` (`randomUUID()`) on each execution without checking for existing postings. Re-running the script posts duplicate ledger adjustments.
-  - **UTC Date Window:** Uses a UTC calendar month instead of an Asia/Bahrain month, causing boundary drift.
+- **Status (2026-10-30):** Retired; PMA-08 / BUG-033 prevention is `fix-verified`.
+- **Execution:** Direct execution prints a retirement error and exits 1, with or without database configuration. There is no bypass.
+- **Import:** Silent; only pure historical `monthBounds` (UTC) and `computeResidueFils` helpers remain for existing test compatibility. These are not a new reconciliation policy.
+- **Safety:** No database dependency, connection, query, UUID generation, or posting implementation remains. Original implementation is preserved in Git at `c3eb21830dd133a47e86bf5f9150a3ba8f9caffd`.
+- **Supported path:** Go `CloseBatch` posts scheme-line residue for new closes independently. No runtime workflow imports this retired module.
+- **Historical impact:** Unverified; no database was available. Any correction needs separate approval; see `Evidence/PMA-08_RECONCILIATION_SAFETY_FIX.md`.
 
 ---
 
@@ -62,6 +59,7 @@
 - Script tests:
   - `scripts/expire_holds.test.ts`.
   - `scripts/reconcile_march.test.ts`.
+  - `scripts/reconcile_march.retirement.test.ts` (database-free static/process safety tests).
   - `scripts/reconcile_march.integration.test.ts`.
 - Command to run:
   ```bash

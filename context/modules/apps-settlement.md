@@ -105,6 +105,6 @@ apps/settlement/
 
 1. **Float32 Net Payable Precision (BUG-010):** `payable.go:11` calculates `netBD := float32(gross)/1000 - float32(fee)/1000`, causing 1–2 fils rounding drift on batches exceeding ~16,777 BD.
 2. **Batch Loop Abortion (BUG-064):** In `daemon`, a failure on one merchant halts processing for all subsequent merchants in that daily run.
-3. **Residue Posting Omission (ADR 0002):** Automated scheme residue journal posting is not wired into `CloseBatch`.
+3. **Scheme Residue (PMA-08 source review, 2026-10-30):** `CloseBatch` now journals gross-minus-truncated residue per export line to the ADR accounts for new closes. Earlier omission notes are stale. Historical March impact remains unverified; retired `scripts/reconcile_march.ts` refuses execution and has no database/posting capability. Database-backed settlement tests require a migrated authorized database.
 4. **MDR Recalculation on Paid Batches (BUG-035):** Recalculating MDR modifies already-paid batches directly.
 5. **Config Precedence (BUG-080):** `PGCONN_SETTLEMENT` overrides `DATABASE_URL` even when `DATABASE_URL` is set.

@@ -118,7 +118,7 @@ Settlement executes daily to aggregate captures, deduct MDR fees, disburse net f
 ### 3. Card Scheme Export Boundary
 - Visa and Mastercard clearing requires amounts in 2-decimal formats (e.g. BD with 2 decimal places).
 - The platform quantizes 3-decimal fils amounts to 2 decimals at export time.
-- **Residue Gap:** Quantization creates a fractional residue (1–9 fils per transaction). ADR 0002 intended to journal this residue to `scheme_rounding_residue`, but automated residue posting was never wired into `CloseBatch`.
+- **Scheme Residue (PMA-08 source review, 2026-10-30):** Current `CloseBatch` journals gross-minus-truncated residue per export line as credit `card_scheme_clearing` / debit `scheme_rounding_residue` in its transaction. This applies to new closes only. The retired March CLI has no database or posting implementation; historical corrections need a separate approved design and database investigation.
 
 ---
 

@@ -190,3 +190,9 @@ API errors return standard JSON envelopes with descriptive machine-readable erro
 - `422 Unprocessable Entity`: Semantic constraint failure (e.g., refund exceeds captured headroom).
 - `501 Not Implemented`: Disabled feature flag (e.g., refunds when `FEATURE_REFUNDS=false`).
 - `500 Internal Server Error`: Unhandled server exception.
+
+## Authenticator endpoints (2026-10-30)
+
+Both /v1/auth and /v1/admin/auth add GET /totp (enabled/recoveryCodesRemaining), POST /totp/enroll (password, plus currentCode when replacing; returns enrollmentId, manual secret, QR data URL and expiry), POST /totp/confirm (enrollmentId/code; returns enabled and one-time recoveryCodes). They require the matching full session, refuse impersonation, validate Origin when present, and return no-store. No user/merchant identity is accepted as authorization from the body. Password-only pending sessions cannot enroll.
+
+Login responses add optional verificationMethod=email|totp. Existing /otp/verify accepts six-digit authenticator codes or a recovery code for an enrolled identity; email cannot downgrade an enrolled factor. Merchant /otp/resend refuses enrolled identities. Existing route paths, role responses and cookie planes are unchanged. FEATURE_TOTP gates the new tables/feature until migration 0085 has been applied.

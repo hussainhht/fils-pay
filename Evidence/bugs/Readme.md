@@ -84,7 +84,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-030](bug-030-split-payout-missing-fils.md) |
 | **BUG-031** | Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-031](bug-031-platform-volume-int32-overflow.md) |
 | **BUG-032** | TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-032](bug-032-ts-and-go-fee-formulas-diverge.md) |
-| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-033](bug-033-march-sweep-not-idempotent.md) |
+| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | RETIREMENT VERIFIED; HISTORICAL DATA UNVERIFIED | `fix-verified` | Ledger and financial calculations | [BUG-033](bug-033-march-sweep-not-idempotent.md) |
 | **BUG-034** | Scheme Export Rounds Amounts While Ledger Truncates Creating Persistent Surplus | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-034](bug-034-scheme-export-rounding-always-over.md) |
 | **BUG-035** | MDR Recalculation Rewrites Batches That Are Already Paid Out | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-035](bug-035-mdr-recalc-rewrites-paid-batches.md) |
 | **BUG-036** | Daily Settlement Close Runs at 03:15 Bahrain Time Instead of Midnight | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-036](bug-036-daily-close-runs-at-3am.md) |
@@ -202,7 +202,7 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Fixed | [bug-030-split-payout-missing-fils.md](bug-030-split-payout-missing-fils.md) |
 | **BUG-031** | Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD | `High` | STATICALLY CONFIRMED | Fixed | [bug-031-platform-volume-int32-overflow.md](bug-031-platform-volume-int32-overflow.md) |
 | **BUG-032** | TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge | `High` | STATICALLY CONFIRMED | Fixed | [bug-032-ts-and-go-fee-formulas-diverge.md](bug-032-ts-and-go-fee-formulas-diverge.md) |
-| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | STATICALLY CONFIRMED | Fixed | [bug-033-march-sweep-not-idempotent.md](bug-033-march-sweep-not-idempotent.md) |
+| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | RETIREMENT VERIFIED; HISTORICAL DATA UNVERIFIED | `fix-verified` | [bug-033-march-sweep-not-idempotent.md](bug-033-march-sweep-not-idempotent.md) |
 | **BUG-062** | Transaction CSV Export Retains Formula Prefixes Enabling Spreadsheet Injection | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-062-transaction-csv-retains-formula-cells.md](bug-062-transaction-csv-retains-formula-cells.md) |
 | **BUG-088** | Promotional Discount Parser Multiplies BD by 100 | `High` | RUNTIME REPRODUCED | Fixed | [bug-088-promotional-discount-times-100.md](bug-088-promotional-discount-times-100.md) |
 
