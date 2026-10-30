@@ -94,3 +94,16 @@ Before declaring any change complete:
 4. No application code outside the authorized workstream was touched.
 5. No credentials, secrets, or card data were exposed.
 6. The corresponding context files under `context/` were updated.
+
+
+## Checkout enhancement verification ? 2026-10-30
+
+- `npm.cmd run test -w @filspay/web`: PASS (50 tests, including 12 new card-input cases).
+- `npm.cmd run typecheck`: PASS across workspaces, DB and scripts.
+- `npm.cmd run build -w @filspay/web`: PASS.
+- Existing `apps/api/src/routes/paymentLinks.test.ts` and `apps/api/src/acquirer/simulator.test.ts`: PASS against reachable local migrated PostgreSQL 16.15 using their own fixtures, with a deterministic simulator.
+- `node --import tsx apps/web/scripts/checkout.browser.test.mjs --live`: PASS. Installed Edge/CDP checks use intercepted sandbox fixtures for UI/error cases; `--live` additionally inserts labeled test fixtures and completes a payment through Vite ? API ? simulator ? PostgreSQL, checking captured status and ledger balance. The script defaults to localhost ports 5173/3000 and the local compose PostgreSQL port 5432; it never truncates data. Run only against a disposable/local development stack.
+- `--baseline`: fails on the original open-link expiry bug; `--baseline --retry-only`: fails on the original retry-key bug. These read `HEAD` into a temporary sibling module and remove only the module created by the check. No branches/commits are changed.
+- Screenshots: `Evidence/implementation/checkout-{desktop,mobile,small-mobile}.png` (1280px, 390px and 320px widths, sandbox UI fixtures with empty card fields).
+- Windows restricted shell could not start tsx/esbuild; approved unrestricted commands passed. Direct root-level `node --import tsx --test "apps/web/src/**/*.test.ts"` failed two pre-existing JSX presentation cases (`React is not defined` in unchanged `CheckoutFrame.tsx`); the canonical workspace command loads the correct TSX configuration and passes all tests. No tests were weakened.
+- Not verified: real acquirer/3DS, tokenization or saved-card ownership flows (not available), physical mobile devices, screen-reader speech, settlement/reporting, or broader merchant/admin auth journeys. See `Evidence/payment_checkout_enhancements.md` for the coverage matrix and manual checks.

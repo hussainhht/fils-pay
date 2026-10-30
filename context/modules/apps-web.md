@@ -8,7 +8,7 @@
 
 `apps/web` is a React 18 single-page application built with Vite providing:
 1. **The Merchant Portal (`/dashboard/*`):** Self-service dashboard for merchants to monitor transactions, issue refunds, create payment links, view settlements, and configure webhooks.
-2. **Hosted Checkout (`/checkout/:token`):** Public-facing cardholder checkout interface for executing single-use payment link payments.
+2. **Hosted Checkout (`/pay/:token`):** Public-facing cardholder checkout interface for executing single-use payment link payments.
 
 ---
 
@@ -30,7 +30,7 @@
     - `payment-links/`: Link creation dialog, active/expired link tables.
     - `settlement/`: Batch list, batch detail, scheme export CSV downloads.
     - `webhooks/`: Webhook endpoint management, delivery log, test ping button.
-    - `checkout/`: Consumer checkout payment form (`/checkout/:token`).
+    - `checkout/`: Consumer checkout payment form (`/pay/:token`).
   - `src/refunds/`: `RefundDrawer` slide-over component.
 
 ---
@@ -50,12 +50,15 @@
 - UI switches to OTP entry $\rightarrow$ calls `POST /v1/auth/otp/verify`.
 - Session token is rotated on promotion (`BUG-016`); UI redirects to `/dashboard`.
 
-### 2. Hosted Checkout Page (`/checkout/:token`)
+### 2. Hosted Checkout Page (`/pay/:token`)
 - Rendered in isolation without the dashboard layout.
 - Calls public `GET /v1/payment-links/:token` for amount and status.
-- Displays expiration countdown and card input form.
+- `CardPaymentForm.tsx` owns numeric input, digit-anchored caret/selection, separator deletion (including mobile input-only events), inline Luhn/length/expiry/CVV validation and masked CVV. Visa, Mastercard (including 2221?2720) and Amex use local licensed SVGs; other numbers receive a generic card indicator.
+- Open active links expire locally while the server remains authoritative. Existing bound attempts can be retried after the link deadline.
+- Checkout is explicitly simulator-only. No provider tokenization/vault or cardholder identity exists; card saving is unavailable and no consent checkbox or saved-card endpoints are exposed.
 - On submit, calls `POST /v1/payment-links/:token/pay`.
-- If the reservation lock expires or is claimed concurrently, displays `409 Conflict` message (`BUG-006`).
+- A synchronous submission guard prevents duplicate requests. Uncertain network/5xx/processing responses freeze the entered values in memory and reuse the exact payload/key; a definitive 402 allows a fresh attempt. Success/terminal states remove the form. Route-token changes remount all state.
+- The current server uses a durable payer/key/request claim; timeout does not allow another payer to reclaim it (older context described an obsolete timeout lock).
 
 ### 3. Financial Display Formatting
 - **Invariant:** Never use `toFixed(2)` on monetary figures.
@@ -68,6 +71,8 @@
 
 - `src/dashboard.test.ts`: Unit tests for formatting and mock data.
 - `src/ui-accessibility.test.ts`: Accessibility checks.
+- `src/pages/checkout/cardInput.test.ts`: network/range, formatting/caret/deletion, Luhn, expiry, CVV and payload tests.
+- `scripts/checkout.browser.test.mjs`: opt-in installed-Chromium UI checks; `--live` adds a simulator payment through localhost API/Postgres using new test fixtures. `--baseline` and `--baseline --retry-only` reproduce the two baseline regressions. See `Evidence/payment_checkout_enhancements.md`.
 - Build verification:
   ```bash
   npm.cmd run build -w @filspay/web

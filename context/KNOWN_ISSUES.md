@@ -113,3 +113,21 @@
 - **BUG-084 (P3):** Recent ledger activity query includes the entire exclusive end date.
 - **BUG-085 (P3):** Merchant dashboard document title displays "Checkout".
 - **BUG-086 (P1):** Credit fee reversal calculates fee using `merchants.mdr_bps` instead of the effective `fee_schedules` row.
+
+
+## Checkout workstream findings ? 2026-10-30
+
+These local finding IDs do not renumber the historical BUG-001?BUG-086 registry.
+
+| Finding | Severity | Current status | Evidence |
+|---|---|---|---|
+| CHECKOUT-01: open active page remained payable in the UI after expiry | P2 | `fix-verified` | Baseline Edge check fails; enhanced checkout removes the form at expiry and checks again immediately before a new attempt. Existing server expiry enforcement is preserved. |
+| CHECKOUT-02: frontend used a fresh key after an uncertain result, preventing resumption of the server's bound attempt | P2 | `fix-verified` | Baseline retry check fails; browser tests prove identical key/payload on 502/500/409/network recovery and a fresh key after definitive decline. |
+
+Feature limitation: the simulator has no tokenization/vault and the application has
+no verified cardholder identity. Saving, retrieval, ownership checks, removal and
+future charging of saved cards cannot be safely implemented with this integration.
+The UI states saving is unavailable. This is a feature blocker, not a claim that
+historical payment/security defects elsewhere have been resolved. Recovery keys
+and card values remain memory-only; a reload loses the ability to resume locally.
+The scoped findings above total `fix-verified`: 2; all other status counts: 0.

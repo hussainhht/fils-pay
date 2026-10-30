@@ -166,3 +166,19 @@ Agents must be aware of conflicting decisions in the codebase:
 2. **ADR 0004 vs Ledger Consistency (Balance Rebuild):** The console balance rebuild queries settled scheme lines instead of the ledger, omitting fees, payouts, and manual credits.
 3. **ADR 0006 vs Double-Entry Accounting:** Balance adjustments were implemented as direct cache writes without ledger postings.
 4. **ADR 0002 (Residue Posting):** Documented as "Implemented" but completely missing from `apps/settlement` code.
+
+
+## Checkout capability boundary ? 2026-10-30
+
+The public cardholder route is `/pay/:token` (not `/checkout/:token`). It is
+outside merchant dashboard authentication. `CardPaymentForm` provides browser
+validation and ephemeral card entry for the existing in-process simulator;
+issuer authorization, durable payment claims and financial writes remain server-side.
+An uncertain response retains one key and immutable input values in page memory.
+Only a definitive 402 allows a new attempt. No PAN/CVV or payment key is added
+to browser storage. A reload cannot resume this in-memory attempt.
+
+No provider vault/tokenization, hosted-field integration or authenticated customer
+ownership model exists. Saving/retrieving/removing cards remains unavailable.
+Merchant or admin identity must never be substituted for cardholder identity.
+No API/schema, financial module, settlement behavior or accepted ADR changed.

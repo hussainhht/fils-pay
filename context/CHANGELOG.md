@@ -84,3 +84,13 @@ When completing any coding task:
    - **Summary:** <Brief summary of what changed in the codebase and context>
    ```
 4. If no context files required modification, explicitly record that conclusion in your task completion report.
+
+
+## 2026-10-30 ? Payment checkout enhancements
+
+- Baseline HEAD: `1c3f99e0c5478e1ff616898cdfc1cd6f5283172d`.
+- Replaced the basic card input area with `CardPaymentForm`, numeric caret-aware formatting, network/CVV hints, Luhn and expiration validation, local licensed SVG logos, masked CVV and accessible errors. Retained the existing checkout states and public API.
+- Corrected open-link expiry and same-key recovery of uncertain attempts, with synchronous submission guards. Green responsive layout uses existing design tokens.
+- No raw-card saving or decorative consent checkbox: provider tokenization and verified customer ownership do not exist. No new dependencies, API/schema changes, protected-module changes or settlement changes.
+- Added unit tests, installed-Chromium browser checks, screenshots and `Evidence/payment_checkout_enhancements.md`. Baseline expiry/retry tests fail; enhanced browser checks and local simulator/API/Postgres capture plus balanced ledger pass.
+- Updated `FRONTEND`, `PAYMENT_FLOWS`, `modules/apps-web`, `ARCHITECTURE`, `TESTING` and `KNOWN_ISSUES`. Corrected checkout route documentation to `/pay/:token` and replaced obsolete timeout-reclaim descriptions with current durable binding. Reviewed `DEPENDENCY_MAP`: no dependency changes needed.

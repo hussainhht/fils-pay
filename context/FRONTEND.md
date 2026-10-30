@@ -10,7 +10,7 @@ FilsPay provides two independent single-page React applications built with Vite:
 
 | Application | Role | Base Port | Key Routes | Upstream Proxy Target |
 |---|---|---|---|---|
-| `apps/web` | Merchant Portal & Hosted Checkout | 5173 | `/dashboard/*`, `/checkout/:token` | `http://127.0.0.1:3000/v1` |
+| `apps/web` | Merchant Portal & Hosted Checkout | 5173 | `/dashboard/*`, `/pay/:token` | `http://127.0.0.1:3000/v1` |
 | `apps/admin` | Operations & Admin Console | 5174 | `/login`, `/merchants`, `/credits`, `/settlement` | `http://127.0.0.1:3000/v1/admin` |
 
 ### Dev Proxy Configuration (`ops/preview.mjs`)
@@ -34,7 +34,7 @@ apps/web/src/
 │   ├── payment-links/      # Link creation dialog, active/expired link tables
 │   ├── settlement/         # Daily batch list, settlement breakdown, CSV download
 │   ├── webhooks/           # Endpoint registration, secret display, delivery logs, test ping
-│   └── checkout/           # Public customer checkout form (/checkout/:token)
+│   └── checkout/           # Public customer checkout form (/pay/:token)
 ├── refunds/         # RefundDrawer component (FP-212)
 └── router.tsx       # React Router 6 route definitions
 ```
@@ -44,11 +44,14 @@ apps/web/src/
    - Navigating to `/dashboard` redirects to `/dashboard/login` if unauthenticated.
    - Screen 1: Email + Password. Upon success, stores pending state and displays OTP challenge.
    - Screen 2: 6-digit OTP code entry. Upon verification, session cookie `fp_sid` is marked active and user is routed to `/dashboard`.
-2. **Hosted Checkout (`/checkout/:token`):**
+2. **Hosted Checkout (`/pay/:token`):**
    - Independent of merchant dashboard shell; displays cardholder payment interface.
    - Queries `GET /v1/payment-links/:token` for amount and status.
    - Submits payment to `POST /v1/payment-links/:token/pay`.
-   - Handles reservation timeout countdown and displays terminal success/failure state.
+   - Uses `CardPaymentForm` for numeric card entry, local network SVGs, network grouping/CVV length, Luhn/expiration validation, accessible errors and autofill.
+   - Open links stop admitting new attempts at expiry. Unknown payment outcomes retry under the same key with locked inputs; definitive declines allow a fresh attempt.
+   - Card saving is unavailable: the simulator has neither tokenization nor a customer identity/ownership model. Do not connect merchant login to cardholder ownership.
+   - Green design tokens, responsive two-column expiry/CVV layout, masked security code, loading/error/success states. Desktop and 390/320px Chromium screenshots are in `Evidence/implementation/checkout-*.png`.
 3. **Refund Drawer:**
    - Slide-over panel on transaction detail view allowing merchant owners and finance users to issue full or partial refunds.
    - Validates that refund amount does not exceed captured headroom.

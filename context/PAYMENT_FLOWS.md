@@ -110,24 +110,17 @@ The transaction lifecycle enforces strict, irreversible state transitions:
 
 ## 5. Hosted Payment Links & Checkout (`apps/api/src/paymentLinks/`)
 
-- **Link Creation:** `POST /v1/merchants/:merchantId/payment-links` generates a secure random 128-bit hex token (`crypto.randomBytes(16).toString("hex")`, resolving `BUG-029`).
+- **Link Creation:** `POST /v1/merchants/:merchantId/payment-links` generates `plink_` followed by 22 cryptographically random URL-safe characters (`randomFromAlphabet`, current `create.ts`).
 - **Public Checkout Page (`apps/web`):**
-  - Customer navigates to `/checkout/:token`.
+  - Customer navigates to `/pay/:token`.
   - Browser fetches link details via public `GET /v1/payment-links/:token`. Returns amount, merchant name, and expiry. Never returns API keys or internal hashes (`BUG-022`).
 - **Payment Submission:**
   - Customer submits card details to `POST /v1/payment-links/:token/pay`.
-  - **Atomic Reservation Lock (`BUG-006`):**
-    ```sql
-    UPDATE payment_links
-       SET status = 'reserved',
-           reserved_until = now() + INTERVAL '60 seconds'
-     WHERE token = $1
-       AND (status = 'active' OR (status = 'reserved' AND reserved_until < now()))
-    RETURNING id;
-    ```
-    If 0 rows are updated, the checkout terminates immediately with `409 Conflict`, preventing concurrent double-charges.
-  - Gateway authorizes and captures payment against the acquirer.
-  - Updates link to `status = 'paid'`, links `transaction_id`, and closes the reservation.
+  - **Durable payer binding (current source, 2026-10-30):** `pay.ts` commits a claim containing `reservation_id`, `payment_key_hash`, and `payment_request_hash`. Only an active, unexpired link can admit a new attempt; a reserved link only resumes under the identical key and request. Timeout does not admit a new payer.
+  - Authorization/capture reuse persisted operation identities. A definitive authorization decline releases the owned reservation; ambiguous outcomes stay bound. Capture declines release it only after local void succeeds.
+  - Finalization requires the same bound key/request and sets `paid` with `transaction_id`. Server time controls new-attempt expiry; `submittedAt` is ignored.
+  - Checkout keeps the current key and card values only in page memory for uncertain-response recovery. It disables editing and uses identical requests for retry, then removes the form on success/terminal status. A definitive 402 starts a fresh attempt if retried. Reloads do not retain sensitive fields or the attempt key.
+  - The acquirer remains an in-process simulator with no hosted fields, tokenization, vault, or cardholder identity. Card saving/reuse is unavailable. Production card collection requires a separate provider integration and security review.
 
 ---
 

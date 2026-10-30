@@ -1,6 +1,6 @@
 # FilsPay features
 
-Product work that was started and never shipped. Defects live in [bugs/Readme.md](../bugs/Readme.md). This file does not list them.
+Product features, their current status, and what remains unavailable. Defects live in [bugs/Readme.md](../bugs/Readme.md). This file does not list them.
 
 ---
 
@@ -67,3 +67,91 @@ The transaction timeline records `refund_partial` or `refunded`. Reporting adds 
 | Reconciliation | `apps/api/src/settlement/query.ts` |
 | Summary view | `db/migrations/0084_refund_merchant_summary_once.sql` |
 | Flag | `FEATURE_REFUNDS` on the API service in `ops/docker-compose.yml` |
+
+---
+
+## FEAT-002 — Payment checkout enhancements
+
+**Was:** A basic simulated-card form with a text brand hint, separate month/year fields, and limited client validation.
+
+**Now:** Implemented for the existing simulated acquirer. Card entry, validation, responsive presentation, link expiry and payment retries are improved. Saved cards remain unavailable because the integration has no tokenization or vault and the application has no verified cardholder identity.
+
+### What the payer does
+
+1. Opens `/pay/:token`. The page reads the merchant name, amount, reference, description and link status from `GET /v1/payment-links/:token`.
+2. Enters a test card number, expiration date and security code. The page formats the input and explains invalid fields inline.
+3. Selects **Pay**. The checkout sends the existing card shape to `POST /v1/payment-links/:token/pay` with an `Idempotency-Key`. Spaces are removed from the number before submission.
+4. Sees processing, decline, recovery or success feedback. A success shows the transaction id and payment time and removes the card form.
+
+The checkout is public and stays outside merchant dashboard authentication. It is explicitly marked as a test checkout: use sandbox card details only; the simulator makes no real charges. Amounts still use the existing integer-fils formatting.
+
+### Card brands and number entry
+
+- Visa is recognized from prefix `4`.
+- Mastercard is recognized from `51` through `55`, and the inclusive `2221` through `2720` range, including 2-series cards.
+- American Express is recognized from `34` or `37`.
+- Local SVG logos appear inside the number input and update as the payer types. An empty field shows all three logos. An unrecognized number gets a generic card icon and a message that acceptance is determined by the processor.
+- Visa and Mastercard numbers are grouped in blocks of four. Amex uses `4-6-5` grouping for its 15 digits. Longer Visa numbers continue in four-digit groups, with a shorter final group where needed.
+- Typing and pasting accept formatted or unformatted numbers and remove nonnumeric characters. Cursor and selection positions follow the digits when editing in the middle. Backspace/delete across generated spaces or the expiration slash removes the adjacent digit; mobile input-only deletion events are handled too.
+- Overlong numbers stay visible and fail validation. They are not silently shortened into another card number.
+
+Brand detection is a display hint. It does not authorize a transaction or promise that a live processor accepts a network. The current processor is a simulator.
+
+### Validation, expiration and security code
+
+Card numbers must pass Luhn and the detected network's length check: Visa accepts 13, 16, 18 or 19 digits; Mastercard 16; Amex 15. Unrecognized networks use a generic 12-to-19-digit Luhn check. Empty, incomplete, all-zero and invalid-checksum numbers are rejected by the form.
+
+Expiration is formatted as `MM/YY`. Pasting or autofilling `MM/YYYY` is also supported. The month must be `01` through `12`; dates before the current month are rejected. A card expiring this month remains valid through the end of the month.
+
+The security code is masked and must contain exactly four digits for Amex or three for the other detected/generic card types. The hint points to the front of an Amex card or the back of other cards. These enhancements add no card/CVV persistence or logging.
+
+Errors appear next to the relevant field and are linked to its accessible label. Submitting an invalid new attempt focuses the first invalid field and sends no payment request. An existing uncertain attempt resends its unchanged details for server-side recovery rather than starting a new authorization.
+
+### Submitting and retrying
+
+The button is disabled while submitting, and synchronous guards prevent two submissions in the same turn from creating two requests. Inputs cannot be edited during submission.
+
+After an uncertain network failure, server error or processing response, the page keeps the same key and exact card values in memory, locks the inputs and offers **Check payment / retry**. A definitive `402` decline allows editing and a fresh key for the next attempt. The server's existing authorization, reservation, ownership and financial checks remain authoritative.
+
+An open active link stops admitting new attempts at its expiry, and submission checks the deadline again. New visits to paid, expired, canceled or already-processing links do not show a payment form. An attempt already bound by the server may resume under the same key after the deadline; this is recovery of that attempt, not a new payment.
+
+Card values and the recovery key are kept only in page memory. Success or a terminal state removes the form, and changing the link token resets checkout state. Refreshing or closing the page loses local recovery; the server may continue to report processing. No browser storage was added to work around that limit.
+
+### Saved cards
+
+**Unavailable, not implemented.** The page says **Card saving is unavailable for this checkout.** There is no decorative consent checkbox or simulated saving presented as real.
+
+The acquirer exposes authorization, capture and refund only. It has no hosted fields, tokenization or card vault. Merchant staff and admin sessions do not establish ownership of a payer's card. No saved-card list, selection, save or delete operation, payment-method reference storage or future-charge flow was added. Raw PAN/CVV storage is not a substitute for a provider vault.
+
+Supporting saved cards needs provider tokenization/vault support, a verified cardholder identity, explicit consent, server-side ownership checks for retrieval and deletion, and the necessary authorization/customer authentication for future charges. Only provider references and safe display metadata should be stored. Saving must never grant permission for arbitrary future payments.
+
+### Presentation and accessibility
+
+The page keeps the existing checkout workflow and uses FilsPay's green design tokens, neutral surfaces, rounded inputs and subtle shadows. Expiration and security code share a responsive two-column row. Inputs and the payment button have clear focus, error, readonly and loading states; success uses the existing checkout frame's result decoration.
+
+Fields have screen-reader labels and error descriptions, numeric keyboard hints and card autofill attributes. Keyboard order follows card number, expiration, security code and payment. Detected-network text is announced through a polite live region.
+
+### Verification
+
+The [checkout implementation report](../payment_checkout_enhancements.md) records 50 passing web tests, the passing workspace typecheck and web build, existing payment-link/acquirer tests, and 15 browser verification groups. A separate local browser → API → simulator → PostgreSQL checkout reached captured status with a balanced ledger. Baseline expiry and retry-key regression checks failed before the fixes and passed afterward.
+
+Browser checks cover network indicators, paste/formatting/deletion, expiry and CVV errors, double submission, decline and uncertain-outcome retries, keyboard navigation and 1280px/390px/320px layouts. [Desktop](../implementation/checkout-desktop.png), [mobile](../implementation/checkout-mobile.png) and [small-mobile](../implementation/checkout-small-mobile.png) screenshots are available.
+
+Saved-card consent/tokenization, retrieval/ownership, removal and future charges were not tested because those capabilities do not exist. Live-provider processing, 3DS, physical mobile devices and screen-reader speech remain unverified. This entry summarizes the recorded implementation verification; the documentation-only update did not rerun tests or change application behavior.
+
+### Where it lives
+
+| Piece | Path |
+|---|---|
+| Checkout workflow, expiry and retry key | `apps/web/src/pages/checkout/CheckoutPage.tsx` |
+| Card form, inline errors and input behavior | `apps/web/src/pages/checkout/CardPaymentForm.tsx` |
+| Formatting, caret/deletion helpers and validation | `apps/web/src/pages/checkout/cardInput.ts` |
+| Existing network-range helper | `apps/web/src/utils/helpers.ts` |
+| Brand rendering and licensed SVG assets | `apps/web/src/pages/checkout/CardBrand.tsx`, `apps/web/src/pages/checkout/card-brands/` |
+| Checkout frame and styling | `apps/web/src/pages/checkout/CheckoutFrame.tsx`, `apps/web/src/pages/checkout/CheckoutPage.css` |
+| Existing checkout API client | `apps/web/src/api/paymentLinks.ts` |
+| Existing public routes and payment claim | `apps/api/src/routes/paymentLinks.ts`, `apps/api/src/paymentLinks/pay.ts` |
+| Simulator capabilities | `apps/api/src/acquirer/types.ts`, `apps/api/src/acquirer/simulator.ts` |
+| Card-input tests | `apps/web/src/pages/checkout/cardInput.test.ts` |
+| Browser checks and optional local simulator payment | `apps/web/scripts/checkout.browser.test.mjs` |
+| Detailed evidence and limitations | `Evidence/payment_checkout_enhancements.md` |
