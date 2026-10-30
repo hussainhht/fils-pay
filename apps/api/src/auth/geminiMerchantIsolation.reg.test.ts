@@ -243,6 +243,11 @@ test("BUG-004: impersonation session cannot execute capture, void, refund or cre
 
   const impCookie = `${config.impersonationCookieName}=${grantToken}`;
 
+  const saveFilter = await app.inject({ method: "POST", url: "/v1/reporting/saved-filters", headers: { cookie: impCookie }, payload: { name: "denied", filter: {} } });
+  assert.equal(saveFilter.statusCode, 403, saveFilter.body);
+  const readFilters = await app.inject({ method: "GET", url: "/v1/reporting/saved-filters", headers: { cookie: impCookie } });
+  assert.equal(readFilters.statusCode, 200, readFilters.body);
+
   // 1. Authorize a transaction normally using merchant API key
   const authRes = await app.inject({
     method: "POST",

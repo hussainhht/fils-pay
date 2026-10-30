@@ -1,0 +1,34 @@
+---
+description: FilsPay project rules — payments, ledger, auth, API, settlement, web/admin. Defers to AGENTS.md.
+globs:
+  - "apps/**"
+  - "packages/**"
+  - "db/**"
+  - "scripts/**"
+  - "ops/**"
+alwaysApply: true
+---
+
+# FilsPay (Cursor)
+
+The shared authority is `AGENTS.md` at the repo root. Read and follow it for architecture, commands, verification, severity, Git safety, and Definition of Done. This rule only adds Cursor-specific editing behavior; `AGENTS.md` wins on any conflict.
+
+## Editing behavior
+
+- Make targeted, minimal edits. No unrelated refactors, renames, reformatting, or dependency changes.
+- Fix only defects confirmed against current code. Do not make speculative fixes from old bug reports or comments.
+- Before editing, check `git status`: do not overwrite files with uncommitted changes from other agents or the user; do not revert them.
+- Every bug fix needs a regression test (colocated `*.test.ts`) that fails before and passes after. Never skip, delete, or weaken tests.
+- Do not run Agent/Composer edits across many files at once; keep each change set to one workstream.
+
+## Protected areas — stop and ask first
+
+- `packages/money/` (protected), `db/migrations/*` (never edit existing; no schema changes without approval), `apps/api/src/v1/` (partner contract).
+- Authentication, OTP, sessions, authorization/tenant scoping, admin roles, payment capture/void/refund, ledger, settlement, fee calculation, webhook signing.
+- Never bypass auth or payment validation for demos; never expose secrets or payment-sensitive data; money is integer fils, never floats.
+
+## Commands and safety
+
+- Use only commands listed in `AGENTS.md` §3. Do not run `npm run seed`, truncating SQL, or destructive git/shell commands without explicit permission.
+- Do not commit, merge, push, or switch branches unless asked. Report tests you could not run (e.g. no Postgres) as not run.
+- Do not read `Evidence/old-agints-instration/` (owner directive).

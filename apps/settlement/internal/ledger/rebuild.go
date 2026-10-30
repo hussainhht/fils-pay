@@ -1,15 +1,15 @@
 // Package ledger rebuilds merchant_balances from ledger_entries. Nothing
 // automatic calls this — the incremental path is in internal/balances.
-// This is for the manual `rebuild-balances` CLI subcommand.
+// It backs both the manual `rebuild-balances` CLI subcommand and the admin
+// console's "Rebuild cached balances" action (POST /internal/rebuild-balances),
+// so the two can never disagree about the source.
 package ledger
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/filspay/settlement/internal/money"
@@ -86,16 +86,28 @@ func RebuildAllBalances(ctx context.Context, db *pgxpool.Pool) (map[uuid.UUID]Re
 	}
 	rows.Close()
 
-	// TODO: lock merchant_balances rows first, a concurrent CloseBatch increment gets clobbered -- YA
 	diffs := make(map[uuid.UUID]RebuildDiff, len(merchantIDs))
 
 	for _, merchantID := range merchantIDs {
+		// Lock the merchant's cache row before reading the ledger. The
+		// incremental writers (ApplyBatchClose / ApplyPayout) take the same
+		// row lock, so a concurrent batch close either commits first (its
+		// ledger legs are visible to the recompute below, a fresh READ
+		// COMMITTED statement) or waits and applies its delta on top of the
+		// rebuilt value. Either way no increment is clobbered or doubled.
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO merchant_balances (merchant_id, cached_payable_fils, updated_at)
+			VALUES ($1, 0, now())
+			ON CONFLICT (merchant_id) DO NOTHING
+		`, merchantID); err != nil {
+			return nil, fmt.Errorf("ledger: RebuildAllBalances: ensure cache row for %s: %w", merchantID, err)
+		}
 		var cachedBefore int64
 		err := tx.QueryRow(ctx, `
-			SELECT COALESCE(cached_payable_fils, 0) FROM merchant_balances WHERE merchant_id = $1
+			SELECT cached_payable_fils FROM merchant_balances WHERE merchant_id = $1 FOR UPDATE
 		`, merchantID).Scan(&cachedBefore)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("ledger: RebuildAllBalances: read cached balance for %s: %w", merchantID, err)
+		if err != nil {
+			return nil, fmt.Errorf("ledger: RebuildAllBalances: lock cached balance for %s: %w", merchantID, err)
 		}
 
 		var rebuilt int64

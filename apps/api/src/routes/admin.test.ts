@@ -1641,3 +1641,16 @@ test("an mdr recalculation whose audit row cannot be written never makes the cal
     "an unloggable action must be BLOCKED, not merely unlogged",
   );
 });
+
+test("bulk KYC skips unreviewed merchants and records the reviewer", async () => {
+  const finance = await signedInAdmin("finance", "bulk-review-proof");
+  const reviewed = await createMerchant("reviewed-proof");
+  const pending = await createMerchant("pending-proof");
+  await pool.query(`UPDATE merchants SET onboarding_status = 'under_review' WHERE id = $1`, [reviewed.merchantId]);
+  const res = await app.inject({ method: "POST", url: "/v1/admin/merchants/bulk-approve", headers: { cookie: finance.cookie }, payload: { merchantIds: [reviewed.merchantId, pending.merchantId] } });
+  assert.equal(res.statusCode, 200, res.body);
+  assert.deepEqual(res.json().approvedMerchantIds, [reviewed.merchantId]);
+  const reviews = await pool.query(`SELECT merchant_id, reviewer_admin_user_id FROM merchant_kyc_reviews WHERE merchant_id = ANY($1::uuid[])`, [[reviewed.merchantId, pending.merchantId]]);
+  assert.equal(reviews.rowCount, 1);
+  assert.equal(reviews.rows[0].reviewer_admin_user_id, finance.id);
+});

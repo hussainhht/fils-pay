@@ -405,3 +405,12 @@ test("GET /v1/admin/credits filters by status", async () => {
     );
   }
 });
+
+test("support cannot create a credit", async () => {
+  const support = await signedInAdmin("support", "credit-create-denied");
+  const merchantId = await createMerchant("credit-create-denied");
+  const res = await app.inject({ method: "POST", url: `/v1/admin/merchants/${merchantId}/credits`, headers: { cookie: support.cookie }, payload: { baseAmountFils: 1000, reasonCode: "goodwill", effectiveDate: todayIso() } });
+  assert.equal(res.statusCode, 403, res.body);
+  const rows = await pool.query(`SELECT id FROM credit_requests WHERE merchant_id = $1`, [merchantId]);
+  assert.equal(rows.rowCount, 0);
+});

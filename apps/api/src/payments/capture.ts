@@ -91,7 +91,7 @@ export async function captureTransaction(
   acquirer: AcquirerSimulator,
   input: CaptureInput,
 ): Promise<CaptureResult> {
-  const requestHash = hashRequest({ amountFils: input.amountFils ?? null });
+  const requestHash = hashRequest({ transactionId: input.transactionId, amountFils: input.amountFils ?? null });
 
   return withTransaction(pool, async (client) => {
     const claim = await claimIdempotencyKey(client, {
@@ -136,6 +136,17 @@ export async function captureTransaction(
     // acquirer.
     if (txn.status !== "authorized" && txn.status !== "partially_captured") {
       const body = { error: "not_capturable", status: txn.status };
+      await completeIdempotencyKey(client, claim.row.id, { statusCode: 409, body });
+      return { statusCode: 409, body };
+    }
+
+    // Serialize with hold updates and use database time, not an application clock.
+    const hold = await client.query(
+      `SELECT id FROM holds WHERE transaction_id = $1 AND status = 'active' AND expires_at > now() FOR UPDATE`,
+      [txn.id],
+    );
+    if (!hold.rows[0]) {
+      const body = { error: "authorization_hold_expired" };
       await completeIdempotencyKey(client, claim.row.id, { statusCode: 409, body });
       return { statusCode: 409, body };
     }

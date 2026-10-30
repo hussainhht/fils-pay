@@ -215,8 +215,35 @@ test("capture with a reused idempotency key and identical body replays without a
   assert.ok(Number(countAfterFirst.rows[0]!.c) > 0);
 });
 
-// FH: should also cover same key + same body on a DIFFERENT transaction -> 422 (API.md). Claude says
-// that case can't happen because keys are per transaction
+test("capture key cannot replay a different transaction", async () => {
+  const { rawKey } = await createApprovedMerchantWithApiKey("capture-target");
+  const firstTxn = await authorize(rawKey, 8000);
+  const secondTxn = await authorize(rawKey, 8000);
+  const key = randomUUID();
+  assert.equal((await capture(rawKey, firstTxn.id, {}, key)).statusCode, 200);
+  const second = await capture(rawKey, secondTxn.id, {}, key);
+  assert.equal(second.statusCode, 422);
+  assert.equal(second.json().error, "idempotency_key_reused");
+  const row = await pool.query("SELECT captured_fils FROM transactions WHERE id = $1", [secondTxn.id]);
+  assert.equal(Number(row.rows[0].captured_fils), 0);
+});
+
+test("capture rejects expired or missing authorization holds", async () => {
+  const { rawKey } = await createApprovedMerchantWithApiKey("capture-expired-hold");
+  for (const missing of [false, true]) {
+    const txn = await authorize(rawKey, 8000);
+    if (missing) await pool.query("DELETE FROM holds WHERE transaction_id = $1", [txn.id]);
+    else await pool.query("UPDATE holds SET expires_at = now() - interval '1 minute' WHERE transaction_id = $1", [txn.id]);
+    const result = await capture(rawKey, txn.id);
+    assert.equal(result.statusCode, 409, result.body);
+    assert.equal(result.json().error, "authorization_hold_expired");
+    const row = await pool.query("SELECT captured_fils FROM transactions WHERE id = $1", [txn.id]);
+    assert.equal(Number(row.rows[0].captured_fils), 0);
+    const ledger = await pool.query("SELECT count(*)::int AS n FROM ledger_entries WHERE transaction_id = $1", [txn.id]);
+    assert.equal(ledger.rows[0].n, 0);
+  }
+});
+
 test("capture with a reused idempotency key but a different body is rejected as a conflict", async () => {
   const { rawKey } = await createApprovedMerchantWithApiKey("idempotent-conflict");
   const txn = await authorize(rawKey, 8_000);

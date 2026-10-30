@@ -86,6 +86,9 @@ export const requireMerchantAuth: preHandlerHookHandler = async (request: Fastif
   if (impersonationToken) {
     const grant = await lookupImpersonationGrant(request.server.db, impersonationToken);
     if (grant) {
+      if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+        throw new ForbiddenError("impersonation_read_only");
+      }
       request.merchantAuth = {
         merchantId: grant.merchantId,
         actorType: "admin_impersonation",

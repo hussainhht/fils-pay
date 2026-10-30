@@ -35,6 +35,9 @@ export async function rotateApiKeyAsAdmin(
       rotatedFromKeyId: input.apiKeyId,
     });
 
+    await client.query(`UPDATE api_keys SET revoked_at = now() WHERE id = $1 AND merchant_id = $2`,
+      [input.apiKeyId, input.merchantId]);
+
     await insertAdminAuditLog(client, {
       adminUserId: input.adminUserId,
       action: "api_key_rotate",

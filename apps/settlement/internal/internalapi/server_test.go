@@ -235,7 +235,9 @@ func TestRunBatch_MerchantScopedOnlyAffectsThatMerchant(t *testing.T) {
 	}
 }
 
-// FH: 12000 = export total = what support sees in the console, so the test is right
+// FP-203: the endpoint must return the same ledger-derived figure as the
+// `settlement rebuild-balances` CLI (ledger.RebuildAllBalances), never the
+// lifetime scheme-export gross.
 func TestRebuildBalances_ValidToken(t *testing.T) {
 	pool := mustPool(t)
 	server := newTestServer(t, pool)
@@ -254,8 +256,19 @@ func TestRebuildBalances_ValidToken(t *testing.T) {
 		t.Fatalf("seed drifted cache: %v", err)
 	}
 
-	// The rebuild endpoint's source of record is a closed batch's own
-	// scheme-export line, independent of the ledger legs inserted above.
+	// A payout already left the platform: debit merchant_payable 5000. The
+	// scheme-export line below is the lifetime gross (12000) and must NOT be
+	// what the rebuild reads; the ledger says 12000 - 5000 = 7000.
+	_, err = pool.Exec(context.Background(), `
+		INSERT INTO ledger_entries (entry_group_id, merchant_id, account_id, direction, amount_fils, occurred_at, description)
+		VALUES
+		  ($1, $2, 'merchant_payable', 'debit',  5000, now(), 'payout'),
+		  ($1, $2, 'platform_cash',    'credit', 5000, now(), 'payout')
+	`, uuid.New(), merchantID)
+	if err != nil {
+		t.Fatalf("seed payout legs: %v", err)
+	}
+
 	var batchID uuid.UUID
 	err = pool.QueryRow(context.Background(), `
 		INSERT INTO settlement_batches (merchant_id, batch_date, status, gross_fils, fee_fils, net_payout_fils, closed_at)
@@ -291,8 +304,8 @@ func TestRebuildBalances_ValidToken(t *testing.T) {
 	if diff.Before != 999999 {
 		t.Errorf("before = %d, want 999999 (the drifted cached value)", diff.Before)
 	}
-	if diff.After != 12000 {
-		t.Errorf("after = %d, want 12000 (the scheme-export-derived total)", diff.After)
+	if diff.After != 7000 {
+		t.Errorf("after = %d, want 7000 (ledger: 12000 credit - 5000 payout; not the 12000 scheme gross)", diff.After)
 	}
 	if !diff.Changed {
 		t.Error("changed = false, want true")
@@ -303,8 +316,8 @@ func TestRebuildBalances_ValidToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query persisted balance: %v", err)
 	}
-	if persisted != 12000 {
-		t.Errorf("persisted cached_payable_fils = %d, want 12000", persisted)
+	if persisted != 7000 {
+		t.Errorf("persisted cached_payable_fils = %d, want 7000", persisted)
 	}
 }
 

@@ -1,10 +1,12 @@
 import type { Pool } from "pg";
+import { recordKycReviewInTx } from "../onboarding/review.js";
 import { insertAdminAuditLog } from "../adminAudit/log.js";
 import { withTransaction } from "../db/withTransaction.js";
 
 export interface BulkApproveMerchantsKycInput {
   merchantIds: string[];
   adminUserId: string;
+  reviewerIdentifier: string;
   notes?: string;
 }
 
@@ -24,13 +26,16 @@ export async function bulkApproveMerchantsKyc(
 ): Promise<BulkApproveMerchantsKycResult> {
   return withTransaction(pool, async (client) => {
     const result = await client.query<{ id: string }>(
-      `UPDATE merchants
-          SET onboarding_status = 'approved', kyc_passed = true
-        WHERE id = ANY($1::uuid[])
-      RETURNING id`,
+      `SELECT id FROM merchants WHERE id = ANY($1::uuid[]) AND onboarding_status = 'under_review' FOR UPDATE`,
       [input.merchantIds],
     );
     const approvedMerchantIds = result.rows.map((row) => row.id);
+    for (const merchantId of approvedMerchantIds) {
+      await recordKycReviewInTx(client, {
+        merchantId, outcome: "approved", reviewerIdentifier: input.reviewerIdentifier,
+        reviewerAdminUserId: input.adminUserId, notes: input.notes,
+      });
+    }
 
     await insertAdminAuditLog(client, {
       adminUserId: input.adminUserId,

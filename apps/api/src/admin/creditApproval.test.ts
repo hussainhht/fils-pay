@@ -26,3 +26,14 @@ test("two different operators satisfy two-person control", () => {
     ),
   );
 });
+
+test("approval compares stable user IDs, not display names", () => {
+  assert.throws(() => assertDistinctApprover(
+    { adminUserId: "same", displayName: "Old name" },
+    { adminUserId: "same", displayName: "New name" },
+  ));
+  assert.doesNotThrow(() => assertDistinctApprover(
+    { adminUserId: "one", displayName: "Same name" },
+    { adminUserId: "two", displayName: "Same name" },
+  ));
+});

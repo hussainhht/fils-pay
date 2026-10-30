@@ -45,6 +45,7 @@ export async function adminMerchantsBulkRoutes(app: FastifyInstance): Promise<vo
       const result = await bulkApproveMerchantsKyc(app.db, {
         merchantIds,
         adminUserId: adminAuth.adminUserId,
+        reviewerIdentifier: adminAuth.email,
         notes,
       });
 
