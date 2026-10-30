@@ -2,6 +2,14 @@
 
 > **Scope:** Test suites, test runners, execution environments, database prerequisites, regression standards, and command references.
 
+## Custom payment-link expiration picker — 2026-10-30
+
+- `npm.cmd run test -w @filspay/web`: 72 passed; nine expiration cases cover presets, exact UTC payloads, malformed/past inputs, inclusive bounds, minute limits, form age, Bahrain midnight, leap dates and host DST/timezone differences.
+- `node --import tsx --test apps/api/src/paymentLinks/{expiration,create,pay,status}.test.ts` (expand filenames in PowerShell): 17 passed, database-free. No backend source changed.
+- `node apps/web/scripts/paymentLinkAmount.browser.test.mjs --check-layout-first --screenshots`: 15 installed-Edge groups passed using intercepted API requests. Covers all presets, custom ISO payloads, exact limits, invalid/stale values, inline server errors, keyboard radio navigation and geometry at 1440/768/390/320px. Four desktop/mobile valid/error screenshots are retained in `Evidence/implementation/link-expiration-*.png`.
+- Original HEAD UI copies fail `--baseline` on the missing calendar input and `--baseline --check-layout-first` on overlapping helper text. Temporary original files are removed by the harness. Full typecheck and merchant production build pass. Sandbox tsx user lookup, Vite parent-directory resolution and Edge lifecycle needed approved execution outside the sandbox.
+- Existing API health/readiness returned 200; web/admin auth proxies returned expected 401. A real read-only PostgreSQL 16.15 query passed; an existing expired link still returned `expired` with its unchanged stored deadline. No database write, migration, seed or payment attempt was performed. DB-backed route/creation/payment suites and physical devices/other browser engines were not run; no disposable integration database was configured. See `Evidence/implementation/agent-1-link-expiration-picker.md`.
+
 ---
 
 ## BUG-033 retirement verification (2026-10-30)

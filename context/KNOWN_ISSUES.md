@@ -2,6 +2,15 @@
 
 > **Scope:** Consolidated tracking registry of all 86 documented bugs (`BUG-001` through `BUG-086`), current remediation status, priority ratings, root causes, and verification state.
 
+## Custom payment-link expiration picker — 2026-10-30
+
+| Finding | Severity | Status | Before/after proof |
+|---|---|---|---|
+| EXPIRY-UI-01: Custom Duration cannot select an exact deadline | P2 | `fix-verified` | HEAD browser baseline has no calendar input; updated native date/time controls send exact UTC `expiresAt`, retain the selected instant as the form ages and enforce inclusive 15-minute/120-day bounds. |
+| EXPIRY-UI-02: expiration helper text overlaps neighboring elements | P3 | `fix-verified` | Baseline browser geometry assertion fails because adjacent `.dash-hint` paragraphs have negative margins. Scoped flex/grid gaps and margin-free paragraphs pass at 1440/768/390/320px, including inline errors. |
+
+Scoped status counts: before `confirmed-current` 2; after `fix-verified` 2; all other statuses 0. Historical registry counts are not reassessed. No confirmed-current P0–P2 remains in this UI workstream. Full authenticated database creation/payment integration and physical-device/other-browser acceptance were not run. Read-only PostgreSQL 16.15 and an existing expired link's public status/persisted deadline were checked. See `Evidence/implementation/agent-1-link-expiration-picker.md` for commands and screenshots.
+
 ---
 
 ## 1. Registry Status Summary (Baseline HEAD `e4cb706`)

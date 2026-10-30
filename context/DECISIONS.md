@@ -75,7 +75,7 @@ Per `AGENTS.md` and repository guidelines:
 
 ## Payment-link creation expiration — 2026-10-30
 
-FEAT-003 adds a duration option to the existing merchant creation endpoint, keeping absolute `expiresAt` requests and response/storage shapes. Exactly one expiration input is allowed. Integer seconds in inclusive 900..10368000 are resolved using one server-time reference; absolute instants must lie in the same window. This deliberately tightens new creation validation, without latency allowances, clamping, client-clock trust or retroactive link changes. The dashboard sends duration and labels its Asia/Bahrain preview an estimate. A day means 24 elapsed hours. No dependencies, schema, frozen partner contract or accepted ADR decisions change; ADR 0003/0004/0006 and HANDOVER financial conflicts remain human questions.
+FEAT-003 adds a duration option to the existing merchant creation endpoint, keeping absolute `expiresAt` requests and response/storage shapes. Exactly one expiration input is allowed. Integer seconds in inclusive 900..10368000 are resolved using one server-time reference; absolute instants must lie in the same window. This deliberately tightens new creation validation, without latency allowances, clamping, client-clock trust or retroactive link changes. Dashboard presets send duration and label their Bahrain preview an estimate; the custom date/time refinement below uses the existing absolute input. A day means 24 elapsed hours. No dependencies, schema, frozen partner contract or accepted ADR decisions change; ADR 0003/0004/0006 and HANDOVER financial conflicts remain human questions.
 
 ## PMA-01 implementation choice (2026-10-30; no accepted ADR changed)
 
@@ -92,3 +92,7 @@ commands with a loopback `filspay_test[_suffix]` configuration preflight.
 This changes developer test entrypoints only; no runtime, financial policy or
 accepted ADR decision changes. Direct test-file commands bypass the preflight.
 ADRs 0003/0004/0006 and HANDOVER accounting conflicts remain human questions.
+
+## Custom payment-link expiration UI (2026-10-30)
+
+Restore exact calendar/time selection using native inputs and the existing absolute `expiresAt` API option; preserve `expiresInSeconds` for presets. Interpret input in the application's explicitly labeled Bahrain timezone (fixed UTC+03:00), not the browser's local timezone. Never recalculate custom selection as a duration, silently move the selected deadline, or relax server validation for latency/clock differences. Native min/max round inward to minute precision; submission revalidates against the current clock and server rejection is explained inline. No new dependencies, schema, backend policy or accepted ADR decisions. This supersedes the earlier duration-only dashboard UI description above.

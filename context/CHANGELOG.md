@@ -199,3 +199,10 @@ Confirmed actual localhost:5173 served an empty checkout CSS transform despite p
   decisions and known issues. Runtime module descriptions remain unchanged.
   Evidence: `Evidence/pre_submission_cleanup.md`; final PDFs/public hosting still
   require team sign-off. No commit, push, migration or seed was performed.
+
+## 2026-10-30 — Restore custom payment-link expiration date/time picker
+
+- Replaced Custom Duration with native calendar/time controls, field-specific errors and an exact Bahrain-time preview. Preserved all five quick presets, green styling, native keyboard behavior and the existing exactly-one-of API contract. Custom selections send UTC `expiresAt`; presets keep server-relative `expiresInSeconds`. Fixed overlapping helper text with scoped flex/grid spacing, including mobile stacking. Server expiration policy, existing payment-link deadlines and payment admission are unchanged.
+- Updated `ExpirationInput.tsx`/`.css`, `expiration.ts`/`.test.ts`, `PaymentLinkCreatePage.tsx` and the existing amount/expiration browser harness. Added four screenshots and `Evidence/implementation/agent-1-link-expiration-picker.md`.
+- Verified: 72 web tests, 17 existing database-free API tests, repository typecheck, merchant production build and 15 Edge browser groups. Original UI fails both missing-picker and overlap regressions. Read-only PostgreSQL 16.15, health/proxies and an existing expired public link checked; authenticated DB-backed creation/payment integration not run.
+- Refreshed frontend, web module, API, payment flows, decisions, testing, known issues and changelog. Dependency map reviewed: no new dependency or backend/schema contract. Accepted/disputed financial ADRs unchanged. Starting HEAD `d28fa2625b25a9ac27610413b231f4bedd86ec7b`; another actor committed pre-existing cleanup as `a1110b7f3dfd2229ae445ce220b14ac83149fdf0` during this task. Its work was preserved; this task made no commit or branch/history operation.

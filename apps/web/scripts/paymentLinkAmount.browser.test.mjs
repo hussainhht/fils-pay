@@ -17,7 +17,7 @@ const browserPath = process.argv.find((arg) => arg.startsWith("--browser="))?.sl
 const profile = await mkdtemp(join(tmpdir(), "filspay-amount-"));
 const browser = spawn(browserPath, ["--headless=new", "--disable-gpu", "--no-first-run", "--remote-debugging-port=0", `--user-data-dir=${profile}`, "about:blank"], { windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
 let socket;
-let baselineFile;
+const baselineFiles = [];
 let liveApp;
 let liveVite;
 let livePool;
@@ -61,27 +61,33 @@ try {
   const errors = [];
   let requests = [];
   let responseStatus = 500;
+  let responseError = { error: "sandbox_rejected", message: "Sandbox creation rejected" };
   let role = "owner";
   const expiresAt = new Date(Date.now() + 86400000).toISOString();
   const link = { id: "sandbox-link", token: "sandbox-token", amountFils: 1500, status: "active", currency: "BHD", reference: "Order 42", description: "Test order", expiresAt, url: `${base}/pay/sandbox-token`, createdAt: new Date().toISOString() };
   const fulfill = (requestId, status, body, contentType = "application/json") => send("Fetch.fulfillRequest", { requestId, responseCode: status,
     responseHeaders: [{ name: "Content-Type", value: contentType }], body: Buffer.from(typeof body === "string" ? body : JSON.stringify(body)).toString("base64") });
   if (baseline) {
-    const source = execFileSync("git", ["-c", `safe.directory=${root.replaceAll("\\", "/").replace(/\/$/, "")}`, "show", "HEAD:apps/web/src/pages/payment-links/PaymentLinkCreatePage.tsx"], { cwd: root, encoding: "utf8", windowsHide: true });
-    const candidate = join(root, "apps/web/src/pages/payment-links/PaymentLinkCreateBaselineVerification.tsx");
-    await writeFile(candidate, source, { flag: "wx" }); baselineFile = candidate;
+    for (const filename of ["PaymentLinkCreatePage.tsx", "ExpirationInput.tsx", "ExpirationInput.css", "expiration.ts"]) {
+      let source = execFileSync("git", ["-c", `safe.directory=${root.replaceAll("\\", "/").replace(/\/$/, "")}`, "show", `HEAD:apps/web/src/pages/payment-links/${filename}`], { cwd: root, encoding: "utf8", windowsHide: true });
+      source = source.replaceAll('./expiration.js', './expirationBaselineVerification.js')
+        .replaceAll('./ExpirationInput.js', './ExpirationInputBaselineVerification.js')
+        .replaceAll('./ExpirationInput.css', './ExpirationInputBaselineVerification.css');
+      const candidate = join(root, "apps/web/src/pages/payment-links", filename.replace(/\.(tsx?|css)$/, "BaselineVerification.$1"));
+      await writeFile(candidate, source, { flag: "wx" }); baselineFiles.push(candidate);
+    }
   }
   listeners.set("Fetch.requestPaused", async ({ requestId, request }) => {
     try {
       const path = new URL(request.url).pathname;
       if (baseline && path.endsWith("/PaymentLinkCreatePage.tsx")) {
-        const source = await (await fetch(`${base}/src/pages/payment-links/PaymentLinkCreateBaselineVerification.tsx`)).text();
+        const source = await (await fetch(`${base}/src/pages/payment-links/PaymentLinkCreatePageBaselineVerification.tsx`)).text();
         await fulfill(requestId, 200, source, "text/javascript");
       } else if (path === "/v1/auth/me") {
         await fulfill(requestId, 200, { merchantUserId: "sandbox-user", role, email: "sandbox@example.test", merchant: { id: "sandbox-merchant", displayName: "Sandbox Merchant", onboardingStatus: "approved", refundsEnabled: true } });
       } else if (request.method === "POST") {
         requests.push({ path, body: JSON.parse(request.postData) });
-        await fulfill(requestId, responseStatus, responseStatus === 201 ? link : { error: "sandbox_rejected", message: "Sandbox creation rejected" });
+        await fulfill(requestId, responseStatus, responseStatus === 201 ? link : responseError);
       } else {
         await fulfill(requestId, 200, { paymentLinks: [link], nextCursor: null });
       }
@@ -182,18 +188,39 @@ try {
   const choose = (value) => js(`document.querySelector('input[name=expiration][value="${value}"]').click()`);
   const setField = (selector, value) => js(`(() => {const e=document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(e.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype,'value').set.call(e,${JSON.stringify(value)}); e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input',{bubbles:true}));})()`);
   await choose("custom"); await submit(); assert.equal(requests.length, 0);
-  assert.equal(await js('document.querySelector(".dash-error").textContent.includes("Expiry")'), true);
-  for (const invalid of ["14", "172801", "", ".", "15.5", "1e3", "-15", "Infinity", "9007199254740992"]) {
-    await setField("#payment-link-duration", invalid); await submit(); assert.equal(requests.length, 0);
+  if (process.argv.includes("--check-layout-first")) {
+    assert.equal(await js(`(() => {
+      const elements=[...document.querySelector('fieldset').children].filter(e=>e.getBoundingClientRect().height);
+      return elements.every((e,i)=>!i||e.getBoundingClientRect().top>=elements[i-1].getBoundingClientRect().bottom);
+    })()`), true, "expiration controls and helper text must not overlap");
+    pass("expiration controls and helper text do not overlap");
+  }
+  assert.equal(await js('document.querySelector("#payment-link-expiration-date")?.type'), "date", "custom expiration must offer a calendar date picker");
+  assert.equal(await js('document.querySelector("#payment-link-expiration-time")?.type'), "time");
+  const parts = (timestamp) => {
+    const value = new Date(timestamp + 3 * 3600000).toISOString();
+    return [value.slice(0, 10), value.slice(11, 16)];
+  };
+  const setExpiration = async (timestamp) => {
+    const [date, time] = parts(timestamp);
+    await setField("#payment-link-expiration-date", date);
+    await setField("#payment-link-expiration-time", time);
+    return new Date(`${date}T${time}:00+03:00`).toISOString();
+  };
+  for (const timestamp of [Date.now() - 86400000, Date.now() - 60000, Date.now() + 14 * 60000, Date.now() + 121 * 86400000]) {
+    await setExpiration(timestamp); await submit(); assert.equal(requests.length, 0);
     assert.equal(await js('document.querySelector("button[type=submit]").disabled'), true);
   }
-  pass("zero/unsafe amounts and incomplete/out-of-bounds/invalid custom durations send no request");
+  await setField("#payment-link-expiration-time", "25:61"); await submit(); assert.equal(requests.length, 0);
+  await setField("#payment-link-expiration-date", ""); await submit(); assert.equal(requests.length, 0);
+  pass("zero/unsafe amounts and missing/past/invalid/out-of-bounds custom dates and times send no request");
 
   for (const [option, seconds] of [["15-minutes", 900], ["24-hours", 86400], ["7-days", 604800], ["30-days", 2592000], ["90-days", 7776000]]) {
     await choose(option);
     assert.equal(await js('document.querySelectorAll("input[name=expiration]:checked").length'), 1);
-    assert.equal(await js('document.querySelector("#payment-link-duration") === null'), true);
-    assert.equal(await js('document.querySelector("[data-expiration-preview]").textContent.includes("Estimated expiration (Asia/Bahrain, UTC+03:00)")'), true);
+    assert.equal(await js('document.querySelector("#payment-link-expiration-date") === null'), true);
+    assert.equal(await js('document.querySelector("[data-expiration-preview]").textContent.includes("Estimated expiration")'), true);
+    assert.equal(await js('document.querySelector("fieldset").textContent.includes("Bahrain time (UTC+03:00)")'), true);
     assert.equal(await js('getComputedStyle(document.querySelector("input[name=expiration]:checked").closest("label")).backgroundColor'), "rgb(234, 245, 239)");
     await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
     assert.equal(requests.at(-1).body.expiresInSeconds, seconds);
@@ -202,35 +229,86 @@ try {
   pass("all five presets select exactly one green radio, show the timezone estimate and send durations without hidden custom values");
 
   await choose("custom");
-  for (const [value, unit, seconds] of [["15", "minutes", 900], ["1", "hours", 3600], ["120", "days", 10368000]]) {
-    await setField("#payment-link-duration", value); await setField("#payment-link-duration-unit", unit);
+  for (const days of [1, 7, 119]) {
+    const expected = await setExpiration(Date.now() + days * 86400000);
     await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
-    assert.equal(requests.at(-1).body.expiresInSeconds, seconds);
+    assert.equal(requests.at(-1).body.expiresAt, expected);
+    assert.equal("expiresInSeconds" in requests.at(-1).body, false);
+    assert.equal(await js('document.querySelector("[data-expiration-preview]").textContent.includes("Expires on")'), true);
   }
+  const selected = await setExpiration(Date.now() + 86400000);
+  const customPreview = await js('document.querySelector("[data-expiration-preview]").textContent');
+  await js('window.originalNow=Date.now; Date.now=()=>window.originalNow()+3*3600000');
+  await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
+  assert.equal(requests.at(-1).body.expiresAt, selected);
+  assert.equal(await js('document.querySelector("[data-expiration-preview]").textContent'), customPreview);
+  await js('Date.now=window.originalNow');
+  const boundaryNow = Math.floor(Date.now() / 60000) * 60000;
+  await js(`window.originalNow=Date.now; Date.now=()=>${boundaryNow}`);
+  for (const seconds of [900, 10368000]) {
+    const expected = await setExpiration(boundaryNow + seconds * 1000);
+    assert.equal(await js('document.querySelector("form").checkValidity()'), true);
+    await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
+    assert.equal(requests.at(-1).body.expiresAt, expected);
+  }
+  for (const seconds of [840, 10368060]) {
+    const count = requests.length;
+    await setExpiration(boundaryNow + seconds * 1000); await submit();
+    assert.equal(requests.length, count);
+    assert.equal(await js('document.querySelector("form").checkValidity()'), false);
+  }
+  await js('Date.now=window.originalNow');
+  await setExpiration(Date.now() + 86400000);
+  responseStatus = 400; responseError = { error: "invalid_expiry", message: "Technical server validation text" };
+  await submit(); await waitFor('document.querySelector("#payment-link-expiration-time-error") !== null');
+  assert.equal(await js('document.querySelector("#payment-link-expiration-time-error").textContent.includes("15 minutes and 120 days")'), true);
+  assert.equal(await js('document.body.textContent.includes("Technical server validation text")'), false);
+  responseStatus = 500; responseError = { error: "sandbox_rejected", message: "Sandbox creation rejected" };
   await choose("15-minutes");
   const previewBefore = await js('document.querySelector("[data-expiration-preview]").textContent');
   await js('window.originalNow=Date.now; Date.now=()=>window.originalNow()+3*3600000');
   await submit(); await waitFor('document.querySelector(".dash-error")?.textContent === "Sandbox creation rejected"');
   assert.equal(requests.at(-1).body.expiresInSeconds, 900);
-  assert.equal(await js('document.querySelector("[data-expiration-preview]").textContent'), previewBefore);
+  assert.notEqual(await js('document.querySelector("[data-expiration-preview]").textContent'), previewBefore);
   await js('Date.now=window.originalNow');
-  pass("custom minutes/hours/days include both limits; a three-hour-old preview still submits a full 15-minute duration");
+  pass("custom timestamps stay exact, both bounds pass, stale/out-of-bounds choices cannot submit, server validation stays inline");
 
   await js('document.querySelector("input[name=expiration]:checked").focus()');
   await key("ArrowRight", "ArrowRight", 39);
   assert.equal(await js('document.querySelector("input[name=expiration]:checked").value'), "24-hours");
   await key("ArrowLeft", "ArrowLeft", 37);
   assert.equal(await js('document.querySelector("input[name=expiration]:checked").value'), "15-minutes");
-  for (const width of [1280, 390, 320]) {
+  await navigate(); await fill("1.500");
+  for (const width of [1440, 768, 390, 320]) {
     await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: width < 500 });
     await choose("custom");
     assert.equal(await js('document.documentElement.scrollWidth <= innerWidth'), true);
     assert.equal(await js('document.querySelector("fieldset").querySelector("legend").textContent'), "Link expiration");
-    assert.equal(await js('document.querySelector("#payment-link-duration").labels[0].textContent.includes("Duration")'), true);
+    assert.equal(await js('document.querySelector("#payment-link-expiration-date").labels[0].textContent.includes("Expiration date")'), true);
+    await setExpiration(Date.now() + 5 * 60000);
+    assert.equal(await js(`(() => {
+      const section=document.querySelector('fieldset');
+      const elements=[...section.children].filter(e=>e.getBoundingClientRect().height);
+      const separated=elements.every((e,i)=>!i||e.getBoundingClientRect().top>=elements[i-1].getBoundingClientRect().bottom);
+      const error=section.querySelector('.payment-link-expiration-error');
+      return separated && error && error.getBoundingClientRect().top>=error.parentElement.querySelector('input').getBoundingClientRect().bottom;
+    })()`), true, `expiration text/controls must not overlap at ${width}px`);
+    if (process.argv.includes("--screenshots") && [1440, 320].includes(width)) {
+      const capture = async (state) => {
+        await js('document.activeElement.blur(); new Promise(resolve => setTimeout(resolve, 200))');
+        const { contentSize } = await send("Page.getLayoutMetrics");
+        const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true,
+          clip: { x: 0, y: 0, width, height: contentSize.height, scale: 1 } });
+        await writeFile(join(root, `Evidence/implementation/link-expiration-${width}-${state}.png`), Buffer.from(shot.data, "base64"));
+      };
+      await capture("error");
+      await setExpiration(Date.now() + 86400000);
+      await capture("custom");
+    }
   }
   await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
   await choose("24-hours");
-  pass("native arrow-key radio selection and labeled custom controls work at desktop/390px/320px without overflow");
+  pass("native arrow-key radios, labeled date/time controls and inline errors stay separated at desktop/tablet/390px/320px");
 
   await js(`const fields=document.querySelectorAll('form input'); for(const [n,v] of [[1,' Order 42 '],[2,' Test order ']]) {Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(fields[n],v);fields[n].dispatchEvent(new Event('input',{bubbles:true}));}`);
   for (const [draft, fils] of [["1.5", 1500], ["0.100", 100], ["0.001", 1], ["1.", 1000], ["9007199254740.991", Number.MAX_SAFE_INTEGER]]) {
@@ -306,7 +384,7 @@ try {
   assert.deepEqual(errors, []);
   console.log(`PASS ${groups} browser verification groups; UI cases mocked${process.argv.includes("--live") ? "; additional live creation uses isolated API/Postgres" : "; all API requests intercepted"}`);
 } finally {
-  if (baselineFile) await unlink(baselineFile);
+  for (const file of baselineFiles) await unlink(file);
   socket?.close(); browser.kill();
   await liveVite?.close(); await liveApp?.close(); await livePool?.end();
 }
