@@ -1,5 +1,7 @@
 # BUG-071 — Dashboard Fee Display Queries Newest Created Row Instead of Effective Schedule
 
+**Fixed (2026-10-30):** apps/api/src/fees/currentFeeScheduleDisplay.ts — selects the schedule with effective_from <= asOf, latest effective_from, then latest created_at.
+
 **Still open. Hosted runtime (2026-10-30):** Alpha Retail admin detail shows “Current negotiated rate” `2.45%` (245 bps), effective `3/1/2026`. `fee_schedules` for that merchant has `245` bps effective `2026-03-01` created `2026-08-15`, and `225` bps effective `2026-08-01` created `2026-08-01`. The row in force on 2026-10-30 is `225` bps. The credit checkbox on the same page uses `merchants.mdr_bps` (`2.50%`); that path is [BUG-086](bug-086-credit-reversal-uses-merchant-mdr-column.md).
 
 ## 1. Summary

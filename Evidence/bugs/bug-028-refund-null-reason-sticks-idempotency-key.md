@@ -1,5 +1,7 @@
 # BUG-028 — Refund with Null Reason Violates DB Constraint Leaving Idempotency Key Stuck
 
+**Fixed (2026-10-30):** apps/api/src/payments/processRefund.ts — omitted reason is stored as unspecified before the acquirer call; an approval is committed on the in-progress claim, and a later database failure finalizes that result instead of calling the acquirer again or deleting the claim.
+
 ## 1. Summary
 
 Phase 1 commits the idempotency claim.

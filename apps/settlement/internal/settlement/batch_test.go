@@ -2,6 +2,7 @@ package settlement
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -362,6 +363,32 @@ func TestCloseBatch_SchemeExportLineTruncation(t *testing.T) {
 	if exportedAmount != 4740 {
 		t.Errorf("scheme_export_lines.amount_fils = %d, want 4740 (4747 truncated to the nearest 10 fils)", exportedAmount)
 	}
+
+	var amount string
+	err = pool.QueryRow(context.Background(), `
+		SELECT amount::text FROM scheme_export_lines WHERE settlement_batch_id = $1
+	`, result.BatchID).Scan(&amount)
+	if err != nil {
+		t.Fatalf("query scheme amount: %v", err)
+	}
+	if amount != "4.74" {
+		t.Errorf("scheme amount = %q, want 4.74 (truncated fils, not rounded up)", amount)
+	}
+
+	var residueDebit, residueCredit int64
+	err = pool.QueryRow(context.Background(), `
+		SELECT
+		  COALESCE(SUM(amount_fils) FILTER (WHERE account_id = 'scheme_rounding_residue' AND direction = 'debit'), 0),
+		  COALESCE(SUM(amount_fils) FILTER (WHERE account_id = 'card_scheme_clearing' AND direction = 'credit' AND description = 'scheme rounding residue'), 0)
+		  FROM ledger_entries
+		 WHERE settlement_batch_id = $1
+	`, result.BatchID).Scan(&residueDebit, &residueCredit)
+	if err != nil {
+		t.Fatalf("query scheme residue: %v", err)
+	}
+	if residueDebit != 7 || residueCredit != 7 {
+		t.Errorf("scheme residue debit/credit = %d/%d, want 7/7", residueDebit, residueCredit)
+	}
 }
 
 // TestCloseAndPayout_MerchantBalancesIncremental verifies
@@ -426,6 +453,20 @@ func TestCloseAndPayout_MerchantBalancesIncremental(t *testing.T) {
 	}
 	if payoutLegCount != 2 {
 		t.Errorf("expected exactly 2 ledger_entries legs for the payout, got %d", payoutLegCount)
+	}
+
+	var disbursementCount int
+	var disbursed int64
+	err = pool.QueryRow(context.Background(), `
+		SELECT count(*), COALESCE(SUM(amount_fils), 0)
+		  FROM settlement_payout_disbursements
+		 WHERE settlement_batch_id = $1
+	`, closeResult.BatchID).Scan(&disbursementCount, &disbursed)
+	if err != nil {
+		t.Fatalf("query disbursement: %v", err)
+	}
+	if disbursementCount != 1 || money.Fils(disbursed) != closeResult.NetPayoutFils {
+		t.Errorf("disbursement count/amount = %d/%d, want 1/%d", disbursementCount, disbursed, closeResult.NetPayoutFils)
 	}
 
 	var batchStatus string
@@ -504,5 +545,21 @@ func TestCloseBatchNetPayoutIsWholeFils(t *testing.T) {
 	}
 	if storedText != strconv.FormatInt(int64(result.NetPayoutFils), 10) {
 		t.Errorf("stored net_payout_fils = %q, want %d (the figure CloseBatch returned)", storedText, result.NetPayoutFils)
+	}
+	wantNet := money.Fils(13333) - money.ApplyRateFils(13333, mdrBps)
+	if result.NetPayoutFils != wantNet {
+		t.Errorf("NetPayoutFils = %d, want gross-fee %d", result.NetPayoutFils, wantNet)
+	}
+}
+
+func TestShouldAbortDailyPassOnlyForUnfinishedDay(t *testing.T) {
+	if !shouldAbortDailyPass(ErrBusinessDayNotComplete) {
+		t.Fatal("an unfinished business day must stop the pass")
+	}
+	if shouldAbortDailyPass(ErrMerchantNotEligible) {
+		t.Fatal("an ineligible merchant must not stop the pass")
+	}
+	if shouldAbortDailyPass(errors.New("lock timeout")) {
+		t.Fatal("a merchant failure must not stop the pass")
 	}
 }

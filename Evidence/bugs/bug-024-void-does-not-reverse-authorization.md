@@ -1,5 +1,7 @@
 # BUG-024 — Void Operation Does Not Reverse External Acquirer Authorization Hold
 
+**Skipped (2026-10-30):** AcquirerSimulator has no reverse or void method, and acquirer files may only be edited to call an existing one.
+
 ## 1. Summary
 
 Void marks the payment voided in FilsPay.

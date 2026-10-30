@@ -1,5 +1,7 @@
 # BUG-040 — Two-Person Rule Credit Approval Compares Display Name Instead of User ID
 
+**Fixed (2026-10-30):** apps/api/src/admin/creditApproval.ts — the second approver is compared by adminUserId.
+
 ## 1. Summary
 
 Two different admins named "Fatima" cannot approve each other's credits.

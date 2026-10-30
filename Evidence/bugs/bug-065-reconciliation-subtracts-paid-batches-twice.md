@@ -1,5 +1,7 @@
 # BUG-065 — Settlement Reconciliation Equations Subtract Paid Batches Twice
 
+**Fixed (2026-10-30):** `apps/api/src/settlement/query.ts` — the ledger net omits `settlement payout: batch paid` debits, so a paid batch inside the window is subtracted once.
+
 ## 1. Summary
 
 The ledger side includes every merchant_payable debit, including completed payouts, while the comparison independently subtracts closed and paid batch net amounts. A range containing both captures and their payouts therefore subtracts payouts twice.

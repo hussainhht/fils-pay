@@ -1,5 +1,7 @@
 # BUG-039 — API Key Rotation Mints New Key Without Revoking Existing Active Key
 
+**Fixed (2026-10-30):** apps/api/src/admin/apiKeys.ts — rotation sets revoked_at = now() on the previous key in the same transaction.
+
 ## 1. Summary
 
 After rotation, both keys work.

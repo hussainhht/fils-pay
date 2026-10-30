@@ -64,6 +64,6 @@ test("cross-merchant cancellation returns not_found and preserves link",async()=
 });
 test("public checkout never exposes a merchant API key hash",async()=>{
  const l=await fixture();const u=(await pool.query("INSERT INTO merchant_users (merchant_id,email,password_hash,role) VALUES ($1,$2,'unused','owner') RETURNING id",[l.merchantId,`${randomUUID()}@fork.test`])).rows[0].id;
- const hash="a".repeat(64);await pool.query("INSERT INTO api_keys (merchant_id,key_hash,key_prefix,created_by) VALUES ($1,$2,'fp_test',$3)",[l.merchantId,hash,u]);
- assert.equal(JSON.stringify(await getPublicPaymentLink(pool,l.token,1)).includes(hash),false);
+ const hash=(randomUUID().replaceAll("-","")+randomUUID().replaceAll("-","")).slice(0,64);await pool.query("INSERT INTO api_keys (merchant_id,key_hash,key_prefix,created_by) VALUES ($1,$2,'fp_test',$3)",[l.merchantId,hash,u]);
+ const pub=await getPublicPaymentLink(pool,l.token,1);assert.equal(JSON.stringify(pub).includes(hash),false);assert.equal("merchantPublicKey" in pub!,false);assert.equal("merchantIntegrationId" in pub!,false);
 });

@@ -1,5 +1,7 @@
 # BUG-083 — View as Merchant Action Opens Unregistered Web Root Route
 
+**Fixed (2026-10-30):** `apps/admin/src/pages/merchants/MerchantDetailPage.tsx` — View as merchant opens `/dashboard` when the web base URL is only an origin. `/pay/:token` is unchanged; `/` and `/dashboard` were already registered.
+
 **Still open. Hosted runtime (2026-10-30):** “View as merchant” ran `window.open` on `http://localhost:5173` (no dashboard path). The new tab landed on `/dashboard/transactions` only because an owner session cookie was already present. The admin fallback text was “Merchant screens are at http://localhost:5173”.
 
 ## 1. Summary

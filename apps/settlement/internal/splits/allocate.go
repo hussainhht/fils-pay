@@ -105,8 +105,8 @@ func PayoutSplitBatch(ctx context.Context, db *pgxpool.Pool, batchID uuid.UUID) 
 	}
 	rows.Close()
 
-	// Largest-remainder allocation: the shares sum to netPayout exactly, or
-	// the payout is refused (rolled back) rather than posted short or over.
+	// One largest-remainder algorithm, in ChildShares. Shares sum to netPayout
+	// exactly, or the payout is refused rather than posted short or over.
 	allocated, err := ChildShares(money.Fils(netPayout), weights)
 	if err != nil {
 		return SplitPayoutResult{}, err
@@ -116,7 +116,6 @@ func PayoutSplitBatch(ctx context.Context, db *pgxpool.Pool, batchID uuid.UUID) 
 		shares[i].AllocatedFils = allocated[i]
 	}
 
-	var totalAllocated money.Fils
 	for _, s := range shares {
 		if s.AllocatedFils <= 0 {
 			continue // ledger_entries.amount_fils has a CHECK (amount_fils > 0)
@@ -140,14 +139,20 @@ func PayoutSplitBatch(ctx context.Context, db *pgxpool.Pool, batchID uuid.UUID) 
 		if err != nil {
 			return SplitPayoutResult{}, err
 		}
-		totalAllocated += s.AllocatedFils
 	}
 
-	// Bring the parent's cached balance down by what the legs above actually
-	// debited from its merchant_payable account, same as PayoutBatch does
-	// for a non-split merchant.
-	// am: should pass netPayout here not totalAllocated, otherwise the cache drifts from the batch
-	if err := balances.ApplyPayout(ctx, tx, parentMerchantID, batchID, totalAllocated); err != nil {
+	if netPayout > 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO settlement_payout_disbursements (settlement_batch_id, amount_fils, disbursement_reference)
+			VALUES ($1, $2, 'disb_' || gen_random_uuid()::text)
+		`, batchID, netPayout)
+		if err != nil {
+			return SplitPayoutResult{}, err
+		}
+	}
+
+	// Debit the parent by the full net. Largest-remainder shares sum to that net.
+	if err := balances.ApplyPayout(ctx, tx, parentMerchantID, batchID, money.Fils(netPayout)); err != nil {
 		return SplitPayoutResult{}, err
 	}
 

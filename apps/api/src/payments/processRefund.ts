@@ -38,6 +38,48 @@ interface RefundTransactionRow {
 /** Ledger description of the negotiated-discount leg (see discountAdjustment.ts). */
 const DISCOUNT_ADJUSTMENT_DESCRIPTION = "capture: negotiated discount adjustment";
 
+interface StoredApproval {
+  externalOutcome: "approved";
+  acquirerReference: string;
+  capturedFils: number;
+  feeChargedFils: number;
+  amountAuthorized: number;
+  requestedAmount: number;
+}
+
+function isSafeFils(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+/** Approval recorded on the in-progress claim. Absent means the external result is unknown. */
+function storedApproval(body: unknown): StoredApproval | null {
+  const parsed = typeof body === "string" ? parseJson(body) : body;
+  if (!parsed || typeof parsed !== "object") return null;
+  const value = parsed as Record<string, unknown>;
+  if (value.externalOutcome !== "approved") return null;
+  if (typeof value.acquirerReference !== "string" || value.acquirerReference.length === 0) return null;
+  if (!isSafeFils(value.capturedFils) || !isSafeFils(value.feeChargedFils) || !isSafeFils(value.amountAuthorized)) {
+    return null;
+  }
+  if (!isSafeFils(value.requestedAmount) || value.requestedAmount <= 0) return null;
+  return {
+    externalOutcome: "approved",
+    acquirerReference: value.acquirerReference,
+    capturedFils: value.capturedFils,
+    feeChargedFils: value.feeChargedFils,
+    amountAuthorized: value.amountAuthorized,
+    requestedAmount: value.requestedAmount,
+  };
+}
+
+function parseJson(body: string): unknown {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return null;
+  }
+}
+
 /** BEGIN/COMMIT on a client the caller already holds (unlike withTransaction, which checks one out). */
 async function inTransaction<T>(client: PoolClient, fn: (client: PoolClient) => Promise<T>): Promise<T> {
   await client.query("BEGIN");
@@ -51,6 +93,37 @@ async function inTransaction<T>(client: PoolClient, fn: (client: PoolClient) => 
   }
 }
 
+/** Commit the approval before the journal. A later failure can finalize this same result. */
+async function recordApprovedOutcome(
+  conn: PoolClient,
+  claimId: string,
+  approval: StoredApproval,
+): Promise<StoredApproval> {
+  return inTransaction(conn, async (client) => {
+    const wrote = await client.query<{ response_body: unknown }>(
+      `UPDATE idempotency_keys
+          SET response_body = $2::jsonb
+        WHERE id = $1
+          AND status = 'in_progress'
+          AND (response_body IS NULL OR (response_body->>'externalOutcome') IS NULL)
+        RETURNING response_body`,
+      [claimId, JSON.stringify(approval)],
+    );
+    const written = wrote.rows[0] ? storedApproval(wrote.rows[0].response_body) : null;
+    if (written) return written;
+    const current = await client.query<{ response_body: unknown }>(
+      `SELECT response_body
+         FROM idempotency_keys
+        WHERE id = $1
+          AND status = 'in_progress'`,
+      [claimId],
+    );
+    const existing = storedApproval(current.rows[0]?.response_body);
+    if (existing) return existing;
+    throw new Error("processRefund: approved outcome could not be recorded");
+  });
+}
+
 /**
  * Refund business logic: validate, call the acquirer, then journal the reversal.
  *
@@ -60,6 +133,9 @@ async function inTransaction<T>(client: PoolClient, fn: (client: PoolClient) => 
  * the same `refunded_fils` and together return more than was captured.
  * Both database steps run on the same connection that holds the lock, so a
  * refund never needs a second pooled connection while it waits.
+ * The pending row is the reserved amount. An approval is committed on the
+ * in-progress claim before the journal; a later database failure resumes
+ * that result and does not call the acquirer again or delete the claim.
  */
 export async function processRefund(
   pool: Pool,
@@ -91,6 +167,9 @@ async function processRefundLocked(
   acquirer: AcquirerSimulator,
   input: ProcessRefundInput,
 ): Promise<ProcessRefundResult> {
+  // Normalize before any external call. An explicit NULL would violate
+  // chk_refunds_reason_not_null after the claim has already committed.
+  const reason = input.reason ?? "unspecified";
   const requestHash = hashRequest({
     transactionId: input.transactionId,
     amountFils: input.amountFils ?? null,
@@ -110,7 +189,46 @@ async function processRefundLocked(
       throw new UnprocessableEntityError("idempotency_key_reused");
     }
     if (claim.outcome === "conflict_in_progress") {
-      throw new ConflictError("request_in_progress");
+      const stored = storedApproval(claim.row.responseBody);
+      // Unknown external result: leave the claim and any reservation in place.
+      if (!stored || !claim.row.resourceId) {
+        throw new ConflictError("request_in_progress");
+      }
+      const pending = await client.query<{
+        id: string;
+        amount_fils: string;
+        transaction_id: string;
+        merchant_id: string;
+        acquirer_reference: string;
+      }>(
+        `SELECT id, amount_fils::text AS amount_fils, transaction_id, merchant_id, acquirer_reference
+           FROM refunds
+          WHERE id = $1
+            AND transaction_id = $2
+            AND merchant_id = $3
+            AND status = 'pending'
+          FOR UPDATE`,
+        [claim.row.resourceId, input.transactionId, input.merchantId],
+      );
+      const row = pending.rows[0];
+      if (!row || BigInt(row.amount_fils) !== BigInt(stored.requestedAmount)) {
+        throw new ConflictError("request_in_progress");
+      }
+      return {
+        kind: "proceed" as const,
+        refundId: row.id,
+        claimId: claim.row.id,
+        attemptCount: claim.row.attemptCount,
+        transactionId: row.transaction_id,
+        merchantId: row.merchant_id,
+        acquirerReference: row.acquirer_reference,
+        amountAuthorized: toFils(stored.amountAuthorized),
+        capturedFils: toFils(stored.capturedFils),
+        refundedFils: ZERO_FILS,
+        feeChargedFils: toFils(stored.feeChargedFils),
+        requestedAmount: toFils(stored.requestedAmount),
+        storedApproval: stored,
+      };
     }
     if (claim.outcome === "replay") {
       return {
@@ -186,10 +304,21 @@ async function processRefundLocked(
     const reservation = await client.query<{ id: string }>(
       `INSERT INTO refunds (transaction_id, merchant_id, amount_fils, status, acquirer_reference, reason, created_by_type, created_by_id)
        VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7) RETURNING id`,
-      [txn.id, txn.merchant_id, validation.amountFils, txn.acquirer_reference, input.reason ?? "unspecified", input.actor.type, input.actor.id]);
+      [txn.id, txn.merchant_id, validation.amountFils, txn.acquirer_reference, reason, input.actor.type, input.actor.id]);
+    const refundId = reservation.rows[0]!.id;
+    const linked = await client.query(
+      `UPDATE idempotency_keys
+          SET resource_id = $2
+        WHERE id = $1
+          AND status = 'in_progress'`,
+      [claim.row.id, refundId],
+    );
+    if ((linked.rowCount ?? 0) !== 1) {
+      throw new Error("processRefund: reservation was not linked to the claim");
+    }
     return {
       kind: "proceed" as const,
-      refundId: reservation.rows[0]!.id,
+      refundId,
       claimId: claim.row.id,
       attemptCount: claim.row.attemptCount,
       transactionId: txn.id,
@@ -200,6 +329,7 @@ async function processRefundLocked(
       refundedFils,
       feeChargedFils: toFils(Number(feeRow.fee_fils)),
       requestedAmount: validation.amountFils,
+      storedApproval: null,
     };
   });
 
@@ -207,12 +337,36 @@ async function processRefundLocked(
     return prepared.result;
   }
 
-  // 2 acquirer
-  const acquirerResult = await acquirer.refund({
-    acquirerReference: prepared.acquirerReference,
-    amountFils: prepared.requestedAmount,
-    idempotencyKey: `${prepared.claimId}:${prepared.attemptCount}`,
-  });
+  // 2 acquirer — skipped when this claim already has a committed approval.
+  let acquirerResult: { outcome: "approved" | "declined" | "error"; acquirerReference: string; latencyMs: number };
+  if (prepared.storedApproval) {
+    acquirerResult = {
+      outcome: "approved",
+      acquirerReference: prepared.storedApproval.acquirerReference,
+      latencyMs: 0,
+    };
+  } else {
+    acquirerResult = await acquirer.refund({
+      acquirerReference: prepared.acquirerReference,
+      amountFils: prepared.requestedAmount,
+      idempotencyKey: `${prepared.claimId}:${prepared.attemptCount}`,
+    });
+    if (acquirerResult.outcome === "approved") {
+      const recorded = await recordApprovedOutcome(conn, prepared.claimId, {
+        externalOutcome: "approved",
+        acquirerReference: acquirerResult.acquirerReference,
+        capturedFils: prepared.capturedFils,
+        feeChargedFils: prepared.feeChargedFils,
+        amountAuthorized: prepared.amountAuthorized,
+        requestedAmount: prepared.requestedAmount,
+      });
+      acquirerResult = {
+        outcome: "approved",
+        acquirerReference: recorded.acquirerReference,
+        latencyMs: acquirerResult.latencyMs,
+      };
+    }
+  }
 
   // 3 journal
   return inTransaction(conn, async (client) => {
@@ -289,11 +443,23 @@ async function processRefundLocked(
       throw new Error("processRefund: insert into refunds returned no row");
     }
 
-    await client.query(`UPDATE transactions SET refunded_fils = $2, status = $3 WHERE id = $1`, [
-      prepared.transactionId,
-      newRefundedTotal,
-      newStatus,
-    ]);
+    const incremented = await client.query<{ refunded_fils: string | number }>(
+      `UPDATE transactions
+          SET refunded_fils = refunded_fils + $2::bigint,
+              status = $3
+        WHERE id = $1
+          AND refunded_fils + $2::bigint <= captured_fils
+        RETURNING refunded_fils`,
+      [prepared.transactionId, prepared.requestedAmount, newStatus],
+    );
+    const incrementedRow = incremented.rows[0];
+    if (!incrementedRow) {
+      throw new Error("processRefund: refund exceeds captured cap");
+    }
+    const persistedRefunded = toFils(Number(incrementedRow.refunded_fils));
+    if (compareFils(persistedRefunded, newRefundedTotal) !== 0) {
+      throw new Error("processRefund: refunded total changed before conditional increment");
+    }
 
     // Double-entry reversal, mirroring capture's legs with the directions
     // swapped. ledger_entries has CHECK (amount_fils > 0), so a reversal

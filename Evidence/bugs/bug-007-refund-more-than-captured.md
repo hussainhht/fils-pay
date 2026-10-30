@@ -1,5 +1,7 @@
 # BUG-007 — Refund Headroom Capped at Authorized Amount Instead of Captured Amount
 
+**Fixed (2026-10-30):** apps/api/src/payments/processRefund.ts — refundableFils is already captured minus refunded minus pending reservations, not the authorized amount. No helper change.
+
 ## 1. Summary
 
 A payment authorized at 10_000 fils and captured at 4_000 fils can be refunded up to 10_000.

@@ -1,10 +1,10 @@
 # FilsPay — Master Bug Registry
 
-One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential and unique (`BUG-001` through `BUG-086`).
+One canonical file per unique bug: `bug-{n}-{slug}.md`. Numbering is sequential and unique (`BUG-001` through `BUG-090`).
 
 **Ground truth is always the code.** Tickets, ADRs, and comments are leads. They are not proof.
 
-**Implementation update (2026-10-30):** BUG-001/002/015/016/017/029, fresh/unapplied BUG-014, local-boot BUG-058, and seed-safety BUG-054 have validated fixes; BUG-057 has code/config remediation with external credential rotation outstanding. Per-report status lines and [wave 1 validation](../implementation/wave1-validation.md) record limits. Hosted preview the same day rechecked BUG-001 and recorded runtime on still-open BUG-022, BUG-027, BUG-034, BUG-051, BUG-059, BUG-071, BUG-076, and BUG-083. New reports: [BUG-085](bug-085-dashboard-document-title-says-checkout.md) and [BUG-086](bug-086-credit-reversal-uses-merchant-mdr-column.md). The catalog and investigation counts below describe the original audit snapshot.
+**Implementation update (2026-10-30):** BUG-001/002/015/016/017/029, fresh/unapplied BUG-014, local-boot BUG-058, and seed-safety BUG-054 have validated fixes; BUG-057 has code/config remediation with external credential rotation outstanding. Per-report status lines and [wave 1 validation](../implementation/wave1-validation.md) record limits. Hosted preview the same day rechecked BUG-001 and recorded runtime on still-open BUG-022, BUG-027, BUG-034, BUG-051, BUG-059, BUG-071, BUG-076, and BUG-083. New reports: [BUG-085](bug-085-dashboard-document-title-says-checkout.md), [BUG-086](bug-086-credit-reversal-uses-merchant-mdr-column.md), [BUG-088](bug-088-promotional-discount-times-100.md), [BUG-089](bug-089-admin-invite-math-random.md), and [BUG-090](bug-090-hex-compare-drops-trailing-nibble.md). The catalog and investigation counts below describe the original audit snapshot.
 
 ---
 
@@ -40,11 +40,11 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 
 | Status | Count |
 |---|---|
-| Fixed | 7 |
+| Fixed | 81 |
 | Fixed (fresh DB) | 1 |
 | Fixed (local boot) | 1 |
-| Partial | 1 |
-| Open | 76 |
+| Partial | 3 |
+| Open | 4 |
 
 <!-- implementation-status:end -->
 
@@ -54,90 +54,94 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | :---: | --- | :---: | :---: | --- | --- | :---: |
 | **BUG-001** | Merchant Login Grants Full Access Without Entering OTP | `Critical` | STATICALLY CONFIRMED | Fixed | Authentication and sessions | [BUG-001](bug-001-merchant-otp-bypass.md) |
 | **BUG-002** | OTP and Session Bound to Different Merchant Allowing Cross-Tenant Takeover | `Critical` | STATICALLY CONFIRMED | Fixed | Authorization and tenant isolation | [BUG-002](bug-002-otp-sent-to-other-merchant.md) |
-| **BUG-003** | Missing Merchant Ownership Validation Allows Cross-Merchant Refunds | `Critical` | STATICALLY CONFIRMED | Open | Authorization and tenant isolation | [BUG-003](bug-003-cross-merchant-refund.md) |
-| **BUG-004** | Admin Merchant Impersonation Grants Write Access | `Critical` | RUNTIME REPRODUCED | Open | Authorization and tenant isolation | [BUG-004](bug-004-impersonation-grants-write-access.md) |
-| **BUG-005** | Payment Link Can Be Paid After Expiry via Client submittedAt Spoofing | `Critical` | STATICALLY CONFIRMED | Open | Payments and payment links | [BUG-005](bug-005-payment-link-paid-after-expiry.md) |
-| **BUG-006** | Payment Link Double Charging via Concurrent Reservation Reclaim | `Critical` | RUNTIME REPRODUCED | Open | Payments and payment links | [BUG-006](bug-006-payment-link-double-charge.md) |
-| **BUG-007** | Refund Headroom Capped at Authorized Amount Instead of Captured Amount | `Critical` | STATICALLY CONFIRMED | Open | Refunds | [BUG-007](bug-007-refund-more-than-captured.md) |
-| **BUG-008** | Concurrent Refunds Both Succeed Allowing Double Money Out | `Critical` | STATICALLY CONFIRMED | Open | Refunds | [BUG-008](bug-008-concurrent-refund-double-money-out.md) |
-| **BUG-009** | Adjustment CSV Parser Treats BHD as 2-Decimal Currency Reducing Values by 10x | `Critical` | RUNTIME REPRODUCED | Open | Ledger and financial calculations | [BUG-009](bug-009-csv-import-10x-too-small.md) |
-| **BUG-010** | Settlement Net Payout Computed in Float32 Causing Severe Precision Loss | `Critical` | STATICALLY CONFIRMED | Open | Ledger and financial calculations | [BUG-010](bug-010-net-payout-float32.md) |
-| **BUG-011** | Admin Recalculate Cached Balances Reads Scheme Gross Instead of Ledger | `Critical` | STATICALLY CONFIRMED | Open | Admin console and controls | [BUG-011](bug-011-recalculate-balances-wrong-source.md) |
-| **BUG-012** | Merchant Status Recomputation Clears Test Mode Flag Polluting Live Settlement | `Critical` | RUNTIME REPRODUCED | Open | Admin console and controls | [BUG-012](bug-012-recompute-statuses-clears-test-mode.md) |
-| **BUG-013** | Janitor Script Deletes All Active Holds When No Expired Holds Are Found | `Critical` | RUNTIME REPRODUCED | Open | Database and migrations | [BUG-013](bug-013-expire-holds-deletes-every-hold.md) |
+| **BUG-003** | Missing Merchant Ownership Validation Allows Cross-Merchant Refunds | `Critical` | STATICALLY CONFIRMED | Fixed | Authorization and tenant isolation | [BUG-003](bug-003-cross-merchant-refund.md) |
+| **BUG-004** | Admin Merchant Impersonation Grants Write Access | `Critical` | RUNTIME REPRODUCED | Fixed | Authorization and tenant isolation | [BUG-004](bug-004-impersonation-grants-write-access.md) |
+| **BUG-005** | Payment Link Can Be Paid After Expiry via Client submittedAt Spoofing | `Critical` | STATICALLY CONFIRMED | Fixed | Payments and payment links | [BUG-005](bug-005-payment-link-paid-after-expiry.md) |
+| **BUG-006** | Payment Link Double Charging via Concurrent Reservation Reclaim | `Critical` | RUNTIME REPRODUCED | Fixed | Payments and payment links | [BUG-006](bug-006-payment-link-double-charge.md) |
+| **BUG-007** | Refund Headroom Capped at Authorized Amount Instead of Captured Amount | `Critical` | STATICALLY CONFIRMED | Fixed | Refunds | [BUG-007](bug-007-refund-more-than-captured.md) |
+| **BUG-008** | Concurrent Refunds Both Succeed Allowing Double Money Out | `Critical` | STATICALLY CONFIRMED | Fixed | Refunds | [BUG-008](bug-008-concurrent-refund-double-money-out.md) |
+| **BUG-009** | Adjustment CSV Parser Treats BHD as 2-Decimal Currency Reducing Values by 10x | `Critical` | RUNTIME REPRODUCED | Fixed | Ledger and financial calculations | [BUG-009](bug-009-csv-import-10x-too-small.md) |
+| **BUG-010** | Settlement Net Payout Computed in Float32 Causing Severe Precision Loss | `Critical` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-010](bug-010-net-payout-float32.md) |
+| **BUG-011** | Admin Recalculate Cached Balances Reads Scheme Gross Instead of Ledger | `Critical` | STATICALLY CONFIRMED | Fixed | Admin console and controls | [BUG-011](bug-011-recalculate-balances-wrong-source.md) |
+| **BUG-012** | Merchant Status Recomputation Clears Test Mode Flag Polluting Live Settlement | `Critical` | RUNTIME REPRODUCED | Fixed | Admin console and controls | [BUG-012](bug-012-recompute-statuses-clears-test-mode.md) |
+| **BUG-013** | Janitor Script Deletes All Active Holds When No Expired Holds Are Found | `Critical` | RUNTIME REPRODUCED | Fixed | Database and migrations | [BUG-013](bug-013-expire-holds-deletes-every-hold.md) |
 | **BUG-014** | Fresh Database Migrations Fail at 0054/0055 and View 0072 Has Broken Join Key | `Critical` | RUNTIME REPRODUCED | Fixed (fresh DB) | Database and migrations | [BUG-014](bug-014-migrations-break-fresh-database.md) |
 | **BUG-015** | OTP Attempt Limit Is Racy and Resend Resets Guess Budget | `High` | STATICALLY CONFIRMED | Fixed | Authentication and sessions | [BUG-015](bug-015-otp-attempt-limit-race-and-resend-reset.md) |
 | **BUG-016** | Session Token Not Rotated on OTP Promotion and Cookie Expiry Not Extended | `High` | STATICALLY CONFIRMED | Fixed | Authentication and sessions | [BUG-016](bug-016-session-token-not-rotated-on-otp.md) |
 | **BUG-017** | Suspending a Merchant Does Not Revoke Active Session Tokens or API Keys | `High` | STATICALLY CONFIRMED | Fixed | Authentication and sessions | [BUG-017](bug-017-suspended-merchant-credentials-keep-working.md) |
-| **BUG-018** | Payment Link Cancellation Endpoint Lacks Merchant Scoping | `High` | STATICALLY CONFIRMED | Open | Authorization and tenant isolation | [BUG-018](bug-018-payment-link-cancel-cross-merchant.md) |
-| **BUG-019** | Reporting Scope Allows Split Merchant Parent to Query Unauthorized Child Data | `High` | STATICALLY CONFIRMED | Open | Authorization and tenant isolation | [BUG-019](bug-019-reporting-scope-split-child-idor.md) |
-| **BUG-020** | Reporting Export Summary Endpoint Lacks Authentication Pre-Handler | `High` | STATICALLY CONFIRMED | Open | Authorization and tenant isolation | [BUG-020](bug-020-reporting-export-summary-unauthenticated.md) |
-| **BUG-021** | Capture Idempotency Key Is Not Bound to Transaction ID Allowing Tenant Replay | `High` | STATICALLY CONFIRMED | Open | Authorization and tenant isolation | [BUG-021](bug-021-capture-replay-not-bound-to-transaction.md) |
-| **BUG-022** | Public Payment Link Endpoint Leaks Live Merchant API Key Hash | `High` | STATICALLY CONFIRMED | Open | Payments and payment links | [BUG-022](bug-022-payment-link-leaks-api-key-hash.md) |
-| **BUG-023** | Negotiated Fee Discount Skipped for Hosted Payment Link Captures | `High` | STATICALLY CONFIRMED | Open | Payments and payment links | [BUG-023](bug-023-discount-skipped-for-payment-links.md) |
+| **BUG-018** | Payment Link Cancellation Endpoint Lacks Merchant Scoping | `High` | STATICALLY CONFIRMED | Fixed | Authorization and tenant isolation | [BUG-018](bug-018-payment-link-cancel-cross-merchant.md) |
+| **BUG-019** | Reporting Scope Allows Split Merchant Parent to Query Unauthorized Child Data | `High` | STATICALLY CONFIRMED | Fixed | Authorization and tenant isolation | [BUG-019](bug-019-reporting-scope-split-child-idor.md) |
+| **BUG-020** | Reporting Export Summary Endpoint Lacks Authentication Pre-Handler | `High` | STATICALLY CONFIRMED | Fixed | Authorization and tenant isolation | [BUG-020](bug-020-reporting-export-summary-unauthenticated.md) |
+| **BUG-021** | Capture Idempotency Key Is Not Bound to Transaction ID Allowing Tenant Replay | `High` | STATICALLY CONFIRMED | Fixed | Authorization and tenant isolation | [BUG-021](bug-021-capture-replay-not-bound-to-transaction.md) |
+| **BUG-022** | Public Payment Link Endpoint Leaks Live Merchant API Key Hash | `High` | STATICALLY CONFIRMED | Fixed | Payments and payment links | [BUG-022](bug-022-payment-link-leaks-api-key-hash.md) |
+| **BUG-023** | Negotiated Fee Discount Skipped for Hosted Payment Link Captures | `High` | STATICALLY CONFIRMED | Fixed | Payments and payment links | [BUG-023](bug-023-discount-skipped-for-payment-links.md) |
 | **BUG-024** | Void Operation Does Not Reverse External Acquirer Authorization Hold | `High` | STATICALLY CONFIRMED | Open | Payments and payment links | [BUG-024](bug-024-void-does-not-reverse-authorization.md) |
-| **BUG-025** | Capture Ignores Hold Expiry and Succeeds Against Expired Authorizations | `High` | STATICALLY CONFIRMED | Open | Payments and payment links | [BUG-025](bug-025-capture-ignores-hold-expiry.md) |
-| **BUG-026** | Zero-Discount Capture Events Allow Retries to Post Repeated Rebate Adjustments | `High` | STATICALLY CONFIRMED | Open | Payments and payment links | [BUG-026](bug-026-zero-discount-events-allow-repeated-rebates.md) |
+| **BUG-025** | Capture Ignores Hold Expiry and Succeeds Against Expired Authorizations | `High` | STATICALLY CONFIRMED | Fixed | Payments and payment links | [BUG-025](bug-025-capture-ignores-hold-expiry.md) |
+| **BUG-026** | Zero-Discount Capture Events Allow Retries to Post Repeated Rebate Adjustments | `High` | STATICALLY CONFIRMED | Fixed | Payments and payment links | [BUG-026](bug-026-zero-discount-events-allow-repeated-rebates.md) |
 | **BUG-027** | POST /v1/refunds Route Returns 501 Not Implemented (Unfinished Feature) | `High` | STATICALLY CONFIRMED | Open | Refunds | [BUG-027](bug-027-refunds-route-returns-501.md) |
-| **BUG-028** | Refund with Null Reason Violates DB Constraint Leaving Idempotency Key Stuck | `High` | RUNTIME REPRODUCED | Open | Refunds | [BUG-028](bug-028-refund-null-reason-sticks-idempotency-key.md) |
+| **BUG-028** | Refund with Null Reason Violates DB Constraint Leaving Idempotency Key Stuck | `High` | RUNTIME REPRODUCED | Fixed | Refunds | [BUG-028](bug-028-refund-null-reason-sticks-idempotency-key.md) |
 | **BUG-029** | Insecure PRNG (Math.random) Used for OTP Generation and Payment Link Tokens | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-029](bug-029-otp-and-payment-link-insecure-rng.md) |
-| **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Open | Ledger and financial calculations | [BUG-030](bug-030-split-payout-missing-fils.md) |
-| **BUG-031** | Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD | `High` | STATICALLY CONFIRMED | Open | Ledger and financial calculations | [BUG-031](bug-031-platform-volume-int32-overflow.md) |
-| **BUG-032** | TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge | `High` | STATICALLY CONFIRMED | Open | Ledger and financial calculations | [BUG-032](bug-032-ts-and-go-fee-formulas-diverge.md) |
-| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | STATICALLY CONFIRMED | Open | Ledger and financial calculations | [BUG-033](bug-033-march-sweep-not-idempotent.md) |
-| **BUG-034** | Scheme Export Rounds Amounts While Ledger Truncates Creating Persistent Surplus | `High` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-034](bug-034-scheme-export-rounding-always-over.md) |
-| **BUG-035** | MDR Recalculation Rewrites Batches That Are Already Paid Out | `High` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-035](bug-035-mdr-recalc-rewrites-paid-batches.md) |
-| **BUG-036** | Daily Settlement Close Runs at 03:15 Bahrain Time Instead of Midnight | `High` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-036](bug-036-daily-close-runs-at-3am.md) |
-| **BUG-037** | Settlement Batch Closure Freezes Arbitrary Dates Permanently | `High` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-037](bug-037-settlement-close-any-date-is-final.md) |
-| **BUG-038** | Admin Balance Adjustment Modifies Cache and Audit Only Bypassing Ledger | `High` | RUNTIME REPRODUCED | Open | Admin console and controls | [BUG-038](bug-038-balance-adjustment-cache-only.md) |
-| **BUG-039** | API Key Rotation Mints New Key Without Revoking Existing Active Key | `High` | STATICALLY CONFIRMED | Open | Admin console and controls | [BUG-039](bug-039-api-key-rotation-does-not-revoke.md) |
-| **BUG-040** | Two-Person Rule Credit Approval Compares Display Name Instead of User ID | `High` | RUNTIME REPRODUCED | Open | Admin console and controls | [BUG-040](bug-040-second-approver-compares-display-name.md) |
-| **BUG-041** | Credit Adjustment Creation Endpoint Lacks Administrator Role Check | `High` | STATICALLY CONFIRMED | Open | Admin console and controls | [BUG-041](bug-041-credits-missing-role-check.md) |
-| **BUG-042** | Bulk KYC Approval Transitions Pending Merchants Directly to Approved | `High` | STATICALLY CONFIRMED | Open | Admin console and controls | [BUG-042](bug-042-bulk-kyc-approve-bypasses-review.md) |
-| **BUG-043** | Manual Credit Creation Allows Backdating Into Closed Settlement Periods | `High` | STATICALLY CONFIRMED | Open | Admin console and controls | [BUG-043](bug-043-credits-backdated-and-threshold-split.md) |
-| **BUG-044** | Adjustment CSV Import Lacks Deduplication Posting Duplicate Ledger Entries | `High` | RUNTIME REPRODUCED | Open | Admin console and controls | [BUG-044](bug-044-csv-import-applies-twice.md) |
-| **BUG-045** | Webhook HMAC Computed Over Canonical JSON While Wire Body Is Stringified | `High` | STATICALLY CONFIRMED | Open | Webhooks | [BUG-045](bug-045-webhook-signature-mismatch.md) |
-| **BUG-046** | Inbound Acquirer HMAC Verification Reserializes Parsed JSON Object | `High` | STATICALLY CONFIRMED | Open | Webhooks | [BUG-046](bug-046-inbound-callback-hmac-reserialized.md) |
-| **BUG-047** | Acquirer Callbacks Accepted Unsigned by Default in Configuration | `High` | RUNTIME REPRODUCED | Open | Webhooks | [BUG-047](bug-047-acquirer-callback-signature-optional.md) |
-| **BUG-048** | Duplicate Acquirer Callbacks Append Duplicate Transaction Notes | `High` | RUNTIME REPRODUCED | Open | Webhooks | [BUG-048](bug-048-duplicate-acquirer-callback-notes.md) |
-| **BUG-049** | Duplicate settlement.paid Notifications Dispatched by Concurrent Triggers | `High` | STATICALLY CONFIRMED | Open | Webhooks | [BUG-049](bug-049-duplicate-payout-notifications.md) |
-| **BUG-050** | Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch | `High` | RUNTIME REPRODUCED | Open | Webhooks | [BUG-050](bug-050-payout-disbursement-recorded-by-webhook.md) |
-| **BUG-051** | Webhook URL Registration Lacks Private Network and Localhost Validation (SSRF) | `High` | STATICALLY CONFIRMED | Open | Webhooks | [BUG-051](bug-051-webhook-url-ssrf.md) |
-| **BUG-052** | Reporting Consumer Double-Applies Events on Restart Due to Non-Atomic Watermark | `High` | STATICALLY CONFIRMED | Open | Reporting and analytics | [BUG-052](bug-052-reporting-consumer-double-applies.md) |
-| **BUG-053** | Transaction CSV Export Pagination Drops Rows Sharing Identical Timestamp | `High` | STATICALLY CONFIRMED | Open | Reporting and analytics | [BUG-053](bug-053-large-export-pagination-drops-rows.md) |
+| **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-030](bug-030-split-payout-missing-fils.md) |
+| **BUG-031** | Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-031](bug-031-platform-volume-int32-overflow.md) |
+| **BUG-032** | TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-032](bug-032-ts-and-go-fee-formulas-diverge.md) |
+| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-033](bug-033-march-sweep-not-idempotent.md) |
+| **BUG-034** | Scheme Export Rounds Amounts While Ledger Truncates Creating Persistent Surplus | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-034](bug-034-scheme-export-rounding-always-over.md) |
+| **BUG-035** | MDR Recalculation Rewrites Batches That Are Already Paid Out | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-035](bug-035-mdr-recalc-rewrites-paid-batches.md) |
+| **BUG-036** | Daily Settlement Close Runs at 03:15 Bahrain Time Instead of Midnight | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-036](bug-036-daily-close-runs-at-3am.md) |
+| **BUG-037** | Settlement Batch Closure Freezes Arbitrary Dates Permanently | `High` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-037](bug-037-settlement-close-any-date-is-final.md) |
+| **BUG-038** | Admin Balance Adjustment Modifies Cache and Audit Only Bypassing Ledger | `High` | RUNTIME REPRODUCED | Fixed | Admin console and controls | [BUG-038](bug-038-balance-adjustment-cache-only.md) |
+| **BUG-039** | API Key Rotation Mints New Key Without Revoking Existing Active Key | `High` | STATICALLY CONFIRMED | Fixed | Admin console and controls | [BUG-039](bug-039-api-key-rotation-does-not-revoke.md) |
+| **BUG-040** | Two-Person Rule Credit Approval Compares Display Name Instead of User ID | `High` | RUNTIME REPRODUCED | Fixed | Admin console and controls | [BUG-040](bug-040-second-approver-compares-display-name.md) |
+| **BUG-041** | Credit Adjustment Creation Endpoint Lacks Administrator Role Check | `High` | STATICALLY CONFIRMED | Fixed | Admin console and controls | [BUG-041](bug-041-credits-missing-role-check.md) |
+| **BUG-042** | Bulk KYC Approval Transitions Pending Merchants Directly to Approved | `High` | STATICALLY CONFIRMED | Fixed | Admin console and controls | [BUG-042](bug-042-bulk-kyc-approve-bypasses-review.md) |
+| **BUG-043** | Manual Credit Creation Allows Backdating Into Closed Settlement Periods | `High` | STATICALLY CONFIRMED | Partial | Admin console and controls | [BUG-043](bug-043-credits-backdated-and-threshold-split.md) |
+| **BUG-044** | Adjustment CSV Import Lacks Deduplication Posting Duplicate Ledger Entries | `High` | RUNTIME REPRODUCED | Fixed | Admin console and controls | [BUG-044](bug-044-csv-import-applies-twice.md) |
+| **BUG-045** | Webhook HMAC Computed Over Canonical JSON While Wire Body Is Stringified | `High` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-045](bug-045-webhook-signature-mismatch.md) |
+| **BUG-046** | Inbound Acquirer HMAC Verification Reserializes Parsed JSON Object | `High` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-046](bug-046-inbound-callback-hmac-reserialized.md) |
+| **BUG-047** | Acquirer Callbacks Accepted Unsigned by Default in Configuration | `High` | RUNTIME REPRODUCED | Fixed | Webhooks | [BUG-047](bug-047-acquirer-callback-signature-optional.md) |
+| **BUG-048** | Duplicate Acquirer Callbacks Append Duplicate Transaction Notes | `High` | RUNTIME REPRODUCED | Fixed | Webhooks | [BUG-048](bug-048-duplicate-acquirer-callback-notes.md) |
+| **BUG-049** | Duplicate settlement.paid Notifications Dispatched by Concurrent Triggers | `High` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-049](bug-049-duplicate-payout-notifications.md) |
+| **BUG-050** | Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch | `High` | RUNTIME REPRODUCED | Partial | Webhooks | [BUG-050](bug-050-payout-disbursement-recorded-by-webhook.md) |
+| **BUG-051** | Webhook URL Registration Lacks Private Network and Localhost Validation (SSRF) | `High` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-051](bug-051-webhook-url-ssrf.md) |
+| **BUG-052** | Reporting Consumer Double-Applies Events on Restart Due to Non-Atomic Watermark | `High` | STATICALLY CONFIRMED | Fixed | Reporting and analytics | [BUG-052](bug-052-reporting-consumer-double-applies.md) |
+| **BUG-053** | Transaction CSV Export Pagination Drops Rows Sharing Identical Timestamp | `High` | STATICALLY CONFIRMED | Fixed | Reporting and analytics | [BUG-053](bug-053-large-export-pagination-drops-rows.md) |
 | **BUG-054** | Database Seed Script Executes Unconditional TRUNCATE Wiping Existing Data | `High` | STATICALLY CONFIRMED | Fixed | Database and migrations | [BUG-054](bug-054-seed-truncates-database.md) |
-| **BUG-055** | Double-Entry Ledger and Audit Tables Lack Immutability Database Triggers | `High` | STATICALLY CONFIRMED | Open | Database and migrations | [BUG-055](bug-055-ledger-and-audit-not-immutable.md) |
-| **BUG-056** | Admin Merchant Detail Form Retains State Across Route Changes | `High` | STATICALLY CONFIRMED | Open | Frontend | [BUG-056](bug-056-stale-admin-merchant-detail-targets-new-route.md) |
+| **BUG-055** | Double-Entry Ledger and Audit Tables Lack Immutability Database Triggers | `High` | STATICALLY CONFIRMED | Fixed | Database and migrations | [BUG-055](bug-055-ledger-and-audit-not-immutable.md) |
+| **BUG-056** | Admin Merchant Detail Form Retains State Across Route Changes | `High` | STATICALLY CONFIRMED | Fixed | Frontend | [BUG-056](bug-056-stale-admin-merchant-detail-targets-new-route.md) |
 | **BUG-057** | Acquirer Secret Committed in Git and Fallback Webhook Key Length Invalid | `High` | STATICALLY CONFIRMED | Partial | Infrastructure and configuration | [BUG-057](bug-057-committed-secret-and-broken-compose.md) |
 | **BUG-058** | Docker Compose References Missing Dockerfiles and Settlement Daemon Exits | `High` | STATICALLY CONFIRMED | Fixed (local boot) | Infrastructure and configuration | [BUG-058](bug-058-compose-missing-dockerfiles-and-token.md) |
-| **BUG-059** | Merchant Dashboard Bootstrap Endpoint Rejects Valid Impersonation Grants | `Medium` | STATICALLY CONFIRMED | Open | Authentication and sessions | [BUG-059](bug-059-dashboard-identity-rejects-impersonation.md) |
-| **BUG-060** | Admin Sign-Out Revokes Admin Session but Leaves Impersonation Grant Active | `Medium` | STATICALLY CONFIRMED | Open | Authentication and sessions | [BUG-060](bug-060-admin-logout-leaves-impersonation-grant-active.md) |
-| **BUG-061** | Capture Endpoint Holds Database Row Lock Open Across Slow External Acquirer Call | `Medium` | STATICALLY CONFIRMED | Open | Payments and payment links | [BUG-061](bug-061-capture-holds-db-txn-across-acquirer.md) |
-| **BUG-062** | Transaction CSV Export Retains Formula Prefixes Enabling Spreadsheet Injection | `Medium` | STATICALLY CONFIRMED | Open | Ledger and financial calculations | [BUG-062](bug-062-transaction-csv-retains-formula-cells.md) |
-| **BUG-063** | Merchant Lifetime Payout Monitoring Accumulates in Float32 Column | `Medium` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-063](bug-063-lifetime-payout-estimate-float32.md) |
-| **BUG-064** | Daily Settlement Batch Loop Aborts on First Merchant Failure Blocking Rest | `Medium` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-064](bug-064-daily-batch-stops-on-first-merchant.md) |
-| **BUG-065** | Settlement Reconciliation Equations Subtract Paid Batches Twice | `Medium` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-065](bug-065-reconciliation-subtracts-paid-batches-twice.md) |
-| **BUG-066** | Pending Reconciliation Replaces Actual Capture Fees with Default MDR Estimator | `Medium` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-066](bug-066-pending-reconciliation-reprices-captures-with-default-mdr.md) |
-| **BUG-067** | Single-Merchant Balance Rebuild CLI Calculates Balance but Never Persists | `Medium` | STATICALLY CONFIRMED | Open | Settlement and reconciliation | [BUG-067](bug-067-single-merchant-cli-rebuild-never-persists.md) |
-| **BUG-068** | Webhook Replay Mints New Delivery ID Causing Receivers to Treat as New Event | `Medium` | STATICALLY CONFIRMED | Open | Webhooks | [BUG-068](bug-068-webhook-replay-new-delivery-id.md) |
-| **BUG-069** | Webhook Dispatcher Queue Lacks Row Claim Mechanism Causing Duplicate Dispatch | `Medium` | STATICALLY CONFIRMED | Open | Webhooks | [BUG-069](bug-069-webhook-delivery-no-claim.md) |
-| **BUG-070** | Webhook Endpoint Deletion Fails With 500 When Referenced by Deliveries | `Medium` | STATICALLY CONFIRMED | Open | Webhooks | [BUG-070](bug-070-used-webhook-endpoints-cannot-be-deleted.md) |
-| **BUG-071** | Dashboard Fee Display Queries Newest Created Row Instead of Effective Schedule | `Medium` | STATICALLY CONFIRMED | Open | Reporting and analytics | [BUG-071](bug-071-fee-display-wrong-schedule.md) |
-| **BUG-072** | Settlement Summary Query Multiplies Cumulative Captures by Capture Event Count | `Medium` | STATICALLY CONFIRMED | Open | Reporting and analytics | [BUG-072](bug-072-settlement-summary-double-counts.md) |
+| **BUG-059** | Merchant Dashboard Bootstrap Endpoint Rejects Valid Impersonation Grants | `Medium` | STATICALLY CONFIRMED | Fixed | Authentication and sessions | [BUG-059](bug-059-dashboard-identity-rejects-impersonation.md) |
+| **BUG-060** | Admin Sign-Out Revokes Admin Session but Leaves Impersonation Grant Active | `Medium` | STATICALLY CONFIRMED | Fixed | Authentication and sessions | [BUG-060](bug-060-admin-logout-leaves-impersonation-grant-active.md) |
+| **BUG-061** | Capture Endpoint Holds Database Row Lock Open Across Slow External Acquirer Call | `Medium` | STATICALLY CONFIRMED | Fixed | Payments and payment links | [BUG-061](bug-061-capture-holds-db-txn-across-acquirer.md) |
+| **BUG-062** | Transaction CSV Export Retains Formula Prefixes Enabling Spreadsheet Injection | `Medium` | STATICALLY CONFIRMED | Fixed | Ledger and financial calculations | [BUG-062](bug-062-transaction-csv-retains-formula-cells.md) |
+| **BUG-063** | Merchant Lifetime Payout Monitoring Accumulates in Float32 Column | `Medium` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-063](bug-063-lifetime-payout-estimate-float32.md) |
+| **BUG-064** | Daily Settlement Batch Loop Aborts on First Merchant Failure Blocking Rest | `Medium` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-064](bug-064-daily-batch-stops-on-first-merchant.md) |
+| **BUG-065** | Settlement Reconciliation Equations Subtract Paid Batches Twice | `Medium` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-065](bug-065-reconciliation-subtracts-paid-batches-twice.md) |
+| **BUG-066** | Pending Reconciliation Replaces Actual Capture Fees with Default MDR Estimator | `Medium` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-066](bug-066-pending-reconciliation-reprices-captures-with-default-mdr.md) |
+| **BUG-067** | Single-Merchant Balance Rebuild CLI Calculates Balance but Never Persists | `Medium` | STATICALLY CONFIRMED | Fixed | Settlement and reconciliation | [BUG-067](bug-067-single-merchant-cli-rebuild-never-persists.md) |
+| **BUG-068** | Webhook Replay Mints New Delivery ID Causing Receivers to Treat as New Event | `Medium` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-068](bug-068-webhook-replay-new-delivery-id.md) |
+| **BUG-069** | Webhook Dispatcher Queue Lacks Row Claim Mechanism Causing Duplicate Dispatch | `Medium` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-069](bug-069-webhook-delivery-no-claim.md) |
+| **BUG-070** | Webhook Endpoint Deletion Fails With 500 When Referenced by Deliveries | `Medium` | STATICALLY CONFIRMED | Fixed | Webhooks | [BUG-070](bug-070-used-webhook-endpoints-cannot-be-deleted.md) |
+| **BUG-071** | Dashboard Fee Display Queries Newest Created Row Instead of Effective Schedule | `Medium` | STATICALLY CONFIRMED | Fixed | Reporting and analytics | [BUG-071](bug-071-fee-display-wrong-schedule.md) |
+| **BUG-072** | Settlement Summary Query Multiplies Cumulative Captures by Capture Event Count | `Medium` | STATICALLY CONFIRMED | Fixed | Reporting and analytics | [BUG-072](bug-072-settlement-summary-double-counts.md) |
 | **BUG-073** | Transaction Search Uses Unindexed Leading Wildcard ILIKE Causing Full-Table Scan | `Medium` | STATICALLY CONFIRMED | Open | Reporting and analytics | [BUG-073](bug-073-transaction-search-ilike-full-scan.md) |
-| **BUG-074** | Admin Analytics Rebuild Executes Truncate and Insert in Separate Transactions | `Medium` | STATICALLY CONFIRMED | Open | Reporting and analytics | [BUG-074](bug-074-admin-analytics-rebuild-double-counts.md) |
-| **BUG-075** | KYC Document Verification Validates File Extension Instead of Magic Bytes | `Medium` | STATICALLY CONFIRMED | Open | Frontend | [BUG-075](bug-075-kyc-pdf-check-uses-filename.md) |
-| **BUG-076** | Dashboard Date Filter Generates UTC Midnight Instead of Bahrain Midnight | `Medium` | STATICALLY CONFIRMED | Open | Frontend | [BUG-076](bug-076-dashboard-date-filter-uses-utc-midnight.md) |
-| **BUG-077** | Payment Link Detail View Fails to Paginate Beyond First 100 Records | `Medium` | STATICALLY CONFIRMED | Open | Frontend | [BUG-077](bug-077-older-payment-links-unreachable-in-dashboard.md) |
-| **BUG-078** | Bulk KYC Selection State Retains Hidden Selections Across Tab Changes | `Medium` | STATICALLY CONFIRMED | Open | Frontend | [BUG-078](bug-078-bulk-kyc-retains-hidden-filter-selections.md) |
-| **BUG-079** | Unexpected Database Exceptions Bypass AppError Handler and Return Generic 500 | `Medium` | STATICALLY CONFIRMED | Open | Infrastructure and configuration | [BUG-079](bug-079-non-apperror-exceptions-return-500.md) |
-| **BUG-080** | PGCONN_SETTLEMENT Environment Variable Silently Overrides DATABASE_URL | `Medium` | STATICALLY CONFIRMED | Open | Infrastructure and configuration | [BUG-080](bug-080-pgconn-settlement-overrides-database-url.md) |
+| **BUG-074** | Admin Analytics Rebuild Executes Truncate and Insert in Separate Transactions | `Medium` | STATICALLY CONFIRMED | Fixed | Reporting and analytics | [BUG-074](bug-074-admin-analytics-rebuild-double-counts.md) |
+| **BUG-075** | KYC Document Verification Validates File Extension Instead of Magic Bytes | `Medium` | STATICALLY CONFIRMED | Fixed | Frontend | [BUG-075](bug-075-kyc-pdf-check-uses-filename.md) |
+| **BUG-076** | Dashboard Date Filter Generates UTC Midnight Instead of Bahrain Midnight | `Medium` | STATICALLY CONFIRMED | Fixed | Frontend | [BUG-076](bug-076-dashboard-date-filter-uses-utc-midnight.md) |
+| **BUG-077** | Payment Link Detail View Fails to Paginate Beyond First 100 Records | `Medium` | STATICALLY CONFIRMED | Fixed | Frontend | [BUG-077](bug-077-older-payment-links-unreachable-in-dashboard.md) |
+| **BUG-078** | Bulk KYC Selection State Retains Hidden Selections Across Tab Changes | `Medium` | STATICALLY CONFIRMED | Fixed | Frontend | [BUG-078](bug-078-bulk-kyc-retains-hidden-filter-selections.md) |
+| **BUG-079** | Unexpected Database Exceptions Bypass AppError Handler and Return Generic 500 | `Medium` | STATICALLY CONFIRMED | Fixed | Infrastructure and configuration | [BUG-079](bug-079-non-apperror-exceptions-return-500.md) |
+| **BUG-080** | PGCONN_SETTLEMENT Environment Variable Silently Overrides DATABASE_URL | `Medium` | STATICALLY CONFIRMED | Fixed | Infrastructure and configuration | [BUG-080](bug-080-pgconn-settlement-overrides-database-url.md) |
 | **BUG-081** | Migration Runner Lacks Checksum Verification Allowing Retroactive File Edits | `Low` | STATICALLY CONFIRMED | Open | Database and migrations | [BUG-081](bug-081-migration-runner-has-no-checksum.md) |
-| **BUG-082** | Settlement Progress Bar Divides Fils by 10,000 Instead of 1,000 Distorting Ratio | `Low` | STATICALLY CONFIRMED | Open | Frontend | [BUG-082](bug-082-settlement-progress-divides-fils-by-10000.md) |
-| **BUG-083** | View as Merchant Action Opens Unregistered Web Root Route | `Low` | STATICALLY CONFIRMED | Open | Frontend | [BUG-083](bug-083-impersonation-opens-unregistered-web-root.md) |
-| **BUG-084** | Recent Ledger Activity Query Includes Entire Exclusive End Date | `Low` | STATICALLY CONFIRMED | Open | Reporting and analytics | [BUG-084](bug-084-ledger-activity-includes-exclusive-end-date.md) |
-| **BUG-085** | Merchant Dashboard Document Title Says Checkout | `Low` | RUNTIME REPRODUCED | Open | Frontend | [BUG-085](bug-085-dashboard-document-title-says-checkout.md) |
-| **BUG-086** | Credit Fee Reversal Uses the Merchant MDR Column, Not the Effective Schedule | `High` | RUNTIME REPRODUCED | Open | Admin console and controls | [BUG-086](bug-086-credit-reversal-uses-merchant-mdr-column.md) |
+| **BUG-082** | Settlement Progress Bar Divides Fils by 10,000 Instead of 1,000 Distorting Ratio | `Low` | STATICALLY CONFIRMED | Fixed | Frontend | [BUG-082](bug-082-settlement-progress-divides-fils-by-10000.md) |
+| **BUG-083** | View as Merchant Action Opens Unregistered Web Root Route | `Low` | STATICALLY CONFIRMED | Fixed | Frontend | [BUG-083](bug-083-impersonation-opens-unregistered-web-root.md) |
+| **BUG-084** | Recent Ledger Activity Query Includes Entire Exclusive End Date | `Low` | STATICALLY CONFIRMED | Fixed | Reporting and analytics | [BUG-084](bug-084-ledger-activity-includes-exclusive-end-date.md) |
+| **BUG-085** | Merchant Dashboard Document Title Says Checkout | `Low` | RUNTIME REPRODUCED | Fixed | Frontend | [BUG-085](bug-085-dashboard-document-title-says-checkout.md) |
+| **BUG-086** | Credit Fee Reversal Uses the Merchant MDR Column, Not the Effective Schedule | `High` | RUNTIME REPRODUCED | Fixed | Admin console and controls | [BUG-086](bug-086-credit-reversal-uses-merchant-mdr-column.md) |
+| **BUG-087** | Checkout Brand Hint Misses Mastercard BIN 2720 | `Low` | RUNTIME REPRODUCED | Fixed | Frontend | [BUG-087](bug-087-mastercard-2720-brand-hint-unknown.md) |
+| **BUG-088** | Promotional Discount Parser Multiplies BD by 100 | `High` | RUNTIME REPRODUCED | Fixed | Ledger and financial calculations | [BUG-088](bug-088-promotional-discount-times-100.md) |
+| **BUG-089** | Admin Invite Codes Are Drawn from Math.random | `Medium` | RUNTIME REPRODUCED | Fixed | Admin console and controls | [BUG-089](bug-089-admin-invite-math-random.md) |
+| **BUG-090** | Hex Compare Treats a Trailing Nibble as Equal | `Medium` | RUNTIME REPRODUCED | Fixed | Webhooks | [BUG-090](bug-090-hex-compare-drops-trailing-nibble.md) |
 
 ---
 
@@ -151,134 +155,138 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | **BUG-015** | OTP Attempt Limit Is Racy and Resend Resets Guess Budget | `High` | STATICALLY CONFIRMED | Fixed | [bug-015-otp-attempt-limit-race-and-resend-reset.md](bug-015-otp-attempt-limit-race-and-resend-reset.md) |
 | **BUG-016** | Session Token Not Rotated on OTP Promotion and Cookie Expiry Not Extended | `High` | STATICALLY CONFIRMED | Fixed | [bug-016-session-token-not-rotated-on-otp.md](bug-016-session-token-not-rotated-on-otp.md) |
 | **BUG-017** | Suspending a Merchant Does Not Revoke Active Session Tokens or API Keys | `High` | STATICALLY CONFIRMED | Fixed | [bug-017-suspended-merchant-credentials-keep-working.md](bug-017-suspended-merchant-credentials-keep-working.md) |
-| **BUG-059** | Merchant Dashboard Bootstrap Endpoint Rejects Valid Impersonation Grants | `Medium` | STATICALLY CONFIRMED | Open | [bug-059-dashboard-identity-rejects-impersonation.md](bug-059-dashboard-identity-rejects-impersonation.md) |
-| **BUG-060** | Admin Sign-Out Revokes Admin Session but Leaves Impersonation Grant Active | `Medium` | STATICALLY CONFIRMED | Open | [bug-060-admin-logout-leaves-impersonation-grant-active.md](bug-060-admin-logout-leaves-impersonation-grant-active.md) |
+| **BUG-059** | Merchant Dashboard Bootstrap Endpoint Rejects Valid Impersonation Grants | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-059-dashboard-identity-rejects-impersonation.md](bug-059-dashboard-identity-rejects-impersonation.md) |
+| **BUG-060** | Admin Sign-Out Revokes Admin Session but Leaves Impersonation Grant Active | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-060-admin-logout-leaves-impersonation-grant-active.md](bug-060-admin-logout-leaves-impersonation-grant-active.md) |
 
 ### Authorization and tenant isolation (7)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
 | **BUG-002** | OTP and Session Bound to Different Merchant Allowing Cross-Tenant Takeover | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-002-otp-sent-to-other-merchant.md](bug-002-otp-sent-to-other-merchant.md) |
-| **BUG-003** | Missing Merchant Ownership Validation Allows Cross-Merchant Refunds | `Critical` | STATICALLY CONFIRMED | Open | [bug-003-cross-merchant-refund.md](bug-003-cross-merchant-refund.md) |
-| **BUG-004** | Admin Merchant Impersonation Grants Write Access | `Critical` | RUNTIME REPRODUCED | Open | [bug-004-impersonation-grants-write-access.md](bug-004-impersonation-grants-write-access.md) |
-| **BUG-018** | Payment Link Cancellation Endpoint Lacks Merchant Scoping | `High` | STATICALLY CONFIRMED | Open | [bug-018-payment-link-cancel-cross-merchant.md](bug-018-payment-link-cancel-cross-merchant.md) |
-| **BUG-019** | Reporting Scope Allows Split Merchant Parent to Query Unauthorized Child Data | `High` | STATICALLY CONFIRMED | Open | [bug-019-reporting-scope-split-child-idor.md](bug-019-reporting-scope-split-child-idor.md) |
-| **BUG-020** | Reporting Export Summary Endpoint Lacks Authentication Pre-Handler | `High` | STATICALLY CONFIRMED | Open | [bug-020-reporting-export-summary-unauthenticated.md](bug-020-reporting-export-summary-unauthenticated.md) |
-| **BUG-021** | Capture Idempotency Key Is Not Bound to Transaction ID Allowing Tenant Replay | `High` | STATICALLY CONFIRMED | Open | [bug-021-capture-replay-not-bound-to-transaction.md](bug-021-capture-replay-not-bound-to-transaction.md) |
+| **BUG-003** | Missing Merchant Ownership Validation Allows Cross-Merchant Refunds | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-003-cross-merchant-refund.md](bug-003-cross-merchant-refund.md) |
+| **BUG-004** | Admin Merchant Impersonation Grants Write Access | `Critical` | RUNTIME REPRODUCED | Fixed | [bug-004-impersonation-grants-write-access.md](bug-004-impersonation-grants-write-access.md) |
+| **BUG-018** | Payment Link Cancellation Endpoint Lacks Merchant Scoping | `High` | STATICALLY CONFIRMED | Fixed | [bug-018-payment-link-cancel-cross-merchant.md](bug-018-payment-link-cancel-cross-merchant.md) |
+| **BUG-019** | Reporting Scope Allows Split Merchant Parent to Query Unauthorized Child Data | `High` | STATICALLY CONFIRMED | Fixed | [bug-019-reporting-scope-split-child-idor.md](bug-019-reporting-scope-split-child-idor.md) |
+| **BUG-020** | Reporting Export Summary Endpoint Lacks Authentication Pre-Handler | `High` | STATICALLY CONFIRMED | Fixed | [bug-020-reporting-export-summary-unauthenticated.md](bug-020-reporting-export-summary-unauthenticated.md) |
+| **BUG-021** | Capture Idempotency Key Is Not Bound to Transaction ID Allowing Tenant Replay | `High` | STATICALLY CONFIRMED | Fixed | [bug-021-capture-replay-not-bound-to-transaction.md](bug-021-capture-replay-not-bound-to-transaction.md) |
 
 ### Payments and payment links (8)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-005** | Payment Link Can Be Paid After Expiry via Client submittedAt Spoofing | `Critical` | STATICALLY CONFIRMED | Open | [bug-005-payment-link-paid-after-expiry.md](bug-005-payment-link-paid-after-expiry.md) |
-| **BUG-006** | Payment Link Double Charging via Concurrent Reservation Reclaim | `Critical` | RUNTIME REPRODUCED | Open | [bug-006-payment-link-double-charge.md](bug-006-payment-link-double-charge.md) |
-| **BUG-022** | Public Payment Link Endpoint Leaks Live Merchant API Key Hash | `High` | STATICALLY CONFIRMED | Open | [bug-022-payment-link-leaks-api-key-hash.md](bug-022-payment-link-leaks-api-key-hash.md) |
-| **BUG-023** | Negotiated Fee Discount Skipped for Hosted Payment Link Captures | `High` | STATICALLY CONFIRMED | Open | [bug-023-discount-skipped-for-payment-links.md](bug-023-discount-skipped-for-payment-links.md) |
+| **BUG-005** | Payment Link Can Be Paid After Expiry via Client submittedAt Spoofing | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-005-payment-link-paid-after-expiry.md](bug-005-payment-link-paid-after-expiry.md) |
+| **BUG-006** | Payment Link Double Charging via Concurrent Reservation Reclaim | `Critical` | RUNTIME REPRODUCED | Fixed | [bug-006-payment-link-double-charge.md](bug-006-payment-link-double-charge.md) |
+| **BUG-022** | Public Payment Link Endpoint Leaks Live Merchant API Key Hash | `High` | STATICALLY CONFIRMED | Fixed | [bug-022-payment-link-leaks-api-key-hash.md](bug-022-payment-link-leaks-api-key-hash.md) |
+| **BUG-023** | Negotiated Fee Discount Skipped for Hosted Payment Link Captures | `High` | STATICALLY CONFIRMED | Fixed | [bug-023-discount-skipped-for-payment-links.md](bug-023-discount-skipped-for-payment-links.md) |
 | **BUG-024** | Void Operation Does Not Reverse External Acquirer Authorization Hold | `High` | STATICALLY CONFIRMED | Open | [bug-024-void-does-not-reverse-authorization.md](bug-024-void-does-not-reverse-authorization.md) |
-| **BUG-025** | Capture Ignores Hold Expiry and Succeeds Against Expired Authorizations | `High` | STATICALLY CONFIRMED | Open | [bug-025-capture-ignores-hold-expiry.md](bug-025-capture-ignores-hold-expiry.md) |
-| **BUG-026** | Zero-Discount Capture Events Allow Retries to Post Repeated Rebate Adjustments | `High` | STATICALLY CONFIRMED | Open | [bug-026-zero-discount-events-allow-repeated-rebates.md](bug-026-zero-discount-events-allow-repeated-rebates.md) |
-| **BUG-061** | Capture Endpoint Holds Database Row Lock Open Across Slow External Acquirer Call | `Medium` | STATICALLY CONFIRMED | Open | [bug-061-capture-holds-db-txn-across-acquirer.md](bug-061-capture-holds-db-txn-across-acquirer.md) |
+| **BUG-025** | Capture Ignores Hold Expiry and Succeeds Against Expired Authorizations | `High` | STATICALLY CONFIRMED | Fixed | [bug-025-capture-ignores-hold-expiry.md](bug-025-capture-ignores-hold-expiry.md) |
+| **BUG-026** | Zero-Discount Capture Events Allow Retries to Post Repeated Rebate Adjustments | `High` | STATICALLY CONFIRMED | Fixed | [bug-026-zero-discount-events-allow-repeated-rebates.md](bug-026-zero-discount-events-allow-repeated-rebates.md) |
+| **BUG-061** | Capture Endpoint Holds Database Row Lock Open Across Slow External Acquirer Call | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-061-capture-holds-db-txn-across-acquirer.md](bug-061-capture-holds-db-txn-across-acquirer.md) |
 
 ### Refunds (4)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-007** | Refund Headroom Capped at Authorized Amount Instead of Captured Amount | `Critical` | STATICALLY CONFIRMED | Open | [bug-007-refund-more-than-captured.md](bug-007-refund-more-than-captured.md) |
-| **BUG-008** | Concurrent Refunds Both Succeed Allowing Double Money Out | `Critical` | STATICALLY CONFIRMED | Open | [bug-008-concurrent-refund-double-money-out.md](bug-008-concurrent-refund-double-money-out.md) |
+| **BUG-007** | Refund Headroom Capped at Authorized Amount Instead of Captured Amount | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-007-refund-more-than-captured.md](bug-007-refund-more-than-captured.md) |
+| **BUG-008** | Concurrent Refunds Both Succeed Allowing Double Money Out | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-008-concurrent-refund-double-money-out.md](bug-008-concurrent-refund-double-money-out.md) |
 | **BUG-027** | POST /v1/refunds Route Returns 501 Not Implemented (Unfinished Feature) | `High` | STATICALLY CONFIRMED | Open | [bug-027-refunds-route-returns-501.md](bug-027-refunds-route-returns-501.md) |
-| **BUG-028** | Refund with Null Reason Violates DB Constraint Leaving Idempotency Key Stuck | `High` | RUNTIME REPRODUCED | Open | [bug-028-refund-null-reason-sticks-idempotency-key.md](bug-028-refund-null-reason-sticks-idempotency-key.md) |
+| **BUG-028** | Refund with Null Reason Violates DB Constraint Leaving Idempotency Key Stuck | `High` | RUNTIME REPRODUCED | Fixed | [bug-028-refund-null-reason-sticks-idempotency-key.md](bug-028-refund-null-reason-sticks-idempotency-key.md) |
 
-### Ledger and financial calculations (8)
+### Ledger and financial calculations (9)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-009** | Adjustment CSV Parser Treats BHD as 2-Decimal Currency Reducing Values by 10x | `Critical` | RUNTIME REPRODUCED | Open | [bug-009-csv-import-10x-too-small.md](bug-009-csv-import-10x-too-small.md) |
-| **BUG-010** | Settlement Net Payout Computed in Float32 Causing Severe Precision Loss | `Critical` | STATICALLY CONFIRMED | Open | [bug-010-net-payout-float32.md](bug-010-net-payout-float32.md) |
+| **BUG-009** | Adjustment CSV Parser Treats BHD as 2-Decimal Currency Reducing Values by 10x | `Critical` | RUNTIME REPRODUCED | Fixed | [bug-009-csv-import-10x-too-small.md](bug-009-csv-import-10x-too-small.md) |
+| **BUG-010** | Settlement Net Payout Computed in Float32 Causing Severe Precision Loss | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-010-net-payout-float32.md](bug-010-net-payout-float32.md) |
 | **BUG-029** | Insecure PRNG (Math.random) Used for OTP Generation and Payment Link Tokens | `High` | STATICALLY CONFIRMED | Fixed | [bug-029-otp-and-payment-link-insecure-rng.md](bug-029-otp-and-payment-link-insecure-rng.md) |
-| **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Open | [bug-030-split-payout-missing-fils.md](bug-030-split-payout-missing-fils.md) |
-| **BUG-031** | Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD | `High` | STATICALLY CONFIRMED | Open | [bug-031-platform-volume-int32-overflow.md](bug-031-platform-volume-int32-overflow.md) |
-| **BUG-032** | TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge | `High` | STATICALLY CONFIRMED | Open | [bug-032-ts-and-go-fee-formulas-diverge.md](bug-032-ts-and-go-fee-formulas-diverge.md) |
-| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | STATICALLY CONFIRMED | Open | [bug-033-march-sweep-not-idempotent.md](bug-033-march-sweep-not-idempotent.md) |
-| **BUG-062** | Transaction CSV Export Retains Formula Prefixes Enabling Spreadsheet Injection | `Medium` | STATICALLY CONFIRMED | Open | [bug-062-transaction-csv-retains-formula-cells.md](bug-062-transaction-csv-retains-formula-cells.md) |
+| **BUG-030** | Split Payouts Drop Fractional Fils Due to Independent Banker Rounding | `High` | STATICALLY CONFIRMED | Fixed | [bug-030-split-payout-missing-fils.md](bug-030-split-payout-missing-fils.md) |
+| **BUG-031** | Platform Lifetime Volume Counter Uses 32-Bit Integer Overflowing at 2.1M BHD | `High` | STATICALLY CONFIRMED | Fixed | [bug-031-platform-volume-int32-overflow.md](bug-031-platform-volume-int32-overflow.md) |
+| **BUG-032** | TypeScript API Fee Calculation and Go Settlement Fee Formulas Diverge | `High` | STATICALLY CONFIRMED | Fixed | [bug-032-ts-and-go-fee-formulas-diverge.md](bug-032-ts-and-go-fee-formulas-diverge.md) |
+| **BUG-033** | March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window | `High` | STATICALLY CONFIRMED | Fixed | [bug-033-march-sweep-not-idempotent.md](bug-033-march-sweep-not-idempotent.md) |
+| **BUG-062** | Transaction CSV Export Retains Formula Prefixes Enabling Spreadsheet Injection | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-062-transaction-csv-retains-formula-cells.md](bug-062-transaction-csv-retains-formula-cells.md) |
+| **BUG-088** | Promotional Discount Parser Multiplies BD by 100 | `High` | RUNTIME REPRODUCED | Fixed | [bug-088-promotional-discount-times-100.md](bug-088-promotional-discount-times-100.md) |
 
 ### Settlement and reconciliation (9)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-034** | Scheme Export Rounds Amounts While Ledger Truncates Creating Persistent Surplus | `High` | STATICALLY CONFIRMED | Open | [bug-034-scheme-export-rounding-always-over.md](bug-034-scheme-export-rounding-always-over.md) |
-| **BUG-035** | MDR Recalculation Rewrites Batches That Are Already Paid Out | `High` | STATICALLY CONFIRMED | Open | [bug-035-mdr-recalc-rewrites-paid-batches.md](bug-035-mdr-recalc-rewrites-paid-batches.md) |
-| **BUG-036** | Daily Settlement Close Runs at 03:15 Bahrain Time Instead of Midnight | `High` | STATICALLY CONFIRMED | Open | [bug-036-daily-close-runs-at-3am.md](bug-036-daily-close-runs-at-3am.md) |
-| **BUG-037** | Settlement Batch Closure Freezes Arbitrary Dates Permanently | `High` | STATICALLY CONFIRMED | Open | [bug-037-settlement-close-any-date-is-final.md](bug-037-settlement-close-any-date-is-final.md) |
-| **BUG-063** | Merchant Lifetime Payout Monitoring Accumulates in Float32 Column | `Medium` | STATICALLY CONFIRMED | Open | [bug-063-lifetime-payout-estimate-float32.md](bug-063-lifetime-payout-estimate-float32.md) |
-| **BUG-064** | Daily Settlement Batch Loop Aborts on First Merchant Failure Blocking Rest | `Medium` | STATICALLY CONFIRMED | Open | [bug-064-daily-batch-stops-on-first-merchant.md](bug-064-daily-batch-stops-on-first-merchant.md) |
-| **BUG-065** | Settlement Reconciliation Equations Subtract Paid Batches Twice | `Medium` | STATICALLY CONFIRMED | Open | [bug-065-reconciliation-subtracts-paid-batches-twice.md](bug-065-reconciliation-subtracts-paid-batches-twice.md) |
-| **BUG-066** | Pending Reconciliation Replaces Actual Capture Fees with Default MDR Estimator | `Medium` | STATICALLY CONFIRMED | Open | [bug-066-pending-reconciliation-reprices-captures-with-default-mdr.md](bug-066-pending-reconciliation-reprices-captures-with-default-mdr.md) |
-| **BUG-067** | Single-Merchant Balance Rebuild CLI Calculates Balance but Never Persists | `Medium` | STATICALLY CONFIRMED | Open | [bug-067-single-merchant-cli-rebuild-never-persists.md](bug-067-single-merchant-cli-rebuild-never-persists.md) |
+| **BUG-034** | Scheme Export Rounds Amounts While Ledger Truncates Creating Persistent Surplus | `High` | STATICALLY CONFIRMED | Fixed | [bug-034-scheme-export-rounding-always-over.md](bug-034-scheme-export-rounding-always-over.md) |
+| **BUG-035** | MDR Recalculation Rewrites Batches That Are Already Paid Out | `High` | STATICALLY CONFIRMED | Fixed | [bug-035-mdr-recalc-rewrites-paid-batches.md](bug-035-mdr-recalc-rewrites-paid-batches.md) |
+| **BUG-036** | Daily Settlement Close Runs at 03:15 Bahrain Time Instead of Midnight | `High` | STATICALLY CONFIRMED | Fixed | [bug-036-daily-close-runs-at-3am.md](bug-036-daily-close-runs-at-3am.md) |
+| **BUG-037** | Settlement Batch Closure Freezes Arbitrary Dates Permanently | `High` | STATICALLY CONFIRMED | Fixed | [bug-037-settlement-close-any-date-is-final.md](bug-037-settlement-close-any-date-is-final.md) |
+| **BUG-063** | Merchant Lifetime Payout Monitoring Accumulates in Float32 Column | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-063-lifetime-payout-estimate-float32.md](bug-063-lifetime-payout-estimate-float32.md) |
+| **BUG-064** | Daily Settlement Batch Loop Aborts on First Merchant Failure Blocking Rest | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-064-daily-batch-stops-on-first-merchant.md](bug-064-daily-batch-stops-on-first-merchant.md) |
+| **BUG-065** | Settlement Reconciliation Equations Subtract Paid Batches Twice | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-065-reconciliation-subtracts-paid-batches-twice.md](bug-065-reconciliation-subtracts-paid-batches-twice.md) |
+| **BUG-066** | Pending Reconciliation Replaces Actual Capture Fees with Default MDR Estimator | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-066-pending-reconciliation-reprices-captures-with-default-mdr.md](bug-066-pending-reconciliation-reprices-captures-with-default-mdr.md) |
+| **BUG-067** | Single-Merchant Balance Rebuild CLI Calculates Balance but Never Persists | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-067-single-merchant-cli-rebuild-never-persists.md](bug-067-single-merchant-cli-rebuild-never-persists.md) |
 
-### Admin console and controls (10)
-
-| ID | Title | Severity | Verification | Status | Report |
-| :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-011** | Admin Recalculate Cached Balances Reads Scheme Gross Instead of Ledger | `Critical` | STATICALLY CONFIRMED | Open | [bug-011-recalculate-balances-wrong-source.md](bug-011-recalculate-balances-wrong-source.md) |
-| **BUG-012** | Merchant Status Recomputation Clears Test Mode Flag Polluting Live Settlement | `Critical` | RUNTIME REPRODUCED | Open | [bug-012-recompute-statuses-clears-test-mode.md](bug-012-recompute-statuses-clears-test-mode.md) |
-| **BUG-038** | Admin Balance Adjustment Modifies Cache and Audit Only Bypassing Ledger | `High` | RUNTIME REPRODUCED | Open | [bug-038-balance-adjustment-cache-only.md](bug-038-balance-adjustment-cache-only.md) |
-| **BUG-039** | API Key Rotation Mints New Key Without Revoking Existing Active Key | `High` | STATICALLY CONFIRMED | Open | [bug-039-api-key-rotation-does-not-revoke.md](bug-039-api-key-rotation-does-not-revoke.md) |
-| **BUG-040** | Two-Person Rule Credit Approval Compares Display Name Instead of User ID | `High` | RUNTIME REPRODUCED | Open | [bug-040-second-approver-compares-display-name.md](bug-040-second-approver-compares-display-name.md) |
-| **BUG-041** | Credit Adjustment Creation Endpoint Lacks Administrator Role Check | `High` | STATICALLY CONFIRMED | Open | [bug-041-credits-missing-role-check.md](bug-041-credits-missing-role-check.md) |
-| **BUG-042** | Bulk KYC Approval Transitions Pending Merchants Directly to Approved | `High` | STATICALLY CONFIRMED | Open | [bug-042-bulk-kyc-approve-bypasses-review.md](bug-042-bulk-kyc-approve-bypasses-review.md) |
-| **BUG-043** | Manual Credit Creation Allows Backdating Into Closed Settlement Periods | `High` | STATICALLY CONFIRMED | Open | [bug-043-credits-backdated-and-threshold-split.md](bug-043-credits-backdated-and-threshold-split.md) |
-| **BUG-044** | Adjustment CSV Import Lacks Deduplication Posting Duplicate Ledger Entries | `High` | RUNTIME REPRODUCED | Open | [bug-044-csv-import-applies-twice.md](bug-044-csv-import-applies-twice.md) |
-| **BUG-086** | Credit Fee Reversal Uses the Merchant MDR Column, Not the Effective Schedule | `High` | RUNTIME REPRODUCED | Open | [bug-086-credit-reversal-uses-merchant-mdr-column.md](bug-086-credit-reversal-uses-merchant-mdr-column.md) |
-
-### Webhooks (10)
+### Admin console and controls (11)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-045** | Webhook HMAC Computed Over Canonical JSON While Wire Body Is Stringified | `High` | STATICALLY CONFIRMED | Open | [bug-045-webhook-signature-mismatch.md](bug-045-webhook-signature-mismatch.md) |
-| **BUG-046** | Inbound Acquirer HMAC Verification Reserializes Parsed JSON Object | `High` | STATICALLY CONFIRMED | Open | [bug-046-inbound-callback-hmac-reserialized.md](bug-046-inbound-callback-hmac-reserialized.md) |
-| **BUG-047** | Acquirer Callbacks Accepted Unsigned by Default in Configuration | `High` | RUNTIME REPRODUCED | Open | [bug-047-acquirer-callback-signature-optional.md](bug-047-acquirer-callback-signature-optional.md) |
-| **BUG-048** | Duplicate Acquirer Callbacks Append Duplicate Transaction Notes | `High` | RUNTIME REPRODUCED | Open | [bug-048-duplicate-acquirer-callback-notes.md](bug-048-duplicate-acquirer-callback-notes.md) |
-| **BUG-049** | Duplicate settlement.paid Notifications Dispatched by Concurrent Triggers | `High` | STATICALLY CONFIRMED | Open | [bug-049-duplicate-payout-notifications.md](bug-049-duplicate-payout-notifications.md) |
-| **BUG-050** | Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch | `High` | RUNTIME REPRODUCED | Open | [bug-050-payout-disbursement-recorded-by-webhook.md](bug-050-payout-disbursement-recorded-by-webhook.md) |
-| **BUG-051** | Webhook URL Registration Lacks Private Network and Localhost Validation (SSRF) | `High` | STATICALLY CONFIRMED | Open | [bug-051-webhook-url-ssrf.md](bug-051-webhook-url-ssrf.md) |
-| **BUG-068** | Webhook Replay Mints New Delivery ID Causing Receivers to Treat as New Event | `Medium` | STATICALLY CONFIRMED | Open | [bug-068-webhook-replay-new-delivery-id.md](bug-068-webhook-replay-new-delivery-id.md) |
-| **BUG-069** | Webhook Dispatcher Queue Lacks Row Claim Mechanism Causing Duplicate Dispatch | `Medium` | STATICALLY CONFIRMED | Open | [bug-069-webhook-delivery-no-claim.md](bug-069-webhook-delivery-no-claim.md) |
-| **BUG-070** | Webhook Endpoint Deletion Fails With 500 When Referenced by Deliveries | `Medium` | STATICALLY CONFIRMED | Open | [bug-070-used-webhook-endpoints-cannot-be-deleted.md](bug-070-used-webhook-endpoints-cannot-be-deleted.md) |
+| **BUG-011** | Admin Recalculate Cached Balances Reads Scheme Gross Instead of Ledger | `Critical` | STATICALLY CONFIRMED | Fixed | [bug-011-recalculate-balances-wrong-source.md](bug-011-recalculate-balances-wrong-source.md) |
+| **BUG-012** | Merchant Status Recomputation Clears Test Mode Flag Polluting Live Settlement | `Critical` | RUNTIME REPRODUCED | Fixed | [bug-012-recompute-statuses-clears-test-mode.md](bug-012-recompute-statuses-clears-test-mode.md) |
+| **BUG-038** | Admin Balance Adjustment Modifies Cache and Audit Only Bypassing Ledger | `High` | RUNTIME REPRODUCED | Fixed | [bug-038-balance-adjustment-cache-only.md](bug-038-balance-adjustment-cache-only.md) |
+| **BUG-039** | API Key Rotation Mints New Key Without Revoking Existing Active Key | `High` | STATICALLY CONFIRMED | Fixed | [bug-039-api-key-rotation-does-not-revoke.md](bug-039-api-key-rotation-does-not-revoke.md) |
+| **BUG-040** | Two-Person Rule Credit Approval Compares Display Name Instead of User ID | `High` | RUNTIME REPRODUCED | Fixed | [bug-040-second-approver-compares-display-name.md](bug-040-second-approver-compares-display-name.md) |
+| **BUG-041** | Credit Adjustment Creation Endpoint Lacks Administrator Role Check | `High` | STATICALLY CONFIRMED | Fixed | [bug-041-credits-missing-role-check.md](bug-041-credits-missing-role-check.md) |
+| **BUG-042** | Bulk KYC Approval Transitions Pending Merchants Directly to Approved | `High` | STATICALLY CONFIRMED | Fixed | [bug-042-bulk-kyc-approve-bypasses-review.md](bug-042-bulk-kyc-approve-bypasses-review.md) |
+| **BUG-043** | Manual Credit Creation Allows Backdating Into Closed Settlement Periods | `High` | STATICALLY CONFIRMED | Partial | [bug-043-credits-backdated-and-threshold-split.md](bug-043-credits-backdated-and-threshold-split.md) |
+| **BUG-044** | Adjustment CSV Import Lacks Deduplication Posting Duplicate Ledger Entries | `High` | RUNTIME REPRODUCED | Fixed | [bug-044-csv-import-applies-twice.md](bug-044-csv-import-applies-twice.md) |
+| **BUG-086** | Credit Fee Reversal Uses the Merchant MDR Column, Not the Effective Schedule | `High` | RUNTIME REPRODUCED | Fixed | [bug-086-credit-reversal-uses-merchant-mdr-column.md](bug-086-credit-reversal-uses-merchant-mdr-column.md) |
+| **BUG-089** | Admin Invite Codes Are Drawn from Math.random | `Medium` | RUNTIME REPRODUCED | Fixed | [bug-089-admin-invite-math-random.md](bug-089-admin-invite-math-random.md) |
+
+### Webhooks (11)
+
+| ID | Title | Severity | Verification | Status | Report |
+| :---: | --- | :---: | :---: | --- | :---: |
+| **BUG-045** | Webhook HMAC Computed Over Canonical JSON While Wire Body Is Stringified | `High` | STATICALLY CONFIRMED | Fixed | [bug-045-webhook-signature-mismatch.md](bug-045-webhook-signature-mismatch.md) |
+| **BUG-046** | Inbound Acquirer HMAC Verification Reserializes Parsed JSON Object | `High` | STATICALLY CONFIRMED | Fixed | [bug-046-inbound-callback-hmac-reserialized.md](bug-046-inbound-callback-hmac-reserialized.md) |
+| **BUG-047** | Acquirer Callbacks Accepted Unsigned by Default in Configuration | `High` | RUNTIME REPRODUCED | Fixed | [bug-047-acquirer-callback-signature-optional.md](bug-047-acquirer-callback-signature-optional.md) |
+| **BUG-048** | Duplicate Acquirer Callbacks Append Duplicate Transaction Notes | `High` | RUNTIME REPRODUCED | Fixed | [bug-048-duplicate-acquirer-callback-notes.md](bug-048-duplicate-acquirer-callback-notes.md) |
+| **BUG-049** | Duplicate settlement.paid Notifications Dispatched by Concurrent Triggers | `High` | STATICALLY CONFIRMED | Fixed | [bug-049-duplicate-payout-notifications.md](bug-049-duplicate-payout-notifications.md) |
+| **BUG-050** | Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch | `High` | RUNTIME REPRODUCED | Partial | [bug-050-payout-disbursement-recorded-by-webhook.md](bug-050-payout-disbursement-recorded-by-webhook.md) |
+| **BUG-051** | Webhook URL Registration Lacks Private Network and Localhost Validation (SSRF) | `High` | STATICALLY CONFIRMED | Fixed | [bug-051-webhook-url-ssrf.md](bug-051-webhook-url-ssrf.md) |
+| **BUG-068** | Webhook Replay Mints New Delivery ID Causing Receivers to Treat as New Event | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-068-webhook-replay-new-delivery-id.md](bug-068-webhook-replay-new-delivery-id.md) |
+| **BUG-069** | Webhook Dispatcher Queue Lacks Row Claim Mechanism Causing Duplicate Dispatch | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-069-webhook-delivery-no-claim.md](bug-069-webhook-delivery-no-claim.md) |
+| **BUG-070** | Webhook Endpoint Deletion Fails With 500 When Referenced by Deliveries | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-070-used-webhook-endpoints-cannot-be-deleted.md](bug-070-used-webhook-endpoints-cannot-be-deleted.md) |
+| **BUG-090** | Hex Compare Treats a Trailing Nibble as Equal | `Medium` | RUNTIME REPRODUCED | Fixed | [bug-090-hex-compare-drops-trailing-nibble.md](bug-090-hex-compare-drops-trailing-nibble.md) |
 
 ### Reporting and analytics (7)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-052** | Reporting Consumer Double-Applies Events on Restart Due to Non-Atomic Watermark | `High` | STATICALLY CONFIRMED | Open | [bug-052-reporting-consumer-double-applies.md](bug-052-reporting-consumer-double-applies.md) |
-| **BUG-053** | Transaction CSV Export Pagination Drops Rows Sharing Identical Timestamp | `High` | STATICALLY CONFIRMED | Open | [bug-053-large-export-pagination-drops-rows.md](bug-053-large-export-pagination-drops-rows.md) |
-| **BUG-071** | Dashboard Fee Display Queries Newest Created Row Instead of Effective Schedule | `Medium` | STATICALLY CONFIRMED | Open | [bug-071-fee-display-wrong-schedule.md](bug-071-fee-display-wrong-schedule.md) |
-| **BUG-072** | Settlement Summary Query Multiplies Cumulative Captures by Capture Event Count | `Medium` | STATICALLY CONFIRMED | Open | [bug-072-settlement-summary-double-counts.md](bug-072-settlement-summary-double-counts.md) |
+| **BUG-052** | Reporting Consumer Double-Applies Events on Restart Due to Non-Atomic Watermark | `High` | STATICALLY CONFIRMED | Fixed | [bug-052-reporting-consumer-double-applies.md](bug-052-reporting-consumer-double-applies.md) |
+| **BUG-053** | Transaction CSV Export Pagination Drops Rows Sharing Identical Timestamp | `High` | STATICALLY CONFIRMED | Fixed | [bug-053-large-export-pagination-drops-rows.md](bug-053-large-export-pagination-drops-rows.md) |
+| **BUG-071** | Dashboard Fee Display Queries Newest Created Row Instead of Effective Schedule | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-071-fee-display-wrong-schedule.md](bug-071-fee-display-wrong-schedule.md) |
+| **BUG-072** | Settlement Summary Query Multiplies Cumulative Captures by Capture Event Count | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-072-settlement-summary-double-counts.md](bug-072-settlement-summary-double-counts.md) |
 | **BUG-073** | Transaction Search Uses Unindexed Leading Wildcard ILIKE Causing Full-Table Scan | `Medium` | STATICALLY CONFIRMED | Open | [bug-073-transaction-search-ilike-full-scan.md](bug-073-transaction-search-ilike-full-scan.md) |
-| **BUG-074** | Admin Analytics Rebuild Executes Truncate and Insert in Separate Transactions | `Medium` | STATICALLY CONFIRMED | Open | [bug-074-admin-analytics-rebuild-double-counts.md](bug-074-admin-analytics-rebuild-double-counts.md) |
-| **BUG-084** | Recent Ledger Activity Query Includes Entire Exclusive End Date | `Low` | STATICALLY CONFIRMED | Open | [bug-084-ledger-activity-includes-exclusive-end-date.md](bug-084-ledger-activity-includes-exclusive-end-date.md) |
+| **BUG-074** | Admin Analytics Rebuild Executes Truncate and Insert in Separate Transactions | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-074-admin-analytics-rebuild-double-counts.md](bug-074-admin-analytics-rebuild-double-counts.md) |
+| **BUG-084** | Recent Ledger Activity Query Includes Entire Exclusive End Date | `Low` | STATICALLY CONFIRMED | Fixed | [bug-084-ledger-activity-includes-exclusive-end-date.md](bug-084-ledger-activity-includes-exclusive-end-date.md) |
 
 ### Database and migrations (5)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-013** | Janitor Script Deletes All Active Holds When No Expired Holds Are Found | `Critical` | RUNTIME REPRODUCED | Open | [bug-013-expire-holds-deletes-every-hold.md](bug-013-expire-holds-deletes-every-hold.md) |
+| **BUG-013** | Janitor Script Deletes All Active Holds When No Expired Holds Are Found | `Critical` | RUNTIME REPRODUCED | Fixed | [bug-013-expire-holds-deletes-every-hold.md](bug-013-expire-holds-deletes-every-hold.md) |
 | **BUG-014** | Fresh Database Migrations Fail at 0054/0055 and View 0072 Has Broken Join Key | `Critical` | RUNTIME REPRODUCED | Fixed (fresh DB) | [bug-014-migrations-break-fresh-database.md](bug-014-migrations-break-fresh-database.md) |
 | **BUG-054** | Database Seed Script Executes Unconditional TRUNCATE Wiping Existing Data | `High` | STATICALLY CONFIRMED | Fixed | [bug-054-seed-truncates-database.md](bug-054-seed-truncates-database.md) |
-| **BUG-055** | Double-Entry Ledger and Audit Tables Lack Immutability Database Triggers | `High` | STATICALLY CONFIRMED | Open | [bug-055-ledger-and-audit-not-immutable.md](bug-055-ledger-and-audit-not-immutable.md) |
+| **BUG-055** | Double-Entry Ledger and Audit Tables Lack Immutability Database Triggers | `High` | STATICALLY CONFIRMED | Fixed | [bug-055-ledger-and-audit-not-immutable.md](bug-055-ledger-and-audit-not-immutable.md) |
 | **BUG-081** | Migration Runner Lacks Checksum Verification Allowing Retroactive File Edits | `Low` | STATICALLY CONFIRMED | Open | [bug-081-migration-runner-has-no-checksum.md](bug-081-migration-runner-has-no-checksum.md) |
 
-### Frontend (8)
+### Frontend (9)
 
 | ID | Title | Severity | Verification | Status | Report |
 | :---: | --- | :---: | :---: | --- | :---: |
-| **BUG-056** | Admin Merchant Detail Form Retains State Across Route Changes | `High` | STATICALLY CONFIRMED | Open | [bug-056-stale-admin-merchant-detail-targets-new-route.md](bug-056-stale-admin-merchant-detail-targets-new-route.md) |
-| **BUG-075** | KYC Document Verification Validates File Extension Instead of Magic Bytes | `Medium` | STATICALLY CONFIRMED | Open | [bug-075-kyc-pdf-check-uses-filename.md](bug-075-kyc-pdf-check-uses-filename.md) |
-| **BUG-076** | Dashboard Date Filter Generates UTC Midnight Instead of Bahrain Midnight | `Medium` | STATICALLY CONFIRMED | Open | [bug-076-dashboard-date-filter-uses-utc-midnight.md](bug-076-dashboard-date-filter-uses-utc-midnight.md) |
-| **BUG-077** | Payment Link Detail View Fails to Paginate Beyond First 100 Records | `Medium` | STATICALLY CONFIRMED | Open | [bug-077-older-payment-links-unreachable-in-dashboard.md](bug-077-older-payment-links-unreachable-in-dashboard.md) |
-| **BUG-078** | Bulk KYC Selection State Retains Hidden Selections Across Tab Changes | `Medium` | STATICALLY CONFIRMED | Open | [bug-078-bulk-kyc-retains-hidden-filter-selections.md](bug-078-bulk-kyc-retains-hidden-filter-selections.md) |
-| **BUG-082** | Settlement Progress Bar Divides Fils by 10,000 Instead of 1,000 Distorting Ratio | `Low` | STATICALLY CONFIRMED | Open | [bug-082-settlement-progress-divides-fils-by-10000.md](bug-082-settlement-progress-divides-fils-by-10000.md) |
-| **BUG-083** | View as Merchant Action Opens Unregistered Web Root Route | `Low` | STATICALLY CONFIRMED | Open | [bug-083-impersonation-opens-unregistered-web-root.md](bug-083-impersonation-opens-unregistered-web-root.md) |
-| **BUG-085** | Merchant Dashboard Document Title Says Checkout | `Low` | RUNTIME REPRODUCED | Open | [bug-085-dashboard-document-title-says-checkout.md](bug-085-dashboard-document-title-says-checkout.md) |
+| **BUG-056** | Admin Merchant Detail Form Retains State Across Route Changes | `High` | STATICALLY CONFIRMED | Fixed | [bug-056-stale-admin-merchant-detail-targets-new-route.md](bug-056-stale-admin-merchant-detail-targets-new-route.md) |
+| **BUG-075** | KYC Document Verification Validates File Extension Instead of Magic Bytes | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-075-kyc-pdf-check-uses-filename.md](bug-075-kyc-pdf-check-uses-filename.md) |
+| **BUG-076** | Dashboard Date Filter Generates UTC Midnight Instead of Bahrain Midnight | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-076-dashboard-date-filter-uses-utc-midnight.md](bug-076-dashboard-date-filter-uses-utc-midnight.md) |
+| **BUG-077** | Payment Link Detail View Fails to Paginate Beyond First 100 Records | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-077-older-payment-links-unreachable-in-dashboard.md](bug-077-older-payment-links-unreachable-in-dashboard.md) |
+| **BUG-078** | Bulk KYC Selection State Retains Hidden Selections Across Tab Changes | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-078-bulk-kyc-retains-hidden-filter-selections.md](bug-078-bulk-kyc-retains-hidden-filter-selections.md) |
+| **BUG-082** | Settlement Progress Bar Divides Fils by 10,000 Instead of 1,000 Distorting Ratio | `Low` | STATICALLY CONFIRMED | Fixed | [bug-082-settlement-progress-divides-fils-by-10000.md](bug-082-settlement-progress-divides-fils-by-10000.md) |
+| **BUG-083** | View as Merchant Action Opens Unregistered Web Root Route | `Low` | STATICALLY CONFIRMED | Fixed | [bug-083-impersonation-opens-unregistered-web-root.md](bug-083-impersonation-opens-unregistered-web-root.md) |
+| **BUG-085** | Merchant Dashboard Document Title Says Checkout | `Low` | RUNTIME REPRODUCED | Fixed | [bug-085-dashboard-document-title-says-checkout.md](bug-085-dashboard-document-title-says-checkout.md) |
+| **BUG-087** | Checkout Brand Hint Misses Mastercard BIN 2720 | `Low` | RUNTIME REPRODUCED | Fixed | [bug-087-mastercard-2720-brand-hint-unknown.md](bug-087-mastercard-2720-brand-hint-unknown.md) |
 
 ### Infrastructure and configuration (4)
 
@@ -286,8 +294,8 @@ Status tracks remediation; Verification records the historical audit proof. Qual
 | :---: | --- | :---: | :---: | --- | :---: |
 | **BUG-057** | Acquirer Secret Committed in Git and Fallback Webhook Key Length Invalid | `High` | STATICALLY CONFIRMED | Partial | [bug-057-committed-secret-and-broken-compose.md](bug-057-committed-secret-and-broken-compose.md) |
 | **BUG-058** | Docker Compose References Missing Dockerfiles and Settlement Daemon Exits | `High` | STATICALLY CONFIRMED | Fixed (local boot) | [bug-058-compose-missing-dockerfiles-and-token.md](bug-058-compose-missing-dockerfiles-and-token.md) |
-| **BUG-079** | Unexpected Database Exceptions Bypass AppError Handler and Return Generic 500 | `Medium` | STATICALLY CONFIRMED | Open | [bug-079-non-apperror-exceptions-return-500.md](bug-079-non-apperror-exceptions-return-500.md) |
-| **BUG-080** | PGCONN_SETTLEMENT Environment Variable Silently Overrides DATABASE_URL | `Medium` | STATICALLY CONFIRMED | Open | [bug-080-pgconn-settlement-overrides-database-url.md](bug-080-pgconn-settlement-overrides-database-url.md) |
+| **BUG-079** | Unexpected Database Exceptions Bypass AppError Handler and Return Generic 500 | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-079-non-apperror-exceptions-return-500.md](bug-079-non-apperror-exceptions-return-500.md) |
+| **BUG-080** | PGCONN_SETTLEMENT Environment Variable Silently Overrides DATABASE_URL | `Medium` | STATICALLY CONFIRMED | Fixed | [bug-080-pgconn-settlement-overrides-database-url.md](bug-080-pgconn-settlement-overrides-database-url.md) |
 
 ---
 
@@ -412,7 +420,7 @@ Every report must follow the standardized 17-section structure:
 
 1. Ensure the defect has been verified against the actual codebase.
 2. Check existing entries in the Master Bug Index to prevent duplicates.
-3. Assign the next available sequential ID (`BUG-087`).
+3. Assign the next available sequential ID (`BUG-091`).
 4. Follow the 17-section template.
 5. Add an entry to the Master Bug Index and the relevant Category section in this `Readme.md`.
 

@@ -9,11 +9,22 @@ export interface TransactionsExportFilters {
   status?: string[];
 }
 
-function csvEscape(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
+/** Spreadsheet formula triggers. A leading apostrophe forces a literal cell. */
+const FORMULA_PREFIX = new Set(["=", "+", "-", "@", "\t"]);
+
+function neutralizeFormulaPrefix(value: string): string {
+  if (value.length > 0 && FORMULA_PREFIX.has(value[0]!)) {
+    return `'${value}`;
   }
   return value;
+}
+
+function csvEscape(value: string): string {
+  const literal = neutralizeFormulaPrefix(value);
+  if (literal.includes(",") || literal.includes('"') || literal.includes("\n") || literal.includes("\r")) {
+    return `"${literal.replace(/"/g, '""')}"`;
+  }
+  return literal;
 }
 
 function toCsvRow(row: TransactionRow): string {
@@ -49,37 +60,54 @@ export async function buildTransactionsExportCsv(
 }
 
 
-/** Cursor-paginated export for large date ranges. */
+/**
+ * Cursor-paginated export for large date ranges.
+ * Pages on `(occurred_at, id)` using Postgres's own timestamp text so rows
+ * that share a timestamp, including sub-millisecond ties, are not dropped.
+ */
 export async function streamTransactionsExportCsv(
   pool: Pool,
   filters: TransactionsExportFilters,
   write: (chunk: string) => void,
+  pageSize = 1000,
 ): Promise<void> {
   write("id,status,amount_bhd,captured_bhd,reference,occurred_at\n");
 
-  let cursor: Date | null = null;
-  const PAGE_SIZE = 1000;
+  let cursorOccurredAt: string | null = null;
+  let cursorId: string | null = null;
+  const limit = Math.max(1, pageSize);
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const statusArray = filters.status && filters.status.length > 0 ? filters.status : null;
-    const result: { rows: TransactionRow[] } = await pool.query<TransactionRow>(
-      `SELECT * FROM transactions
+    type ExportRow = TransactionRow & { occurred_at_text: string };
+    const result: { rows: ExportRow[] } = await pool.query<ExportRow>(
+      `SELECT *, occurred_at::text AS occurred_at_text FROM transactions
         WHERE merchant_id = $1
           AND ($2::timestamptz IS NULL OR occurred_at >= $2)
           AND ($3::timestamptz IS NULL OR occurred_at <  $3)
           AND ($4::text[] IS NULL OR status = ANY($4))
-          AND ($5::timestamptz IS NULL OR occurred_at > $5)
-        ORDER BY occurred_at ASC
-        LIMIT $6`,
-      [filters.merchantId, filters.from ?? null, filters.to ?? null, statusArray, cursor, PAGE_SIZE],
+          AND ($5::text IS NULL OR (occurred_at, id) > ($5::timestamptz, $6::uuid))
+        ORDER BY occurred_at ASC, id ASC
+        LIMIT $7`,
+      [
+        filters.merchantId,
+        filters.from ?? null,
+        filters.to ?? null,
+        statusArray,
+        cursorOccurredAt,
+        cursorId,
+        limit,
+      ],
     );
 
     for (const row of result.rows) {
       write(toCsvRow(row) + "\n");
     }
 
-    if (result.rows.length < PAGE_SIZE) break;
-    cursor = result.rows[result.rows.length - 1]!.occurred_at;
+    if (result.rows.length < limit) break;
+    const last: ExportRow = result.rows[result.rows.length - 1]!;
+    cursorOccurredAt = last.occurred_at_text;
+    cursorId = last.id;
   }
 }

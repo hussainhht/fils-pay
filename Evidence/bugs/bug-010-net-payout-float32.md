@@ -1,5 +1,7 @@
 # BUG-010 — Settlement Net Payout Computed in Float32 Causing Severe Precision Loss
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/payable.go — net payout is grossFils - feeFils in integer fils.
+
 ## 1. Summary
 
 `float32` has 24 bits of significand.

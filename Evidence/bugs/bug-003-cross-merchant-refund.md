@@ -1,5 +1,7 @@
 # BUG-003 — Missing Merchant Ownership Validation Allows Cross-Merchant Refunds
 
+**Fixed (2026-10-30):** apps/api/src/refunds/initiateMerchantRefund.ts — merchant mismatch already throws NotFoundError; processRefund already returns 404 for a different merchant. No helper change.
+
 ## 1. Summary
 
 Knowing a transaction UUID is enough to refund it as that merchant.

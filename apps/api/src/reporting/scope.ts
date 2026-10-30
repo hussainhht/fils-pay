@@ -10,7 +10,10 @@ export async function resolveReportMerchantId(
   }
 
   const result = await pool.query<{ ok: number }>(
-    `SELECT 1 AS ok FROM merchant_split_children WHERE child_merchant_id = $1 AND parent_merchant_id = $2`,
+    `SELECT 1 AS ok
+       FROM merchant_split_children
+      WHERE child_merchant_id = $1
+        AND parent_merchant_id = $2`,
     [requestedMerchantId, callerMerchantId],
   );
   if (result.rows.length === 0) {

@@ -1,5 +1,7 @@
 # BUG-008 — Concurrent Refunds Both Succeed Allowing Double Money Out
 
+**Fixed (2026-10-30):** apps/api/src/payments/processRefund.ts — refunded_fils now increments only while refunded_fils + amount stays within captured_fils. Pending amount was already reserved before the acquirer call, under the same row lock capture and void use.
+
 ## 1. Summary
 
 Two refunds with different idempotency keys on the same capture both read `refunded_fils = 0`, both pass validation, both hit the acquirer, both post ledger legs.

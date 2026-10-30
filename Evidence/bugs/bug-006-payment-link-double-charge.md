@@ -1,5 +1,7 @@
 # BUG-006 — Payment Link Double Charging via Concurrent Reservation Reclaim
 
+**Fixed (2026-10-30):** apps/api/src/payments/capture.ts — the capture claim is committed before the acquirer call and a retry resumes that same operation; an ambiguous success is not voided.
+
 ## 1. Summary
 
 The "lock" is a time-based reclaim, not a fence.

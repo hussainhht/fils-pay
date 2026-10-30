@@ -1,6 +1,8 @@
 # BUG-059 — Merchant Dashboard Bootstrap Endpoint Rejects Valid Impersonation Grants
 
-**Still open. Hosted runtime (2026-10-30):** after “View as merchant” on Alpha Retail, the admin banner said the dashboard was acting as that merchant’s support user. The opened tab’s `GET /v1/auth/me` still returned `owner@alpharetail.example`, role `owner`, and the nav still included Webhooks. An existing owner `fp_sid` kept the identity. Impersonation was then exited.
+**Fixed (2026-10-30):** apps/api/src/auth/middleware.ts — GET /v1/auth/me accepts a live impersonation grant and prefers it over a merchant session; the dashboard treats that identity as signed in.
+
+Hosted runtime before this fix (2026-10-30): after “View as merchant” on Alpha Retail, the admin banner said the dashboard was acting as that merchant’s support user. The opened tab’s `GET /v1/auth/me` still returned `owner@alpharetail.example`, role `owner`, and the nav still included Webhooks. An existing owner `fp_sid` kept the identity. Impersonation was then exited.
 
 ## 1. Summary
 

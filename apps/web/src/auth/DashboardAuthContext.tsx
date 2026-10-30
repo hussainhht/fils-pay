@@ -40,6 +40,11 @@ export function writeLastMerchantId(merchantId: string): void {
   }
 }
 
+/** A `/v1/auth/me` body with a merchant is a dashboard session, including an impersonation grant. */
+export function isDashboardSession(me: DashboardMe | null): me is DashboardMe {
+  return me !== null && typeof me.merchant?.id === "string" && me.role !== undefined;
+}
+
 /**
  * Holds the answer to "who am I, per the server?" — loaded once on mount
  * from `GET /v1/auth/me`. Nothing in this app treats a value here
@@ -48,9 +53,8 @@ export function writeLastMerchantId(merchantId: string): void {
  * exists so the UI can show the right screen, not so it can decide what is
  * allowed.
  *
- * Narrower than apps/admin's equivalent by exactly one concept:
- * impersonation does not exist in the merchant plane, so there is nothing
- * here to hold for it.
+ * A successful response is authenticated whether it came from a merchant
+ * password session or an impersonation grant. The grant's role is support.
  */
 // memory leak here — me() refetched every render? heap grows on overview — am
 // FH: the effect runs once afaict. heap growth is probably the overview page
@@ -62,8 +66,13 @@ export function DashboardAuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const current = await fetchMe();
-      setMe(current);
-      setStatus("authenticated");
+      if (isDashboardSession(current)) {
+        setMe(current);
+        setStatus("authenticated");
+        return;
+      }
+      setMe(null);
+      setStatus("anonymous");
     } catch {
       // Any failure — 401, a revoked session, the API being down — lands on
       // the login screen rather than a half-rendered dashboard.

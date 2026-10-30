@@ -1,5 +1,7 @@
 # BUG-069 — Webhook Dispatcher Queue Lacks Row Claim Mechanism Causing Duplicate Dispatch
 
+**Fixed (2026-10-30):** apps/api/src/webhooks/dispatcher.ts — already claims pending rows with UPDATE … FOR UPDATE SKIP LOCKED before send; no code change.
+
 ## 1. Summary
 
 Two API processes can both read the same pending row and both POST it.

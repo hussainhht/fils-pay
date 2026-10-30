@@ -1,5 +1,5 @@
 import { PageHeading } from "../../../../ui/PageHeading.js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { formatBhd, parseBhdToFils, toFils } from "@filspay/money";
 import { getMerchant, recomputeTransactionStatuses, submitKycReview } from "../../api/merchants.js";
@@ -24,10 +24,24 @@ function todayIso(): string {
   ).padStart(2, "0")}`;
 }
 
+/** Opens a registered dashboard route. An origin-only base has pathname `/`,
+ *  which is not a merchant screen; `/dashboard` is. A base that already
+ *  names a path is left as configured. */
+export function merchantDashboardUrl(base: string): string {
+  const url = new URL(base);
+  if (url.pathname === "/" || url.pathname === "") {
+    url.pathname = "/dashboard";
+  }
+  return url.toString();
+}
+
 export function MerchantDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { rememberImpersonation } = useAdminAuth();
+  const routeIdRef = useRef(id);
+  routeIdRef.current = id;
 
+  const [routeId, setRouteId] = useState(id);
   const [detail, setDetail] = useState<AdminMerchantDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -53,12 +67,38 @@ export function MerchantDetailPage() {
   const [adjustDeltaFils, setAdjustDeltaFils] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
 
+  if (id !== routeId) {
+    setRouteId(id);
+    setDetail(null);
+    setLoadError(null);
+    setActionError(null);
+    setNotice(null);
+    setKycNotes("");
+    setBusy(false);
+    setPendingRotation(null);
+    setRotationLabel("");
+    setRotatedKey(null);
+    setImpersonationUrl(null);
+    setCreditAmountBhd("");
+    setCreditReason("goodwill");
+    setCreditMemo("");
+    setCreditReverseFee(false);
+    setCreditEffectiveDate(todayIso());
+    setAdjustDeltaFils("");
+    setAdjustReason("");
+  }
+
   const load = useCallback(async () => {
     if (!id) return;
+    const requestedId = id;
+    if (routeIdRef.current !== requestedId) return;
     setLoadError(null);
     try {
-      setDetail(await getMerchant(id));
+      const next = await getMerchant(requestedId);
+      if (routeIdRef.current !== requestedId) return;
+      setDetail(next);
     } catch (err) {
+      if (routeIdRef.current !== requestedId) return;
       setLoadError(describeError(err));
     }
   }, [id]);
@@ -67,16 +107,22 @@ export function MerchantDetailPage() {
     void load();
   }, [load]);
 
+  function stillViewing(targetId: string): boolean {
+    return routeIdRef.current === targetId;
+  }
+
   async function handleKycReview(outcome: "approved" | "rejected"): Promise<void> {
-    if (!id) return;
+    if (!id || detail?.merchant.id !== id) return;
+    const targetId = id;
     setBusy(true);
     setActionError(null);
     setNotice(null);
     try {
-      const result = await submitKycReview(id, {
+      const result = await submitKycReview(targetId, {
         outcome,
         notes: kycNotes.trim() ? kycNotes.trim() : undefined,
       });
+      if (!stillViewing(targetId)) return;
       setNotice(
         `KYC ${outcome}. Onboarding status is now ${result.onboardingStatus} (kycPassed: ${String(
           result.kycPassed,
@@ -85,37 +131,42 @@ export function MerchantDetailPage() {
       setKycNotes("");
       await load();
     } catch (err) {
+      if (!stillViewing(targetId)) return;
       setActionError(describeError(err));
     } finally {
-      setBusy(false);
+      if (stillViewing(targetId)) setBusy(false);
     }
   }
 
   /** The old key keeps working for a 24h overlap window, then stops. */
   async function handleRotate(keyId: string): Promise<void> {
-    if (!id) return;
+    if (!id || detail?.merchant.id !== id) return;
+    const targetId = id;
     setBusy(true);
     setActionError(null);
     setNotice(null);
     try {
-      const rotated = await rotateApiKey(id, keyId, {
+      const rotated = await rotateApiKey(targetId, keyId, {
         label: rotationLabel.trim() ? rotationLabel.trim() : undefined,
       });
+      if (!stillViewing(targetId)) return;
       setRotatedKey(rotated);
       setPendingRotation(null);
       setRotationLabel("");
       await load();
     } catch (err) {
+      if (!stillViewing(targetId)) return;
       setActionError(describeError(err));
     } finally {
-      setBusy(false);
+      if (stillViewing(targetId)) setBusy(false);
     }
   }
 
   // FH: this ends up in adjustMerchantBalanceCache (cache only)
   // MK: it's the journaled one since Sep
   async function handleAdjustBalance(): Promise<void> {
-    if (!id) return;
+    if (!id || detail?.merchant.id !== id) return;
+    const targetId = id;
     const deltaFils = Number(adjustDeltaFils.trim());
     if (!Number.isInteger(deltaFils) || deltaFils === 0) {
       setActionError("Enter a non-zero whole number of fils.");
@@ -125,7 +176,8 @@ export function MerchantDetailPage() {
     setActionError(null);
     setNotice(null);
     try {
-      const result = await adjustBalance(id, { deltaFils, reason: adjustReason.trim() });
+      const result = await adjustBalance(targetId, { deltaFils, reason: adjustReason.trim() });
+      if (!stillViewing(targetId)) return;
       setNotice(
         `Balance adjusted by ${bhd(result.deltaFils)}: ${bhd(
           result.cachedPayableFilsBefore,
@@ -135,15 +187,17 @@ export function MerchantDetailPage() {
       setAdjustReason("");
       await load();
     } catch (err) {
+      if (!stillViewing(targetId)) return;
       setActionError(describeError(err));
     } finally {
-      setBusy(false);
+      if (stillViewing(targetId)) setBusy(false);
     }
   }
 
   async function handleIssueCredit(event: React.FormEvent): Promise<void> {
     event.preventDefault();
-    if (!id) return;
+    if (!id || detail?.merchant.id !== id) return;
+    const targetId = id;
     setBusy(true);
     setActionError(null);
     setNotice(null);
@@ -151,13 +205,14 @@ export function MerchantDetailPage() {
       // BD in, integer fils out, via the platform's own string-based parser —
       // never parseFloat, which cannot represent the third decimal exactly.
       const baseAmountFils = parseBhdToFils(creditAmountBhd);
-      const record = await issueCredit(id, {
+      const record = await issueCredit(targetId, {
         baseAmountFils,
         reasonCode: creditReason,
         effectiveDate: creditEffectiveDate,
         reverseFee: creditReverseFee,
         memo: creditMemo.trim() ? creditMemo.trim() : undefined,
       });
+      if (!stillViewing(targetId)) return;
       setNotice(
         record.status === "posted"
           ? `Credit of ${bhd(record.postedAmountFils)} posted to the ledger (entry group ${
@@ -170,54 +225,67 @@ export function MerchantDetailPage() {
       setCreditReverseFee(false);
       await load();
     } catch (err) {
+      if (!stillViewing(targetId)) return;
       setActionError(err instanceof RangeError ? err.message : describeError(err));
     } finally {
-      setBusy(false);
+      if (stillViewing(targetId)) setBusy(false);
     }
   }
 
   async function handleRecomputeStatuses(): Promise<void> {
-    if (!id) return;
+    if (!id || detail?.merchant.id !== id) return;
+    const targetId = id;
     setBusy(true);
     setActionError(null);
     setNotice(null);
     try {
-      const result = await recomputeTransactionStatuses(id);
+      const result = await recomputeTransactionStatuses(targetId);
+      if (!stillViewing(targetId)) return;
       setNotice(
         `Scanned ${result.scanned} transaction${result.scanned === 1 ? "" : "s"}; ` +
           `${result.updated} status${result.updated === 1 ? "" : "es"} updated.`,
       );
       await load();
     } catch (err) {
+      if (!stillViewing(targetId)) return;
       setActionError(describeError(err));
     } finally {
-      setBusy(false);
+      if (stillViewing(targetId)) setBusy(false);
     }
   }
 
   // MK: opening the impersonation url in the same browser overwrites fp_sid -> session confusion (FP-198)
   // FH: different cookie names (fp_sid vs fp_impersonation), can't repro
   async function handleImpersonate(): Promise<void> {
-    if (!id || !detail) return;
+    if (!id || detail?.merchant.id !== id) return;
+    const targetId = id;
+    const displayName = detail.merchant.displayName;
     setBusy(true);
     setActionError(null);
     setNotice(null);
     try {
-      const grant = await startImpersonation(id);
-      rememberImpersonation({ ...grant, merchantDisplayName: detail.merchant.displayName });
+      const grant = await startImpersonation(targetId);
+      const dashboardUrl = merchantDashboardUrl(WEB_BASE_URL);
+      rememberImpersonation({ ...grant, merchantDisplayName: displayName });
       // The grant rides an httpOnly cookie set for apps/api's domain, which
       // apps/web already sends with `credentials: 'include'` — so the
       // merchant dashboard just works, unaware of how it was authenticated.
       // Opened in a second tab on purpose: this tab keeps showing the
       // impersonation banner and its exit action, which is the whole point
       // of the banner existing.
-      const opened = window.open(WEB_BASE_URL, "_blank", "noopener");
-      if (!opened) setImpersonationUrl(WEB_BASE_URL);
+      const opened = window.open(dashboardUrl, "_blank", "noopener");
+      if (!stillViewing(targetId)) return;
+      if (!opened) setImpersonationUrl(dashboardUrl);
     } catch (err) {
+      if (!stillViewing(targetId)) return;
       setActionError(describeError(err));
     } finally {
-      setBusy(false);
+      if (stillViewing(targetId)) setBusy(false);
     }
+  }
+
+  if (detail && detail.merchant.id !== id) {
+    return <p>Loading merchant...</p>;
   }
 
   if (loadError) {

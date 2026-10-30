@@ -1,5 +1,7 @@
 # BUG-012 — Merchant Status Recomputation Clears Test Mode Flag Polluting Live Settlement
 
+**Fixed (2026-10-30):** apps/api/src/admin/merchantFlags.ts — status recompute no longer clears test_mode.
+
 ## 1. Summary
 
 The tool is supposed to recompute transaction statuses.

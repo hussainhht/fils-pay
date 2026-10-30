@@ -1,5 +1,7 @@
 # BUG-052 — Reporting Consumer Double-Applies Events on Restart Due to Non-Atomic Watermark
 
+**Fixed (2026-10-30):** apps/reporting/src/consumer/runConsumerPass.ts — one transaction still applies the batch and advances the cursor; outbox SHARE plus cursor FOR UPDATE serialize consumers, and a failed event rolls back without being skipped.
+
 ## 1. Summary
 
 Two workers (daemon + catch-up) can read the same cursor, both apply `transaction.captured` (+1 volume), both write the same new watermark.

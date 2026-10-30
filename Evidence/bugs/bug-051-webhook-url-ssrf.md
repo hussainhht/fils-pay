@@ -1,6 +1,6 @@
 # BUG-051 — Webhook URL Registration Lacks Private Network and Localhost Validation (SSRF)
 
-**Still open. Hosted runtime (2026-10-30):** authenticated `POST /v1/merchants/9972daab-2c86-459f-9d78-3fe1be4e3280/webhook-endpoints` with `url` `http://127.0.0.1:9/filspay-probe` returned 201 and `status: active`. That row was deleted afterward so the worker would not keep calling it.
+**Fixed (2026-10-30):** apps/api/src/webhooks/create.ts — registration rejects loopback, RFC1918, link-local, metadata, and localhost names outside the test harness.
 
 ## 1. Summary
 

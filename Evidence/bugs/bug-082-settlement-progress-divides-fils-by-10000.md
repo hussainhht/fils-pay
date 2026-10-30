@@ -1,5 +1,7 @@
 # BUG-082 — Settlement Progress Bar Divides Fils by 10,000 Instead of 1,000 Distorting Ratio
 
+**Fixed (2026-10-30):** `apps/web/src/pages/settlement/SettlementBatchDetailPage.tsx` — removed the closed-batch progress bar. The fils divisor was not retuned.
+
 ## 1. Summary
 
 `grossFils / 10000` is ten times too small for a BD amount, and the result is then used as a width percentage.

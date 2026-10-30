@@ -1,5 +1,7 @@
 # BUG-019 — Reporting Scope Allows Split Merchant Parent to Query Unauthorized Child Data
 
+**Fixed (2026-10-30):** apps/api/src/reporting/scope.ts — child lookup requires parent_merchant_id to match the caller.
+
 ## 1. Summary
 
 Merchant A can request reports for child C that belongs to parent B, just by knowing C's id..

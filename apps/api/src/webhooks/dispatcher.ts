@@ -6,7 +6,6 @@ import { withTransaction } from "../db/withTransaction.js";
 import { decodeEncryptionKey, decryptSecret } from "./secretCrypto.js";
 import { signPayload } from "./sign.js";
 import { buildEnvelope } from "./envelope.js";
-import { recordPayoutDisbursementEffect } from "./payoutDisbursement.js";
 import { WEBHOOK_DELIVERY_ID_HEADER, WEBHOOK_SIGNATURE_HEADER } from "./headers.js";
 import type { WebhookTransport } from "./transport.js";
 
@@ -34,15 +33,9 @@ const WEBHOOK_ELIGIBLE_EVENT_TYPES: readonly string[] = [
 ];
 const NOTIFY_CHANNEL = "outbox_events_channel";
 
-type PreDeliveryEffect = (pool: Pool, payload: Record<string, unknown>) => Promise<void>;
-
-const PRE_DELIVERY_EFFECTS: Record<string, PreDeliveryEffect> = {
-  "settlement.paid": async (pool, payload) => {
-    const data = payload.data as { settlementBatchId: string; netPayoutFils: number };
-    await recordPayoutDisbursementEffect(pool, data.settlementBatchId, Number(data.netPayoutFils));
-  },
-};
-
+// settlement_payout_disbursements is not written here. The row belongs next
+// to the ledger movement in apps/settlement PayoutBatch
+// (internal/settlement/batch.go). That Go path does not insert it yet.
 export type DispatcherConfig = Pick<
   Config,
   | "webhookMaxAttempts"
@@ -158,11 +151,6 @@ async function attemptOneDelivery(
   const key = decodeEncryptionKey(config.webhookSecretEncryptionKey);
   const secret = decryptSecret(row.secret_ciphertext, key);
   const { signature } = signPayload(row.payload, secret);
-
-  if (row.attempt_count === 0) {
-    const effect = PRE_DELIVERY_EFFECTS[row.event_type];
-    if (effect) await effect(pool, row.payload);
-  }
 
   const result = await transport({
     url: row.url,

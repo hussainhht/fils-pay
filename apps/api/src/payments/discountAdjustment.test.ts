@@ -61,11 +61,10 @@ async function adjustmentLegs(transactionId: string): Promise<Array<{ account_id
   return result.rows;
 }
 
-/** Fee first, then discount: 602 fils @ 275 bps = 17 fils fee; 12.5% of 17 rounds to 2. */
+/** 602 fils @ 275 bps with a 1250 bps discount settles at 14; a stored fee of 17 rebates 3. */
 test("posts a rebate leg pair sized by the discount applied to the fee already charged", async () => {
-  // 602 fils captured at 275bps MDR charges 17 fils; a 1250bps negotiated
-  // discount rebates bankersRoundDiv(17*1250, 10000) = 2 fils, leaving the
-  // merchant charged 15 fils net.
+  // Discount the amount first: 602 - 75 = 527, then 275 bps MDR = 14 fils.
+  // A capture that already recorded the full 17-fil MDR rebates the 3-fil gap once.
   const { merchantId, transactionId } = await seedCapturedTransaction({
     mdrBps: 275,
     discountBps: 1250,
@@ -77,8 +76,8 @@ test("posts a rebate leg pair sized by the discount applied to the fee already c
 
   const legs = await adjustmentLegs(transactionId);
   assert.deepEqual(legs, [
-    { account_id: "merchant_payable", direction: "credit", amount_fils: "2" },
-    { account_id: "platform_fee_revenue", direction: "debit", amount_fils: "2" },
+    { account_id: "merchant_payable", direction: "credit", amount_fils: "3" },
+    { account_id: "platform_fee_revenue", direction: "debit", amount_fils: "3" },
   ]);
 });
 

@@ -99,7 +99,9 @@ export function randomId(prefix?: string): string {
 export function formatCardBrandHint(pan: string): "visa" | "mastercard" | "amex" | "unknown" {
   const digits = pan.replace(/\D/g, "");
   if (/^4/.test(digits)) return "visa";
-  if (/^5[1-5]/.test(digits) || /^2(2[2-9]|[3-6]\d|7[01])/.test(digits)) return "mastercard";
+  if (/^5[1-5]/.test(digits)) return "mastercard";
+  const bin = Number(digits.slice(0, 4));
+  if (digits.length >= 4 && bin >= 2221 && bin <= 2720) return "mastercard";
   if (/^3[47]/.test(digits)) return "amex";
   return "unknown";
 }

@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildQuery } from "./api/query.js";
+import { DASHBOARD_DOCUMENT_TITLE, CHECKOUT_DOCUMENT_TITLE, documentTitleForPath } from "./documentTitle.js";
 import { bhd, dash, dayStartIso, localDateTimeToIso } from "./format.js";
+import { findPaymentLinkById } from "./pages/payment-links/findPaymentLink.js";
 
 /**
  * The pure logic behind the dashboard's query strings and money/date display.
@@ -51,9 +53,50 @@ test("dash renders absent values as an em dash but keeps zero", () => {
   assert.equal(dash(0), "0");
 });
 
-test("dayStartIso converts a date input to a UTC day boundary", () => {
-  assert.equal(dayStartIso("2026-09-12"), "2026-09-12T00:00:00.000Z");
+test("dayStartIso uses Asia/Bahrain midnight, not a UTC day boundary", () => {
+  assert.equal(dayStartIso("2026-09-12"), "2026-09-12T00:00:00.000+03:00");
   assert.equal(dayStartIso(""), undefined);
+  // 00:00 Asia/Bahrain is 21:00 the previous day in UTC.
+  const from = Date.parse(dayStartIso("2026-08-26") ?? "");
+  const to = Date.parse(dayStartIso("2026-08-27") ?? "");
+  assert.equal(new Date(from).toISOString(), "2026-08-25T21:00:00.000Z");
+  const duringBahrainDay = Date.parse("2026-08-25T21:30:00.000Z");
+  const nextBahrainMorning = Date.parse("2026-08-26T22:03:30.000Z");
+  assert.equal(duringBahrainDay >= from && duringBahrainDay < to, true);
+  assert.equal(nextBahrainMorning >= from && nextBahrainMorning < to, false);
+});
+
+test("document title is checkout only on the public pay route", () => {
+  assert.equal(documentTitleForPath("/pay/plink_token"), CHECKOUT_DOCUMENT_TITLE);
+  assert.equal(documentTitleForPath("/dashboard/login"), DASHBOARD_DOCUMENT_TITLE);
+  assert.equal(documentTitleForPath("/dashboard/transactions"), DASHBOARD_DOCUMENT_TITLE);
+  assert.equal(documentTitleForPath("/"), DASHBOARD_DOCUMENT_TITLE);
+});
+
+test("findPaymentLinkById follows cursors past the first page", async () => {
+  let calls = 0;
+  const found = await findPaymentLinkById("older-than-100", async (cursor) => {
+    calls += 1;
+    if (!cursor) {
+      return {
+        paymentLinks: Array.from({ length: 100 }, (_, index) => ({ id: `recent-${index}` })),
+        nextCursor: "page-2",
+      };
+    }
+    return { paymentLinks: [{ id: "older-than-100" }], nextCursor: null };
+  });
+  assert.equal(found?.id, "older-than-100");
+  assert.equal(calls, 2);
+});
+
+test("findPaymentLinkById stops when the next cursor repeats", async () => {
+  let calls = 0;
+  const found = await findPaymentLinkById("missing", async () => {
+    calls += 1;
+    return { paymentLinks: [{ id: "other" }], nextCursor: "stuck" };
+  });
+  assert.equal(found, null);
+  assert.equal(calls, 2);
 });
 
 test("localDateTimeToIso rejects garbage instead of sending Invalid Date", () => {

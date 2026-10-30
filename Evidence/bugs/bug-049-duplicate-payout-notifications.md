@@ -1,5 +1,7 @@
 # BUG-049 — Duplicate settlement.paid Notifications Dispatched by Concurrent Triggers
 
+**Fixed (2026-10-30):** apps/settlement/internal/settlement/payout_notify.go — the insert already uses ON CONFLICT against the migration 0078 partial unique index on settlement.paid. No code change.
+
 ## 1. Summary
 
 Two processes pass `NOT EXISTS` before either commits.

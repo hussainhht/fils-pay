@@ -1,5 +1,7 @@
 # BUG-075 — KYC Document Verification Validates File Extension Instead of Magic Bytes
 
+**Fixed (2026-10-30):** apps/api/src/onboarding/kyc.ts — PDF-only document types require PDF magic bytes, not a .pdf filename.
+
 ## 1. Summary
 
 Content-type detection exists but the PDF rule does not use it.

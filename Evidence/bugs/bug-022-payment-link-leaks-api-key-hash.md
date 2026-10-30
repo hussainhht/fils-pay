@@ -1,5 +1,7 @@
 # BUG-022 — Public Payment Link Endpoint Leaks Live Merchant API Key Hash
 
+**Fixed (2026-10-30):** apps/api/src/paymentLinks/read.ts — the public DTO no longer joins api_keys or returns the key hash or prefix.
+
 **Still open. Hosted runtime (2026-10-30):** unauthenticated `GET /v1/payment-links/plink_IryLiGv5BKsZGEpBuWadUK` returned `merchantIntegrationId` equal to Alpha Retail’s `api_keys.key_hash`, and `merchantPublicKey` equal to prefix `fp_test_jghGsQ9A`. The checkout page itself showed only the merchant name and amount.
 
 ## 1. Summary

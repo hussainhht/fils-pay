@@ -1,5 +1,7 @@
 # BUG-056 — Admin Merchant Detail Form Retains State Across Route Changes
 
+**Fixed (2026-10-30):** `apps/admin/src/pages/merchants/MerchantDetailPage.tsx` — detail and form state reset when the merchant id changes, stale loads are ignored, and actions stay off until the loaded merchant matches the route.
+
 ## 1. Summary
 
 The parameterized route retains detail and form state across id changes. load neither clears old detail nor rejects obsolete responses. Mutation handlers use the current route id while heading, profile and balance use retained detail.

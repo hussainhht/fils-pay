@@ -1,5 +1,7 @@
 # BUG-061 — Capture Endpoint Holds Database Row Lock Open Across Slow External Acquirer Call
 
+**Fixed (2026-10-30):** apps/api/src/payments/capture.ts — the row lock is taken only in the short prepare and apply transactions; authorize.ts releases its connection before the acquirer call too.
+
 ## 1. Summary
 
 One pool connection and a row lock are held for the full acquirer RTT, on both authorize and capture.

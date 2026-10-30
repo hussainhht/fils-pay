@@ -234,6 +234,46 @@ func TestRecalculateMDR_OutOfRangeBatchUntouched(t *testing.T) {
 	}
 }
 
+func TestRecalculateMDR_LeavesPaidBatchesUnchanged(t *testing.T) {
+	pool := mustPool(t)
+	ctx := context.Background()
+	const originalMdrBps = 250
+	merchantID := insertActiveMerchant(t, pool, originalMdrBps)
+
+	businessDate := time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC)
+	start, _ := BusinessDayWindow(businessDate)
+	insertCaptureEvent(t, pool, merchantID, originalMdrBps, 8_000, start.Add(time.Hour))
+
+	closed, err := CloseBatch(ctx, pool, merchantID, businessDate)
+	if err != nil {
+		t.Fatalf("CloseBatch: %v", err)
+	}
+	if _, err := PayoutBatch(ctx, pool, closed.BatchID); err != nil {
+		t.Fatalf("PayoutBatch: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE merchants SET mdr_bps = 400 WHERE id = $1`, merchantID); err != nil {
+		t.Fatalf("update mdr_bps: %v", err)
+	}
+
+	from, to := recalcWindow(businessDate)
+	result, err := RecalculateMDR(ctx, pool, merchantID, from, to)
+	if err != nil {
+		t.Fatalf("RecalculateMDR: %v", err)
+	}
+	if result.BatchesConsidered != 0 || len(result.Adjusted) != 0 {
+		t.Fatalf("paid batch was considered: %+v", result)
+	}
+
+	var gotFee int64
+	var status string
+	if err := pool.QueryRow(ctx, `SELECT fee_fils, status FROM settlement_batches WHERE id = $1`, closed.BatchID).Scan(&gotFee, &status); err != nil {
+		t.Fatalf("read paid batch: %v", err)
+	}
+	if status != "paid" || gotFee != int64(closed.FeeFils) {
+		t.Errorf("paid batch status/fee = %s/%d, want paid/%d", status, gotFee, closed.FeeFils)
+	}
+}
+
 // compile-time assertion that RecalculateMDR keeps the *pgxpool.Pool
 // signature the internal API handler passes it.
 var _ func(context.Context, *pgxpool.Pool, uuid.UUID, time.Time, time.Time) (RecalcResult, error) = RecalculateMDR

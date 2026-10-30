@@ -1,5 +1,7 @@
 # BUG-023 — Negotiated Fee Discount Skipped for Hosted Payment Link Captures
 
+**Fixed (2026-10-30):** apps/api/src/paymentLinks/pay.ts — successful hosted pay calls applyCaptureDiscountAdjustment after capture.
+
 ## 1. Summary
 
 Hosted-checkout pay never posts the discount adjustment ledger group.

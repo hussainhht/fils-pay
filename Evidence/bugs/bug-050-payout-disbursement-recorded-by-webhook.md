@@ -1,5 +1,7 @@
 # BUG-050 — Payout Disbursement Bank Record Created as Side Effect of Webhook Dispatch
 
+**Partially fixed (2026-10-30):** apps/settlement/internal/settlement/batch.go and apps/settlement/internal/splits/allocate.go — both payout paths insert the disbursement in the same transaction as the ledger movement. The dispatcher no longer inserts it on delivery. No unique index: 0057's index is not unique, and existing duplicate rows were not reconciled.
+
 ## 1. Summary
 
 A money-side-effect (we recorded a bank disbursement) is triggered by **attempting** to tell the merchant.

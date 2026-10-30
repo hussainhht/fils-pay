@@ -1,5 +1,7 @@
 # BUG-078 — Bulk KYC Selection State Retains Hidden Selections Across Tab Changes
 
+**Fixed (2026-10-30):** `apps/admin/src/pages/merchants/MerchantListPage.tsx` — a replaced filter page clears selection, and the header plus bulk approve use only rows on screen.
+
 ## 1. Summary
 
 Changing filters replaces merchants but never reconciles selectedIds. Header checked state compares set size to row count rather than membership; approval sends the stale set.

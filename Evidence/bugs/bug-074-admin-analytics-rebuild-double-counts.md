@@ -1,5 +1,7 @@
 # BUG-074 — Admin Analytics Rebuild Executes Truncate and Insert in Separate Transactions
 
+**Fixed (2026-10-30):** apps/api/src/admin/reportingRebuild.ts — the existing single transaction replays the outbox under the consumer lock and publishes the cursor at that locked horizon.
+
 ## 1. Summary
 
 The reporting worker applies outbox rows with `id > cursor` and then adds into those same tables (Bug 51).

@@ -1,5 +1,7 @@
 # BUG-011 — Admin Recalculate Cached Balances Reads Scheme Gross Instead of Ledger
 
+**Fixed (2026-10-30):** apps/settlement/internal/internalapi/server.go — rebuild-balances calls ledger.RebuildAllBalances.
+
 ## 1. Summary
 
 The console button and the CLI write the same cache column from different sources.

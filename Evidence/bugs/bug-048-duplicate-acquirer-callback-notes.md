@@ -1,5 +1,7 @@
 # BUG-048 — Duplicate Acquirer Callbacks Append Duplicate Transaction Notes
 
+**Fixed (2026-10-30):** db/migrations/0081_callback_id_unique.sql — UNIQUE (callback_id) after keeping the earliest row; insert uses ON CONFLICT DO NOTHING.
+
 ## 1. Summary
 
 The bank sending the same callback twice creates two identical notes.

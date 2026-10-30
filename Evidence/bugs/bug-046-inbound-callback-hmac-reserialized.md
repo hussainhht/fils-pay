@@ -1,5 +1,7 @@
 # BUG-046 — Inbound Acquirer HMAC Verification Reserializes Parsed JSON Object
 
+**Fixed (2026-10-30):** apps/api/src/routes/acquirerCallbacks.ts — already HMACs `request.rawCallbackBody`; no code change.
+
 ## 1. Summary
 
 Verifier does `HMAC(timestamp + "." + JSON.stringify(parsedObject))`.

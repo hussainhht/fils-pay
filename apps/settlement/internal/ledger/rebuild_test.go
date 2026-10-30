@@ -108,6 +108,47 @@ func TestRebuildMerchantBalance_ZeroActivity(t *testing.T) {
 	}
 }
 
+func TestRebuildMerchantBalance_PersistsOneMerchant(t *testing.T) {
+	pool := mustPool(t)
+	merchantID := insertActiveMerchant(t, pool)
+	otherID := insertActiveMerchant(t, pool)
+
+	postLedgerLeg(t, pool, merchantID, "credit", 8000)
+	postLedgerLeg(t, pool, merchantID, "debit", 500)
+
+	_, err := pool.Exec(context.Background(), `
+		INSERT INTO merchant_balances (merchant_id, cached_payable_fils, updated_at)
+		VALUES ($1, 1, now()), ($2, 4242, now())
+	`, merchantID, otherID)
+	if err != nil {
+		t.Fatalf("seed caches: %v", err)
+	}
+
+	got, err := RebuildMerchantBalance(context.Background(), pool, merchantID)
+	if err != nil {
+		t.Fatalf("RebuildMerchantBalance: %v", err)
+	}
+	if got != 7500 {
+		t.Fatalf("RebuildMerchantBalance = %d, want 7500", got)
+	}
+
+	var persisted, other int64
+	err = pool.QueryRow(context.Background(), `SELECT cached_payable_fils FROM merchant_balances WHERE merchant_id = $1`, merchantID).Scan(&persisted)
+	if err != nil {
+		t.Fatalf("read rebuilt cache: %v", err)
+	}
+	if persisted != 7500 {
+		t.Errorf("persisted cached_payable_fils = %d, want 7500", persisted)
+	}
+	err = pool.QueryRow(context.Background(), `SELECT cached_payable_fils FROM merchant_balances WHERE merchant_id = $1`, otherID).Scan(&other)
+	if err != nil {
+		t.Fatalf("read other cache: %v", err)
+	}
+	if other != 4242 {
+		t.Errorf("other merchant cache = %d, want 4242", other)
+	}
+}
+
 func TestRebuildAllBalances_OverwritesDriftedCache(t *testing.T) {
 	pool := mustPool(t)
 	merchantID := insertActiveMerchant(t, pool)

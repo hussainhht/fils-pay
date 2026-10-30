@@ -1,5 +1,7 @@
 # BUG-020 — Reporting Export Summary Endpoint Lacks Authentication Pre-Handler
 
+**Fixed (2026-10-30):** apps/api/src/routes/reporting.ts — export-summary uses preHandler requireMerchantAuth.
+
 ## 1. Summary
 
 Sibling reporting routes attach `requireMerchantAuth`.

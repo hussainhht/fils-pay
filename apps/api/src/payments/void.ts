@@ -28,10 +28,9 @@ export interface VoidResult {
  * `POST /v1/transactions/:id/void` business logic. Only valid on a
  * transaction that was never captured at all (`status = 'authorized'`) —
  * not `'partially_captured'` (some money already moved; voiding the rest
- * is a different, unbuilt operation). No acquirer call: the
- * AcquirerSimulator interface has no void/cancel method — an authorization
- * hold is a purely local record (`holds`), and releasing it is
- * local-only.
+ * is a different, unbuilt operation). The acquirer client has no reverse
+ * method, so this releases the local hold only. An in-progress capture
+ * blocks the void until that operation finishes.
  *
  * Same row-lock-first discipline as capture, for the same reason: it must
  * be impossible for a concurrent capture and void on the same transaction
@@ -61,6 +60,16 @@ export async function voidTransaction(pool: Pool, input: VoidInput): Promise<Voi
     if (txn.status !== "authorized") {
       const body = { error: "not_voidable", status: txn.status };
       return { statusCode: 409, body, alreadyVoided: false };
+    }
+
+    const inflightCapture = await client.query(
+      `SELECT 1 FROM idempotency_keys
+        WHERE endpoint = 'transactions.capture' AND resource_id = $1 AND status = 'in_progress'
+        LIMIT 1`,
+      [txn.id],
+    );
+    if (inflightCapture.rows[0]) {
+      return { statusCode: 409, body: { error: "request_in_progress" }, alreadyVoided: false };
     }
 
     const updateResult = await client.query<TransactionRow>(

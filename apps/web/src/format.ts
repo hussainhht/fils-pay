@@ -24,16 +24,16 @@ export function dateTime(iso: string | null | undefined): string {
 }
 
 /**
- * An `<input type="date">` value (YYYY-MM-DD) as a full ISO instant at the
- * UTC day boundary — what the `from`/`to` transaction filters take. No
- * timezone picker and no business-day conversion: those filters compare
- * `occurred_at` directly, so pretending otherwise here would invent a
- * precision the endpoint doesn't have.
+ * An `<input type="date">` value (YYYY-MM-DD) as the Asia/Bahrain business-day
+ * start. Settlement days run from Bahrain midnight to the next midnight.
+ * Bahrain is UTC+3 with no DST, so the offset is fixed. The string is not
+ * parsed as a UTC day — `...T00:00:00.000Z` would be 03:00 in Bahrain.
  */
-// YA: UTC day boundary, NOT Bahrain. filters are 3h off vs settlement days. known.
-// fixed, uses bahrain time now — am
+const BAHRAIN_BUSINESS_DAY_OFFSET = "+03:00";
+
 export function dayStartIso(dateValue: string): string | undefined {
-  return dateValue ? `${dateValue}T00:00:00.000Z` : undefined;
+  if (!dateValue) return undefined;
+  return `${dateValue}T00:00:00.000${BAHRAIN_BUSINESS_DAY_OFFSET}`;
 }
 
 /**

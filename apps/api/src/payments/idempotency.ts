@@ -224,3 +224,22 @@ export async function failIdempotencyKey(
     [id, result.statusCode, JSON.stringify(result.body)],
   );
 }
+
+const externalOperations = new Map<string, Promise<unknown>>();
+
+/** Concurrent resumes of one external operation share a single in-process call. */
+export function singleFlight<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const existing = externalOperations.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const pending = run();
+  externalOperations.set(key, pending);
+  void pending.then(
+    () => {
+      if (externalOperations.get(key) === pending) externalOperations.delete(key);
+    },
+    () => {
+      if (externalOperations.get(key) === pending) externalOperations.delete(key);
+    },
+  );
+  return pending;
+}

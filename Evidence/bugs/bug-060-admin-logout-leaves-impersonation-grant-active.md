@@ -1,5 +1,7 @@
 # BUG-060 — Admin Sign-Out Revokes Admin Session but Leaves Impersonation Grant Active
 
+**Fixed (2026-10-30):** apps/api/src/routes/adminAuth.ts — logout ends the admin's live impersonation grants and clears the impersonation cookie as well as the admin session.
+
 ## 1. Summary
 
 Admin signOut clears local impersonation metadata but calls only the admin logout endpoint. That endpoint revokes the admin session and clears only the admin cookie. Grant validation is independent of the logged-out session.

@@ -1,5 +1,7 @@
 # BUG-021 — Capture Idempotency Key Is Not Bound to Transaction ID Allowing Tenant Replay
 
+**Fixed (2026-10-30):** apps/api/src/payments/capture.ts — the capture request hash includes the transaction id, and discount adjustments are limited to that merchant.
+
 ## 1. Summary
 
 Capture claims use the same endpoint namespace for all transaction IDs and hash only amountFils. A completed key replays before the target's ownership lookup. The route nevertheless invokes the discount helper using the requested path ID; that helper reads capture events by transaction ID without checking merchant ownership.

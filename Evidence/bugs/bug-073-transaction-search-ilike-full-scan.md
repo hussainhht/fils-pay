@@ -1,5 +1,7 @@
 # BUG-073 — Transaction Search Uses Unindexed Leading Wildcard ILIKE Causing Full-Table Scan
 
+**Skipped (2026-10-30):** EXPLAIN uses idx_transactions_merchant_occurred, then filters the leading-wildcard ILIKE. No equality/prefix rewrite and no new index.
+
 ## 1. Summary
 
 Every search is a sequential scan per merchant.

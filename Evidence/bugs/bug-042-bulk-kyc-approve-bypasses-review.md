@@ -1,5 +1,7 @@
 # BUG-042 — Bulk KYC Approval Transitions Pending Merchants Directly to Approved
 
+**Fixed (2026-10-30):** apps/api/src/admin/bulkKyc.ts — only merchants under_review are approved, and each approval writes a review row.
+
 ## 1. Summary
 
 Merchants who never submitted, or who were rejected, can be flipped to approved in bulk.

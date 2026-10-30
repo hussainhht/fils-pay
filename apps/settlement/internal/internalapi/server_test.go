@@ -245,9 +245,21 @@ func TestRebuildBalances_ValidToken(t *testing.T) {
 	merchantID := insertActiveMerchant(t, pool)
 	insertCaptureEvent(t, pool, merchantID, 12000, time.Date(2026, 4, 12, 9, 0, 0, 0, time.UTC))
 
+	feeGroup := uuid.New()
+	_, err := pool.Exec(context.Background(), `
+		INSERT INTO ledger_entries
+		  (entry_group_id, merchant_id, account_id, direction, amount_fils, occurred_at, description)
+		VALUES
+		  ($1, $2, 'merchant_payable',     'debit',  300, now(), 'capture: MDR fee'),
+		  ($1, $2, 'platform_fee_revenue', 'credit', 300, now(), 'capture: MDR fee')
+	`, feeGroup, merchantID)
+	if err != nil {
+		t.Fatalf("seed fee ledger: %v", err)
+	}
+
 	// A deliberately drifted cached value, so this merchant's entry is a
 	// changed one.
-	_, err := pool.Exec(context.Background(), `
+	_, err = pool.Exec(context.Background(), `
 		INSERT INTO merchant_balances (merchant_id, cached_payable_fils, updated_at)
 		VALUES ($1, 999999, now())
 		ON CONFLICT (merchant_id) DO UPDATE SET cached_payable_fils = 999999
@@ -256,9 +268,10 @@ func TestRebuildBalances_ValidToken(t *testing.T) {
 		t.Fatalf("seed drifted cache: %v", err)
 	}
 
-	// A payout already left the platform: debit merchant_payable 5000. The
-	// scheme-export line below is the lifetime gross (12000) and must NOT be
-	// what the rebuild reads; the ledger says 12000 - 5000 = 7000.
+	// A payout already left the platform: debit merchant_payable 5000. The fee
+	// debit above took 300. The scheme-export line below is the lifetime gross
+	// (12000) and must NOT be what the rebuild reads. The ledger says
+	// 12000 - 300 - 5000 = 6700.
 	_, err = pool.Exec(context.Background(), `
 		INSERT INTO ledger_entries (entry_group_id, merchant_id, account_id, direction, amount_fils, occurred_at, description)
 		VALUES
@@ -304,8 +317,8 @@ func TestRebuildBalances_ValidToken(t *testing.T) {
 	if diff.Before != 999999 {
 		t.Errorf("before = %d, want 999999 (the drifted cached value)", diff.Before)
 	}
-	if diff.After != 7000 {
-		t.Errorf("after = %d, want 7000 (ledger: 12000 credit - 5000 payout; not the 12000 scheme gross)", diff.After)
+	if diff.After != 6700 {
+		t.Errorf("after = %d, want 6700 (ledger: 12000 credit - 300 fee - 5000 payout; not the 12000 scheme gross)", diff.After)
 	}
 	if !diff.Changed {
 		t.Error("changed = false, want true")
@@ -316,8 +329,8 @@ func TestRebuildBalances_ValidToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query persisted balance: %v", err)
 	}
-	if persisted != 7000 {
-		t.Errorf("persisted cached_payable_fils = %d, want 7000", persisted)
+	if persisted != 6700 {
+		t.Errorf("persisted cached_payable_fils = %d, want 6700", persisted)
 	}
 }
 

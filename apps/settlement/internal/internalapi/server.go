@@ -61,6 +61,7 @@ type merchantBatchOutcomeResponse struct {
 	GrossFils     int64  `json:"grossFils"`
 	FeeFils       int64  `json:"feeFils"`
 	NetPayoutFils int64  `json:"netPayoutFils"`
+	Error         string `json:"error,omitempty"`
 }
 
 // runBatchResponse is the JSON projection of settlement.DailyBatchReport.
@@ -251,6 +252,7 @@ func handleRunBatch(pool *pgxpool.Pool) http.Handler {
 				GrossFils:     int64(result.GrossFils),
 				FeeFils:       int64(result.FeeFils),
 				NetPayoutFils: int64(result.NetPayoutFils),
+				Error:         result.Error,
 			})
 		}
 

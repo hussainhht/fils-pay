@@ -1,5 +1,7 @@
 # BUG-018 — Payment Link Cancellation Endpoint Lacks Merchant Scoping
 
+**Fixed (2026-10-30):** apps/api/src/paymentLinks/cancel.ts — the cancel update and follow-up read both require merchant_id.
+
 ## 1. Summary
 
 Any authenticated merchant who knows another merchant's link UUID can cancel it via `DELETE /v1/merchants/{theirId}/payment-links/{victimLinkId}`..

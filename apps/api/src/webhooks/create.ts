@@ -8,8 +8,8 @@ import { decodeEncryptionKey, encryptSecret } from "./secretCrypto.js";
 /**
  * Validates a webhook endpoint URL: must parse as an absolute URL with
  * scheme http/https; https is required once config.nodeEnv === 'production'
- * (http is permitted otherwise so a local http.createServer test receiver
- * and a merchant's own localhost dev setup both work).
+ * (http is permitted otherwise). Private and localhost targets are rejected
+ * outside the test harness, which binds a receiver on 127.0.0.1.
  */
 /**
  * True for hosts a merchant must never be able to point the dispatcher at:
@@ -50,8 +50,8 @@ export function isInternalWebhookHost(hostname: string): boolean {
   );
 }
 
-// https-only plus no internal hosts in production. Dev keeps http and
-// localhost for the local receiver.
+// https and no userinfo in production. Private, link-local, loopback,
+// metadata, and localhost names are rejected outside nodeEnv "test".
 export function validateWebhookUrl(rawUrl: string, config: Pick<Config, "nodeEnv">): URL {
   let parsed: URL;
   try {
@@ -60,6 +60,9 @@ export function validateWebhookUrl(rawUrl: string, config: Pick<Config, "nodeEnv
     throw new BadRequestError("invalid_url");
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new BadRequestError("invalid_url");
+  }
+  if (config.nodeEnv !== "test" && isInternalWebhookHost(parsed.hostname)) {
     throw new BadRequestError("invalid_url");
   }
   if (config.nodeEnv === "production" && (parsed.protocol !== "https:" || parsed.username !== "" || parsed.password !== "" || isInternalWebhookHost(parsed.hostname))) {

@@ -1,5 +1,7 @@
 # BUG-076 — Dashboard Date Filter Generates UTC Midnight Instead of Bahrain Midnight
 
+**Fixed (2026-10-30):** `apps/web/src/format.ts` — `dayStartIso` now uses Asia/Bahrain midnight (`+03:00`) instead of a UTC `Z` timestamp.
+
 **Still open. Hosted runtime (2026-10-30):** Alpha Retail, From `2026-08-26` and To `2026-08-27` (exclusive), included `alpha-retail-txn-0022`, displayed as `8/27/2026, 1:03:30 AM`. That row is `2026-08-26 22:03:30+00`, which is `2026-08-27 01:03:30` Asia/Bahrain.
 
 ## 1. Summary

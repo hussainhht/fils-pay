@@ -16,16 +16,36 @@ import (
 )
 
 // RebuildMerchantBalance recomputes merchantID's cached balance from
-// ledger_entries. CLI-only; the incremental path is in internal/balances.
+// ledger_entries and writes merchant_balances. CLI-only; the incremental
+// path is in internal/balances.
 func RebuildMerchantBalance(ctx context.Context, db *pgxpool.Pool, merchantID uuid.UUID) (money.Fils, error) {
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("ledger: RebuildMerchantBalance(%s): begin: %w", merchantID, err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
 	var balance int64
-	err := db.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		SELECT COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_fils ELSE -amount_fils END), 0)
 		  FROM ledger_entries
 		 WHERE merchant_id = $1 AND account_id = 'merchant_payable'
 	`, merchantID).Scan(&balance)
 	if err != nil {
 		return 0, fmt.Errorf("ledger: RebuildMerchantBalance(%s): %w", merchantID, err)
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO merchant_balances (merchant_id, cached_payable_fils, updated_at)
+		VALUES ($1, $2, now())
+		ON CONFLICT (merchant_id) DO UPDATE
+		  SET cached_payable_fils = $2, updated_at = now()
+	`, merchantID, balance)
+	if err != nil {
+		return 0, fmt.Errorf("ledger: RebuildMerchantBalance(%s): write: %w", merchantID, err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("ledger: RebuildMerchantBalance(%s): commit: %w", merchantID, err)
 	}
 	return money.Fils(balance), nil
 }

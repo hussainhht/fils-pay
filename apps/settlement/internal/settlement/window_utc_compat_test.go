@@ -24,16 +24,49 @@ func TestBusinessDayWindow_OffByThreeHours(t *testing.T) {
 	}
 }
 
-// TestBusinessDayWindow_IgnoresClockTime: only the calendar date of the
-// argument matters (temporary? scheduler passes noon sometimes).
-func TestBusinessDayWindow_IgnoresClockTime(t *testing.T) {
-	a, _ := BusinessDayWindow(time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC))
-	b, bEnd := BusinessDayWindow(time.Date(2026, 12, 31, 23, 59, 59, 0, time.UTC))
+// Times on the same Asia/Bahrain calendar date share a window. A UTC
+// clock time that has already crossed Bahrain midnight does not.
+func TestBusinessDayWindow_UsesBahrainCalendarDate(t *testing.T) {
+	loc := businessDayLocation
+	morning := time.Date(2026, 12, 31, 1, 0, 0, 0, loc)
+	evening := time.Date(2026, 12, 31, 23, 0, 0, 0, loc)
+	a, _ := BusinessDayWindow(morning)
+	b, bEnd := BusinessDayWindow(evening)
 	if !a.Equal(b) {
-		t.Fatalf("clock time changed the window start: %s vs %s", a, b)
+		t.Fatalf("same Bahrain date changed the window start: %s vs %s", a, b)
 	}
-	if want := time.Date(2026, 12, 31, 21, 0, 0, 0, time.UTC); !bEnd.Equal(want) {
-		t.Fatalf("year-end window end = %s, want %s", bEnd.UTC(), want)
+	wantEnd := time.Date(2027, 1, 1, 0, 0, 0, 0, loc)
+	if !bEnd.Equal(wantEnd) {
+		t.Fatalf("year-end window end = %s, want %s", bEnd, wantEnd)
+	}
+
+	// 22:00 UTC on 23 March is 01:00 on 24 March in Bahrain.
+	start, end := BusinessDayWindow(time.Date(2026, 3, 23, 22, 0, 0, 0, time.UTC))
+	wantStart := time.Date(2026, 3, 23, 21, 0, 0, 0, time.UTC)
+	wantEveningEnd := time.Date(2026, 3, 24, 21, 0, 0, 0, time.UTC)
+	if !start.Equal(wantStart) || !end.Equal(wantEveningEnd) {
+		t.Fatalf("UTC evening window = [%s, %s), want [%s, %s)", start.UTC(), end.UTC(), wantStart, wantEveningEnd)
+	}
+}
+
+func TestBusinessDayEnded_RefusesTodayAndFuture(t *testing.T) {
+	loc := businessDayLocation
+	now := time.Date(2026, 10, 30, 15, 0, 0, 0, loc)
+	today := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+	future := time.Date(2026, 10, 31, 0, 0, 0, 0, time.UTC)
+	yesterday := time.Date(2026, 10, 29, 0, 0, 0, 0, time.UTC)
+	if businessDayEnded(today, now) {
+		t.Fatal("today must not be closable")
+	}
+	if businessDayEnded(future, now) {
+		t.Fatal("a future date must not be closable")
+	}
+	if !businessDayEnded(yesterday, now) {
+		t.Fatal("yesterday must be closable")
+	}
+	justAfterMidnight := time.Date(2026, 10, 30, 0, 10, 0, 0, loc)
+	if !businessDayEnded(yesterday, justAfterMidnight) {
+		t.Fatal("yesterday must be closable just after Bahrain midnight")
 	}
 }
 

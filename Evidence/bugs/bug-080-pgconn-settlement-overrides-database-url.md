@@ -1,5 +1,7 @@
 # BUG-080 — PGCONN_SETTLEMENT Environment Variable Silently Overrides DATABASE_URL
 
+**Fixed (2026-10-30):** apps/settlement/internal/config/config.go — DATABASE_URL is used unless SETTLEMENT_DATABASE_URL is set as an explicit settlement DSN. PGCONN_SETTLEMENT is ignored.
+
 ## 1. Summary
 
 If both variables are present, the Go settlement process uses `PGCONN_SETTLEMENT` and never mentions the swap.

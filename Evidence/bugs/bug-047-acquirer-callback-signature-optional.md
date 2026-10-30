@@ -1,5 +1,7 @@
 # BUG-047 — Acquirer Callbacks Accepted Unsigned by Default in Configuration
 
+**Fixed (2026-10-30):** apps/api/src/config.ts — unsigned callbacks are rejected unless NODE_ENV is development.
+
 ## 1. Summary
 
 Anyone who can reach the callback URL can attach `confirmed_fraud` / `cleared` notes (and arbitrary `outcome` strings) to any transaction UUID..

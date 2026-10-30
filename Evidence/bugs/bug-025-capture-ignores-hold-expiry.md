@@ -1,5 +1,7 @@
 # BUG-025 — Capture Ignores Hold Expiry and Succeeds Against Expired Authorizations
 
+**Fixed (2026-10-30):** apps/api/src/payments/capture.ts — capture rejects a missing, inactive, or expired hold and leaves the transaction status unchanged.
+
 ## 1. Summary
 
 A capture of a 8-day-old authorization succeeds locally.

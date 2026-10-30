@@ -2,7 +2,8 @@ import type { Pool } from "pg";
 import { addFils, toFils, ZERO_FILS, type Fils } from "@filspay/money";
 import { insertAdminAuditLog } from "../adminAudit/log.js";
 import { withTransaction } from "../db/withTransaction.js";
-import { BadRequestError } from "../lib/errors.js";
+import { sha256Hex } from "../lib/crypto.js";
+import { BadRequestError, ConflictError } from "../lib/errors.js";
 import { parseAdjustmentAmountFils } from "./adjustmentCsvParsing.js";
 import { postLedgerAdjustment } from "./ledgerAdjustments.js";
 
@@ -36,6 +37,28 @@ async function postAdjustmentToLedgerAndCache(
   return entryGroupId;
 }
 
+/** Identity of the parsed rows. The filename is not part of it. */
+function adjustmentRowsContentHash(rows: AdjustmentImportRow[]): string {
+  return sha256Hex(
+    JSON.stringify(
+      rows.map((row) => ({
+        merchantId: row.merchantId,
+        amount: row.amount,
+        reason: row.reason ?? null,
+      })),
+    ),
+  );
+}
+
+function isAdjustmentImportDuplicate(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: unknown }).code === "23505" &&
+    (err as { constraint?: unknown }).constraint === "adjustment_imports_content_hash_key"
+  );
+}
+
 /**
  * Applies one uploaded CSV in a single transaction: every row's amount is
  * parsed, posted to the ledger, and recorded in adjustment_import_rows with
@@ -52,16 +75,23 @@ export async function applyAdjustmentImport(
   }
 
   return withTransaction(pool, async (client) => {
-    const importRow = await client.query<{ id: string }>(
-      `INSERT INTO adjustment_imports (uploaded_by_admin_user_id, original_filename, row_count)
-       VALUES ($1, $2, $3) RETURNING id`,
-      [input.adminUserId, input.originalFilename, input.rows.length],
-    );
-    const importId = importRow.rows[0]!.id;
+    const contentHash = adjustmentRowsContentHash(input.rows);
+    let importId: string;
+    try {
+      const importRow = await client.query<{ id: string }>(
+        `INSERT INTO adjustment_imports (uploaded_by_admin_user_id, original_filename, row_count, content_hash)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [input.adminUserId, input.originalFilename, input.rows.length, contentHash],
+      );
+      importId = importRow.rows[0]!.id;
+    } catch (err) {
+      if (isAdjustmentImportDuplicate(err)) {
+        throw new ConflictError("adjustment_import_duplicate", "this adjustment CSV was already imported");
+      }
+      throw err;
+    }
 
     let total = ZERO_FILS;
-    // FH: claude says nothing here stops the same CSV being applied twice. intended? (asked in #fp-backend 14/8, no answer)
-    // re-upload is blocked by the unique original_filename i think — am
     for (let i = 0; i < input.rows.length; i++) {
       const row = input.rows[i]!;
       const amountFils = parseAdjustmentAmountFils(row.amount);

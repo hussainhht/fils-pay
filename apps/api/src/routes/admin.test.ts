@@ -314,6 +314,7 @@ test("requireAdminRole: a support admin is 403'd on every finance-gated route", 
     { url: `/v1/admin/merchants/${merchantId}/api-keys/${issued.id}/rotate`, payload: {} },
     { url: "/v1/admin/settlement/run-batch", payload: { date: "2026-09-09" } },
     { url: "/v1/admin/balances/rebuild", payload: {} },
+    { url: `/v1/admin/merchants/${merchantId}/credits`, payload: {} },
   ];
 
   for (const route of financeOnly) {
@@ -855,6 +856,7 @@ test("API key rotation issues a new key atomically, audits it, and revokes the p
   assert.equal(rows.rowCount, 2);
   const [oldRow, newRow] = rows.rows;
   assert.ok(oldRow!.revoked_at, "rotation revokes the previous key");
+  assert.equal(oldRow!.revoked_reason, null);
   assert.equal(newRow!.id, rotated.id);
   assert.equal(newRow!.revoked_at, null);
   assert.equal(newRow!.created_by, null, "0037's XOR: an admin-issued key has no merchant_users actor");

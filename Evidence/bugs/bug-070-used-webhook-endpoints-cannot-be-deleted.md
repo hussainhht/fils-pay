@@ -1,5 +1,7 @@
 # BUG-070 — Webhook Endpoint Deletion Fails With 500 When Referenced by Deliveries
 
+**Fixed (2026-10-30):** apps/api/src/webhooks/cancel.ts — already disables an endpoint that has deliveries and keeps the delivery rows; no code change.
+
 ## 1. Summary
 
 The delete handler issues a hard DELETE, but delivery and archive endpoint_id columns are NOT NULL foreign keys with no ON DELETE action. No later migration changes either constraint.

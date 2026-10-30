@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sort"
 	"time"
 
@@ -21,6 +22,10 @@ import (
 // meant to be invoked directly for such a merchant; the batching pass
 // (RunDailyBatch) already filters merchants before ever calling it.
 var ErrMerchantNotEligible = errors.New("settlement: merchant not found or not eligible for settlement")
+
+// ErrBusinessDayNotComplete is returned when CloseBatch is asked to freeze
+// today or a future Asia/Bahrain business date.
+var ErrBusinessDayNotComplete = errors.New("settlement: refusing to close today or a future business day")
 
 // BatchResult is CloseBatch's return value.
 type BatchResult struct {
@@ -58,6 +63,10 @@ type eligibleEvent struct {
 // batch's id inside the same transaction that freezes the batch's totals,
 // so a row can never be picked up by two batches.
 func CloseBatch(ctx context.Context, db *pgxpool.Pool, merchantID uuid.UUID, businessDate time.Time) (BatchResult, error) {
+	if !businessDayEnded(businessDate, time.Now()) {
+		return BatchResult{}, ErrBusinessDayNotComplete
+	}
+
 	start, end := BusinessDayWindow(businessDate)
 	batchDateOnly := time.Date(businessDate.Year(), businessDate.Month(), businessDate.Day(), 0, 0, 0, 0, time.UTC)
 
@@ -222,7 +231,7 @@ func CloseBatch(ctx context.Context, db *pgxpool.Pool, merchantID uuid.UUID, bus
 	// processed-volume counter, in the same transaction that freezes this
 	// batch's own totals — so the counter and the batch it describes
 	// commit or roll back together.
-	if err := RecordPlatformProcessedVolume(ctx, tx, platformProcessedFils, int64(batchGross)); err != nil {
+	if err := RecordPlatformProcessedVolume(ctx, tx, int64(batchGross)); err != nil {
 		return BatchResult{}, fmt.Errorf("settlement: CloseBatch: record platform volume: %w", err)
 	}
 
@@ -249,12 +258,29 @@ func CloseBatch(ctx context.Context, db *pgxpool.Pool, merchantID uuid.UUID, bus
 
 	for i, line := range lines {
 		truncated := TruncateToSchemeAmount(line.grossFils)
+		amount := formatFilsAsTwoDecimalString(truncated)
 		_, err = tx.Exec(ctx, `
 			INSERT INTO scheme_export_lines (settlement_batch_id, transaction_id, amount_fils, amount, line_sequence)
-			VALUES ($1, $2, $3, $4, $5)
-		`, batchID, line.transactionID, int64(truncated), SchemeAmountBD(line.grossFils), i+1)
+			VALUES ($1, $2, $3, $4::numeric, $5)
+		`, batchID, line.transactionID, int64(truncated), amount, i+1)
 		if err != nil {
 			return BatchResult{}, fmt.Errorf("settlement: CloseBatch: insert scheme export line: %w", err)
+		}
+
+		residue := line.grossFils - truncated
+		if residue <= 0 {
+			continue
+		}
+		groupID := uuid.New()
+		_, err = tx.Exec(ctx, `
+			INSERT INTO ledger_entries
+			  (entry_group_id, merchant_id, transaction_id, settlement_batch_id, account_id, direction, amount_fils, occurred_at, description)
+			VALUES
+			  ($1, $2, $3, $4, 'card_scheme_clearing',    'credit', $5, $6, 'scheme rounding residue'),
+			  ($1, $2, $3, $4, 'scheme_rounding_residue', 'debit',  $5, $6, 'scheme rounding residue')
+		`, groupID, merchantID, line.transactionID, batchID, int64(residue), start)
+		if err != nil {
+			return BatchResult{}, fmt.Errorf("settlement: CloseBatch: post scheme rounding residue: %w", err)
 		}
 	}
 
@@ -353,6 +379,10 @@ func PayoutBatch(ctx context.Context, db *pgxpool.Pool, batchID uuid.UUID) (Payo
 		return PayoutResult{}, fmt.Errorf("settlement: PayoutBatch: update lifetime payout monitoring estimate: %w", err)
 	}
 
+	if err := insertPayoutDisbursement(ctx, tx, batchID, netPayout); err != nil {
+		return PayoutResult{}, fmt.Errorf("settlement: PayoutBatch: record disbursement: %w", err)
+	}
+
 	_, err = tx.Exec(ctx, `
 		UPDATE settlement_batches SET status = 'paid', paid_at = now() WHERE id = $1
 	`, batchID)
@@ -387,6 +417,7 @@ type MerchantBatchOutcome struct {
 	GrossFils     money.Fils
 	FeeFils       money.Fils
 	NetPayoutFils money.Fils
+	Error         string
 }
 
 // RunDailyBatch closes and pays out every eligible merchant's batch for
@@ -436,7 +467,11 @@ func RunDailyBatch(ctx context.Context, db *pgxpool.Pool, businessDate time.Time
 				// merchant scan already would have.
 				continue
 			}
-			return report, fmt.Errorf("settlement: RunDailyBatch: CloseBatch(%s): %w", merchantID, err)
+			if shouldAbortDailyPass(err) {
+				return report, fmt.Errorf("settlement: RunDailyBatch: %w", err)
+			}
+			recordMerchantBatchFailure(&report, merchantID, uuid.Nil, err)
+			continue
 		}
 
 		// A merchant with configured sub-merchant split children is paid
@@ -445,20 +480,23 @@ func RunDailyBatch(ctx context.Context, db *pgxpool.Pool, businessDate time.Time
 		// payout leg differs.
 		isSplitParent, err := splits.IsSplitParent(ctx, db, merchantID)
 		if err != nil {
-			return report, fmt.Errorf("settlement: RunDailyBatch: IsSplitParent(%s): %w", merchantID, err)
+			recordMerchantBatchFailure(&report, merchantID, closeResult.BatchID, err)
+			continue
 		}
 
 		var alreadyPaid bool
 		if isSplitParent {
 			splitResult, err := splits.PayoutSplitBatch(ctx, db, closeResult.BatchID)
 			if err != nil {
-				return report, fmt.Errorf("settlement: RunDailyBatch: PayoutSplitBatch(%s): %w", closeResult.BatchID, err)
+				recordMerchantBatchFailure(&report, merchantID, closeResult.BatchID, err)
+				continue
 			}
 			alreadyPaid = splitResult.AlreadyPaid
 		} else {
 			payoutResult, err := PayoutBatch(ctx, db, closeResult.BatchID)
 			if err != nil {
-				return report, fmt.Errorf("settlement: RunDailyBatch: PayoutBatch(%s): %w", closeResult.BatchID, err)
+				recordMerchantBatchFailure(&report, merchantID, closeResult.BatchID, err)
+				continue
 			}
 			alreadyPaid = payoutResult.AlreadyPaid
 		}
@@ -475,4 +513,36 @@ func RunDailyBatch(ctx context.Context, db *pgxpool.Pool, businessDate time.Time
 	}
 
 	return report, nil
+}
+
+// shouldAbortDailyPass reports whether err is a date-wide refusal rather
+// than one merchant's failure. A merchant failure is recorded and the loop
+// continues; closing today or a future date stops the pass.
+func shouldAbortDailyPass(err error) bool {
+	return errors.Is(err, ErrBusinessDayNotComplete)
+}
+
+func recordMerchantBatchFailure(report *DailyBatchReport, merchantID, batchID uuid.UUID, err error) {
+	log.Printf("settlement: RunDailyBatch: merchant %s: %v", merchantID, err)
+	report.MerchantResults = append(report.MerchantResults, MerchantBatchOutcome{
+		MerchantID: merchantID,
+		BatchID:    batchID,
+		Error:      err.Error(),
+	})
+}
+
+// insertPayoutDisbursement records the bank-instruction row for a payout
+// in the same transaction as that payout's ledger movement. A non-positive
+// net has no disbursement. Uniqueness of settlement_batch_id is not
+// enforced here: migration 0057's index is not unique, and existing
+// duplicate rows are not reconciled by this insert.
+func insertPayoutDisbursement(ctx context.Context, tx pgx.Tx, batchID uuid.UUID, netPayout int64) error {
+	if netPayout <= 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO settlement_payout_disbursements (settlement_batch_id, amount_fils, disbursement_reference)
+		VALUES ($1, $2, 'disb_' || gen_random_uuid()::text)
+	`, batchID, netPayout)
+	return err
 }

@@ -1,3 +1,5 @@
+import { applyRateFils, subtractFils, type Fils } from "@filspay/money";
+
 /**
  * v1's merchant-discount-rate fee calculation. Integer fils in, integer
  * fils out — no floating point anywhere in this file, same discipline
@@ -15,6 +17,13 @@
 // am: grep finds no SETTLEMENT_V2_SHADOW anywhere. config.ts doesnt read it
 // YA: Claude says the half-up here is a rounding bug and we should fix it to bankers
 // FH: it's dead code. the live path is applyRateFils
+
+/** Discount the amount, then apply MDR. Matches settlement ComputeSettlementFee. */
+export function calculateDiscountedMdrFee(amountFils: Fils, mdrBasisPoints: number, discountBasisPoints: number): Fils {
+  const discountedAmount = subtractFils(amountFils, applyRateFils(amountFils, discountBasisPoints));
+  return applyRateFils(discountedAmount, mdrBasisPoints);
+}
+
 export function calculateMdrFeeV1(amountFils: number, rateBasisPoints: number): number {
   if (!Number.isInteger(amountFils) || amountFils < 0) {
     throw new RangeError(`calculateMdrFeeV1: amountFils must be a non-negative integer, got ${amountFils}`);

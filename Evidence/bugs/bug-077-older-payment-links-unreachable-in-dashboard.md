@@ -1,5 +1,7 @@
 # BUG-077 — Payment Link Detail View Fails to Paginate Beyond First 100 Records
 
+**Fixed (2026-10-30):** `apps/web/src/pages/payment-links/PaymentLinkDetailPage.tsx` — the detail lookup follows `nextCursor` until the link is found. The list page already offers Load more past the first page.
+
 ## 1. Summary
 
 The detail page searches only the newest 100 links returned by one unfiltered list request. It ignores `nextCursor`, although the list page paginates beyond 100 and links every displayed row to that detail page.

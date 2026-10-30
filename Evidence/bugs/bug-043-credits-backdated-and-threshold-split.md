@@ -1,5 +1,7 @@
 # BUG-043 — Manual Credit Creation Allows Backdating Into Closed Settlement Periods
 
+**Partially fixed (2026-10-30):** apps/api/src/admin/credits.ts — a credit whose effective date is covered by a closed or paid settlement batch is rejected. Future dates and the per-request threshold split are unchanged.
+
 ## 1. Summary
 
 Any real `YYYY-MM-DD`, including tomorrow and a closed month, is accepted, and both ledger legs are dated that day.

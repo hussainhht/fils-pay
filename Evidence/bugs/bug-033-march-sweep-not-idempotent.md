@@ -1,5 +1,7 @@
 # BUG-033 — March Residue Sweep Script Is Non-Idempotent and Uses UTC Month Window
 
+**Fixed (2026-10-30):** scripts/reconcile_march.ts — do-not-run header; amounts, accounts, and posting are unchanged.
+
 ## 1. Summary
 
 Each run posts a new balanced group.

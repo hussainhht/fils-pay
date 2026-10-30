@@ -3,6 +3,7 @@ import type { EventType } from "@filspay/events";
 import { withTransaction } from "../db/withTransaction.js";
 import type { ReportingConfig } from "../config.js";
 import { readCursor, advanceCursor } from "./cursor.js";
+import { lockOutboxForCommitSafeRead } from "./serialization.js";
 import { applyEvent, type OutboxEventRow } from "./applyEvent.js";
 
 // am: refund.succeeded not here yet. when refunds ship just add it to the list
@@ -32,15 +33,18 @@ export const CONSUMER_NAME = "reporting";
  * the watermark alone sufficient for exactly-once application, with no
  * separate per-event dedup table the way webhook_deliveries needs one.
  *
- * The `SELECT` below is a plain, unlocked read — no row lock, no
- * `FOR UPDATE`, no mutation of any outbox_events column — identical
- * posture to webhooks/dispatcher.ts's Step A.
+ * The cursor row is locked with FOR UPDATE for the whole pass, and outbox
+ * writes are held off with SHARE so a lower id cannot commit after this
+ * pass publishes a higher watermark. A thrown apply rolls the pass back:
+ * neither rollups nor the cursor move, and the failed event stays due for
+ * the next pass. It is not skipped.
  */
 export async function runConsumerPass(
   pool: Pool,
   config: Pick<ReportingConfig, "consumerBatchLimit">,
 ): Promise<{ processedCount: number }> {
   return withTransaction(pool, async (client) => {
+    await lockOutboxForCommitSafeRead(client);
     const cursor = await readCursor(client, CONSUMER_NAME);
 
     // MK 2026-06: ids come from a sequence, they're monotonic. fine for now.
