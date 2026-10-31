@@ -27,7 +27,8 @@ export interface AdminLoginResponse {
   otpRequired: boolean;
   verificationMethod?: "totp" | "console";
   otpExpiresAt?: string;
-  /** Dev-only convenience, gated server-side the same way merchant login gates it. */
+  /** Temporary, explicitly enabled test-account console OTP. */
+  devOtp?: string;
 }
 
 /** `POST /v1/admin/auth/otp/verify` → `200 { authenticated: true, adminUserId, role }`. */

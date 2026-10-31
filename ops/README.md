@@ -176,7 +176,7 @@ OTP_TTL_MINUTES=5
 ADMIN_OTP_TTL_MINUTES=5
 OTP_MAX_ATTEMPTS=5
 ADMIN_OTP_MAX_ATTEMPTS=5
-OTP_DEV_EXPOSE=false
+OTP_DEV_EXPOSE=true
 FEATURE_TOTP=false
 ```
 
@@ -201,3 +201,9 @@ invalidates outstanding console challenges. With `disabled` transport, the
 existing password/authenticator policy applies; it does not retain console OTP
 enforcement. Replace this temporary transport with an explicitly implemented
 email-login policy before enabling general live-user email OTP.
+
+For this temporary demo, `OTP_DEV_EXPOSE=true` additionally returns `devOtp`
+only after the console transport's test-account checks pass. The login pages
+write that code to the browser developer console. Set it to `false` and restart
+the API to remove response exposure when the demo ends; OTP verification is
+still required. Never enable this convenience for live accounts.

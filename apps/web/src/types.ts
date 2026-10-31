@@ -56,7 +56,8 @@ export interface DashboardLoginResponse {
   otpRequired: boolean;
   verificationMethod?: "totp" | "console";
   otpExpiresAt?: string;
-  /** Present only when config.otpDevExpose is on — never in production. */
+  /** Temporary, explicitly enabled test-account console OTP. */
+  devOtp?: string;
 }
 
 export interface DashboardOtpVerifyResponse {

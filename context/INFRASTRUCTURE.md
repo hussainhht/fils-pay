@@ -167,3 +167,7 @@ The static preview at 68.183.82.221 uses /srv/filspay/releases/20261031-f4b5a1a,
 ## HTTPS and API activation (2026-10-31)
 
 The temporary origin is https://68-183-82-221.sslip.io, using Let's Encrypt and a systemd renewal timer; an ACME renewal dry run passed. HTTP redirects to HTTPS. Static assets and the API use this origin; API and reporting run f4b5a1a Node images. Settlement was not restarted and its source, Go dependencies and Dockerfile are unchanged from the prior release. API health and readiness return 200 and its DB query succeeded. OTP delivery is disabled, matching current login code, which does not use email OTP; FEATURE_TOTP is disabled and its key absent. No users exist and authenticated workflows are unverified. No database migration or seed was run. Full details: Evidence/production_deployment_verification.md.
+
+## Temporary browser-console OTP demo (2026-10-31)
+
+The demo API uses OTP_DELIVERY_TRANSPORT=console and OTP_DEV_EXPOSE=true with explicit merchant and admin test-email allowlists. Production rejects OTP_DEV_EXPOSE=true with other transports. See ops/README.md for the temporary configuration and removal steps. This supersedes older unconditional production exposure statements.

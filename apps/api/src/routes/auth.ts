@@ -78,11 +78,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     await clearLoginAttempt(app.db, attemptId);
     const result = await withTransaction(app.db, async (client) => {
       // Serialize with enrollment so a new factor cannot be bypassed by a concurrent login.
-      const locked = await client.query<{ test_mode: boolean }>(`SELECT mu.id, m.test_mode FROM merchant_users mu JOIN merchants m ON m.id = mu.merchant_id WHERE mu.id = $1 FOR UPDATE OF mu, m`, [user.id]);
+      const locked = await client.query<{ email: string; test_mode: boolean }>(`SELECT mu.id, mu.email, m.test_mode FROM merchant_users mu JOIN merchants m ON m.id = mu.merchant_id WHERE mu.id = $1 FOR UPDATE OF mu, m`, [user.id]);
       const factor = await readAuthenticator(client, app.config, "merchant", user.id, true);
       if (factor?.enabled_at && !app.config.featureTotp) throw new AppError(503, "authenticator_unavailable");
       if (!factor?.enabled_at && app.config.otpDelivery.transport === "console") {
-        const recipient = { plane: "merchant" as const, email: user.email, testMode: locked.rows[0]?.test_mode };
+        if (!locked.rows[0]) throw new UnauthorizedError("invalid_credentials");
+        const recipient = { plane: "merchant" as const, email: locked.rows[0].email, testMode: locked.rows[0].test_mode };
         assertConsoleOtpRecipient(app.config, recipient);
         await assertChallengeAllowed(client, reply, app.config, { plane: "merchant", userId: user.id });
         // A new password login supersedes every previous pending challenge for this user.
@@ -120,12 +121,19 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       }
     }
 
+    let devOtp: string | undefined;
+    if (app.config.otpDevExpose && "delivery" in result && result.delivery) {
+      assertConsoleOtpRecipient(app.config, result.delivery);
+      devOtp = result.delivery.code;
+    }
+
+    reply.header("Cache-Control", "no-store");
     reply.setCookie(app.config.cookieName, result.session.rawToken, {
       httpOnly: true, path: "/", sameSite: "lax", secure: app.config.cookieSecure,
       maxAge: result.otpRequired ? app.config.pendingSessionTtlMinutes * 60 : app.config.sessionTtlHours * 3_600,
     });
     reply.code(200).send(result.otpRequired
-      ? { otpRequired: true, authenticated: false, verificationMethod: result.verificationMethod, otpExpiresAt: result.expiresAt.toISOString() }
+      ? { otpRequired: true, authenticated: false, verificationMethod: result.verificationMethod, otpExpiresAt: result.expiresAt.toISOString(), ...(devOtp ? { devOtp } : {}) }
       : { otpRequired: false, authenticated: true });
   });
 

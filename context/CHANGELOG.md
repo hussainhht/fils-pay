@@ -208,3 +208,7 @@ Added a local operator-only test merchant creation path and tests, and documente
 ## 2026-10-31 - Isolated provisioning test and API failures
 
 Recorded passing isolated provisioning and settlement checks and a stopped API suite with 20 reported failures. No production deployment or account creation. See Evidence/test_mode_merchant_provisioning.md.
+
+## 2026-10-31 - Temporary test-account browser OTP
+
+The explicitly enabled console transport can return a test-only devOtp after merchant test-mode/email or admin email-allowlist checks. Both login pages log the code to DevTools; OTP verification remains mandatory. Configuration and the temporary deployment procedure are documented in ops/README.md.

@@ -213,8 +213,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (nodeEnv === "production" && otpTransport === "development") {
     throw new Error("loadConfig: production does not permit development OTP delivery");
   }
-  if (nodeEnv === "production" && parseBoolEnv(env.OTP_DEV_EXPOSE, false)) {
-    throw new Error("loadConfig: OTP_DEV_EXPOSE cannot be enabled in production");
+  if (nodeEnv === "production" && parseBoolEnv(env.OTP_DEV_EXPOSE, false) && otpTransport !== "console") {
+    throw new Error("loadConfig: production OTP_DEV_EXPOSE requires the restricted console transport");
   }
   const otpFrom = env.OTP_EMAIL_FROM ?? "";
   const otpApiKey = env.OTP_RESEND_API_KEY ?? "";
@@ -254,7 +254,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     otpTtlMinutes: parseIntEnv(env.OTP_TTL_MINUTES, 5),
     otpCodeLength: parseIntEnv(env.OTP_CODE_LENGTH, 6),
     otpMaxAttempts: parseIntEnv(env.OTP_MAX_ATTEMPTS, 5),
-    otpDevExpose: nodeEnv !== "production" && parseBoolEnv(env.OTP_DEV_EXPOSE, true),
+    otpDevExpose: parseBoolEnv(env.OTP_DEV_EXPOSE, nodeEnv !== "production"),
     otpDelivery: { transport: otpTransport, from: otpFrom, apiKey: otpApiKey, timeoutMs: otpTimeoutMs,
       testMerchantEmails: (env.TEST_OTP_MERCHANT_EMAILS ?? "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean),
       testAdminEmails: (env.TEST_OTP_ADMIN_EMAILS ?? "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean) },

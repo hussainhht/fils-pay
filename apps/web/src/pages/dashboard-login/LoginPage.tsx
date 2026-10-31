@@ -47,6 +47,7 @@ export function LoginPage() {
     setError(null);
     try {
       const challenge = await login({ merchantId: merchantId.trim(), email, password });
+      if (challenge.devOtp) console.log(`TEST OTP: ${challenge.devOtp}`);
       if (!challenge.otpRequired) {
         writeLastMerchantId(merchantId.trim());
         setPassword("");

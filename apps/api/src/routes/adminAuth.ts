@@ -71,11 +71,12 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
     await clearLoginAttempt(app.db, attemptId);
     const result = await withTransaction(app.db, async (client) => {
       // Serialize with enrollment so a new factor cannot be bypassed by a concurrent login.
-      await client.query(`SELECT id FROM admin_users WHERE id = $1 FOR UPDATE`, [user.id]);
+      const locked = await client.query<{ email: string }>(`SELECT id, email FROM admin_users WHERE id = $1 FOR UPDATE`, [user.id]);
       const factor = await readAuthenticator(client, app.config, "admin", user.id, true);
       if (factor?.enabled_at && !app.config.featureTotp) throw new AppError(503, "authenticator_unavailable");
       if (!factor?.enabled_at && app.config.otpDelivery.transport === "console") {
-        const recipient = { plane: "admin" as const, email: user.email };
+        if (!locked.rows[0]) throw new UnauthorizedError("invalid_credentials");
+        const recipient = { plane: "admin" as const, email: locked.rows[0].email };
         assertConsoleOtpRecipient(app.config, recipient);
         await assertChallengeAllowed(client, reply, app.config, { plane: "admin", userId: user.id });
         // A new password login supersedes every previous pending challenge for this user.
@@ -113,12 +114,19 @@ export async function adminAuthRoutes(app: FastifyInstance): Promise<void> {
       }
     }
 
+    let devOtp: string | undefined;
+    if (app.config.otpDevExpose && "delivery" in result && result.delivery) {
+      assertConsoleOtpRecipient(app.config, result.delivery);
+      devOtp = result.delivery.code;
+    }
+
+    reply.header("Cache-Control", "no-store");
     reply.setCookie(app.config.adminCookieName, result.session.rawToken, {
       httpOnly: true, path: "/", sameSite: "lax", secure: app.config.cookieSecure,
       maxAge: result.otpRequired ? app.config.adminPendingSessionTtlMinutes * 60 : app.config.adminSessionTtlHours * 3_600,
     });
     reply.code(200).send(result.otpRequired
-      ? { otpRequired: true, authenticated: false, verificationMethod: result.verificationMethod, otpExpiresAt: result.expiresAt.toISOString() }
+      ? { otpRequired: true, authenticated: false, verificationMethod: result.verificationMethod, otpExpiresAt: result.expiresAt.toISOString(), ...(devOtp ? { devOtp } : {}) }
       : { otpRequired: false, authenticated: true });
   });
 

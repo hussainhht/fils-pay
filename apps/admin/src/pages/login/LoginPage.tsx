@@ -37,6 +37,7 @@ export function LoginPage() {
     setError(null);
     try {
       const challenge = await login({ email, password });
+      if (challenge.devOtp) console.log(`TEST OTP: ${challenge.devOtp}`);
       if (!challenge.otpRequired) {
         setPassword("");
         await refresh();

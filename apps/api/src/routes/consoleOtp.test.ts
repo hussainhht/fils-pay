@@ -23,8 +23,6 @@ async function fixture(t: TestContext, plane: "merchant" | "admin") {
     OTP_EMAIL_FROM: "otp@example.test", OTP_RESEND_API_KEY: "fixture-provider-key",
     OTP_DELIVERY_TRANSPORT: "console", TEST_OTP_MERCHANT_EMAILS: "merchant@example.test", TEST_OTP_ADMIN_EMAILS: "admin@example.test", FEATURE_TOTP: "false", TOTP_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 8).toString("base64"),
   });
-  // Defense in depth: even a manually constructed unsafe Config must not expose production codes.
-  config.otpDevExpose = true;
   const email = `${plane}@example.test`;
   const password = "fixture-password-only";
   const passwordHash = await hashPassword(password, config);
@@ -51,7 +49,8 @@ async function fixture(t: TestContext, plane: "merchant" | "admin") {
     if (q.startsWith("SELECT count(*)::int AS n")) return rows([{ n: state.challengeCount }]);
     if (q.startsWith("SELECT id, authenticated FROM")) return rows(state.authenticated && !state.revoked ? [{ id: `${plane}-session`, authenticated: true }] : []);
     if (q.startsWith(`SELECT * FROM ${plane}_authenticators`)) { assert.equal(values[0], `${plane}-user`); return rows(state.factor ? [state.factor] : []); }
-    if (q.startsWith("SELECT mu.id, m.test_mode")) return rows([{ id: "merchant-user", test_mode: state.testMode }]);
+    if (q.startsWith("SELECT mu.id, mu.email, m.test_mode")) return rows([{ id: "merchant-user", email, test_mode: state.testMode }]);
+    if (q.startsWith("SELECT id, email FROM admin_users")) return rows([{ id: "admin-user", email }]);
     if (q.startsWith("SELECT mu.email, m.test_mode")) return rows([{ email, test_mode: state.testMode }]);
     if (q.startsWith("SELECT email FROM admin_users")) return rows([{ email }]);
     if (q.startsWith("SELECT mu.email, m.id AS merchant_id")) return rows([{ email, merchant_id: "merchant-id", display_name: "Test", onboarding_status: "approved", refunds_enabled: false }]);
@@ -141,6 +140,30 @@ async function fixture(t: TestContext, plane: "merchant" | "admin") {
 
 const cookieOf = (response: { cookies: { name: string; value: string }[] }) => `${response.cookies[0]!.name}=${response.cookies[0]!.value}`;
 for (const plane of ["merchant", "admin"] as const) {
+  test(`${plane}: devOtp appears only for enabled, eligible test identities`, async t => {
+    const f = await fixture(t, plane);
+    let response = await f.login();
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().devOtp, undefined);
+    f.config.otpDevExpose = true;
+    response = await f.login();
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().devOtp, f.code());
+    assert.equal(response.headers["cache-control"], "no-store");
+    assert.equal((await f.verify(cookieOf(response), response.json().devOtp)).statusCode, 200);
+    if (plane === "merchant") f.state.testMode = false;
+    else f.config.otpDelivery.testAdminEmails = [];
+    response = await f.login();
+    assert.equal(response.statusCode, 503);
+    assert.equal(response.json().devOtp, undefined);
+    if (plane === "merchant") {
+      f.state.testMode = true;
+      f.config.otpDelivery.testMerchantEmails = [];
+      response = await f.login();
+      assert.equal(response.statusCode, 503);
+      assert.equal(response.json().devOtp, undefined);
+    }
+  });
   test(`${plane}: console OTP gates the session, hashes codes, rotates token, and rejects reuse`, async t => {
     const f = await fixture(t, plane);
     const wrong = await f.login({ password: "wrong-password" });
