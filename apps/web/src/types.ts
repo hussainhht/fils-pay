@@ -16,6 +16,7 @@ export interface PaymentLinkPublicDto {
   description: string | null;
   status: PublicPaymentLinkStatus;
   expiresAt: string;
+  receipt?: PayPaymentLinkResponse;
 }
 
 export interface SimulatedCardInput {

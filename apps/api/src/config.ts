@@ -8,6 +8,8 @@
  * rather than introducing a second config system.
  */
 export interface Config {
+  /** Opt-in deterministic checkout simulation; test-mode merchants only. */
+  demoPaymentMode: boolean;
   /** FP-300: refunds ship behind an explicit deployment flag. */
   featureRefunds: boolean;
   loginWindowMinutes: number;
@@ -238,6 +240,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
 
   return {
+    demoPaymentMode: parseBoolEnv(env.DEMO_PAYMENT_MODE, false),
     nodeEnv,
     featureTotp,
     totpSecretEncryptionKey,

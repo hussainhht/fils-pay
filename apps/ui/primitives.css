@@ -42,7 +42,7 @@
   background: var(--fp-soft); border-color: var(--fp-primary); color: var(--fp-primary-hover);
 }
 :is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) button[type="submit"]:hover:not(:disabled) {
-  background: var(--fp-primary-hover); color: #fff;
+  background: var(--fp-action-hover); color: #fff;
 }
 :is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(button, input, select, textarea):disabled { opacity: .55; cursor: not-allowed; }
 :is(.dash-filters, .admin-filters) {
@@ -60,7 +60,7 @@
 :is(.dash-table, .admin-table) td[colspan] { padding: 28px 16px; color: var(--fp-muted); text-align: center; }
 :is(.dash-dl, .admin-dl) {
   display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: 0;
-  padding: 8px 20px; margin: 20px 0; border: 1px solid var(--fp-border); border-radius: var(--fp-radius); background: #fff;
+  padding: 8px 20px; margin: 20px 0; border: 1px solid var(--fp-border); border-radius: var(--fp-radius); background: var(--fp-surface);
 }
 :is(.dash-dl, .admin-dl) :is(dt, dd) { padding: 12px 0; margin: 0; border-bottom: 1px solid #f1f5f9; overflow-wrap: anywhere; }
 :is(.dash-dl, .admin-dl) dt { color: var(--fp-muted); font-weight: 500; }
@@ -85,7 +85,7 @@
 .impersonation-banner button { margin-inline-start: auto; background: #fff; color: #7a0016; font-weight: 700; border-color: #fff; }
 .impersonation-banner-error { font-weight: 700; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; overflow-wrap: anywhere; }
-.fp-skip-link { position: fixed; inset-block-start: 8px; inset-inline-start: 8px; transform: translateY(-150%); z-index: 20; padding: 12px; background: #fff; color: var(--fp-primary-hover); border: 1px solid; border-radius: 6px; }
+.fp-skip-link { position: fixed; inset-block-start: 8px; inset-inline-start: 8px; transform: translateY(-150%); z-index: 20; padding: 12px; background: var(--fp-surface); color: var(--fp-primary-hover); border: 1px solid; border-radius: 6px; }
 .fp-skip-link:focus { transform: none; }
 @media (max-width: 800px) {
   :is(.dash-main, .admin-main) { padding: 28px 16px 48px; }

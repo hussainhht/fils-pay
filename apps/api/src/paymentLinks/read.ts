@@ -11,6 +11,8 @@ interface PublicPaymentLinkRow {
   expires_at: Date;
   reserved_at: Date | null;
   merchant_display_name: string;
+  transaction_id: string | null;
+  paid_at: Date | null;
 }
 
 /** Public shape. Contains nothing that identifies or authenticates the merchant beyond its display name. */
@@ -23,6 +25,7 @@ export interface PublicPaymentLinkDto {
   description: string | null;
   status: string;
   expiresAt: string;
+  receipt?: { status: "paid"; transactionId: string; amountFils: number; paidAt: string };
 }
 
 /** `GET /v1/payment-links/:token` — public, unauthenticated. */
@@ -33,7 +36,7 @@ export async function getPublicPaymentLink(
 ): Promise<PublicPaymentLinkDto | null> {
   const result = await pool.query<PublicPaymentLinkRow>(
     `SELECT pl.token, pl.amount_fils, pl.currency, pl.reference, pl.description,
-            pl.status, pl.expires_at, pl.reserved_at, m.display_name AS merchant_display_name
+            pl.status, pl.expires_at, pl.reserved_at, pl.transaction_id, pl.paid_at, m.display_name AS merchant_display_name
        FROM payment_links pl
        JOIN merchants m ON m.id = pl.merchant_id
       WHERE pl.token = $1`,
@@ -55,5 +58,9 @@ export async function getPublicPaymentLink(
       reservationTimeoutSeconds,
     ),
     expiresAt: row.expires_at.toISOString(),
+    ...(row.status === "paid" && row.transaction_id && row.paid_at ? {
+      receipt: { status: "paid" as const, transactionId: row.transaction_id,
+        amountFils: Number(row.amount_fils), paidAt: row.paid_at.toISOString() },
+    } : {}),
   };
 }

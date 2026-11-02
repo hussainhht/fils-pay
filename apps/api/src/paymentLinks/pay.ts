@@ -8,6 +8,7 @@ import { applyCaptureDiscountAdjustment } from "../payments/discountAdjustment.j
 import { hashRequest } from "../payments/idempotency.js";
 import { sha256Hex } from "../lib/crypto.js";
 import type { AcquirerSimulator, SimulatedCardInput } from "../acquirer/types.js";
+import { createDemoCheckoutAcquirer } from "../acquirer/demo.js";
 
 export interface PayPaymentLinkInput {
   token: string;
@@ -34,8 +35,17 @@ export function expiryReferenceTime(_submittedAt?: string): Date { return new Da
  */
 export async function payPaymentLink(
   pool: Pool, acquirer: AcquirerSimulator,
-  config: { paymentLinkReservationTimeoutSeconds: number }, input: PayPaymentLinkInput,
+  config: { paymentLinkReservationTimeoutSeconds: number; demoPaymentMode?: boolean }, input: PayPaymentLinkInput,
 ): Promise<PayPaymentLinkResult> {
+  // Only the link's database-owned test merchant can opt into simulation.
+  // All other callers retain the original acquirer and approval checks.
+  if (config.demoPaymentMode) {
+    const merchant = await pool.query<{ test_mode: boolean }>(
+      `SELECT m.test_mode FROM payment_links pl JOIN merchants m ON m.id = pl.merchant_id WHERE pl.token = $1`,
+      [input.token],
+    );
+    if (merchant.rows[0]?.test_mode) acquirer = createDemoCheckoutAcquirer();
+  }
   const keyHash = sha256Hex(input.idempotencyKey);
   const requestHash = hashRequest({ card: input.card });
   const reservationId = randomUUID();

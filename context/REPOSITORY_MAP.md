@@ -43,6 +43,7 @@ fils-pay/
 ├── AGENTS.md                   # Authoritative shared instructions for all coding agents
 ├── CLAUDE.md                   # Claude-specific execution instructions
 ├── GEMINI.md                   # Gemini-specific execution instructions
+├── Readme.md                   # Hackathon overview, evidence index, and local quick start
 ├── package.json                # Root package configuration & workspaces
 ├── tsconfig.base.json          # Shared TypeScript base configuration
 └── tsconfig.json               # Root TypeScript project reference

@@ -50,6 +50,60 @@ test.after(async () => {
 const APPROVED_CARD = { pan: "4242424242424242", expiryMonth: 12, expiryYear: 2030, cvv: "123" };
 const DECLINE_CARD = { pan: "4000000000000002", expiryMonth: 12, expiryYear: 2030, cvv: "123" };
 
+test("demo checkout persists one capture, receipt and dashboard totals; isolates flags and merchant mode", async () => {
+  assert.equal(config.demoPaymentMode, false);
+  assert.equal(loadConfig({ DATABASE_URL: databaseUrl!, DEMO_PAYMENT_MODE: "true" }).demoPaymentMode, true);
+  const demoApp = buildApp({ ...config, demoPaymentMode: true }, pool);
+  try {
+    const { rawKey, merchantId } = await createApprovedMerchantWithApiKey("demo");
+    await pool.query(`UPDATE merchants SET test_mode = true WHERE id = $1`, [merchantId]);
+    const link = await createLink(rawKey, merchantId, { amountFils: 4750 });
+    const key = randomUUID();
+    const submit = (token: string, idempotencyKey = key) => demoApp.inject({
+      method: "POST", url: `/v1/payment-links/${token}/pay`,
+      headers: { "idempotency-key": idempotencyKey }, payload: { card: DECLINE_CARD },
+    });
+    // A card that the normal acquirer declines proves the demo adapter is used.
+    const responses = await Promise.all([submit(link.token), submit(link.token)]);
+    for (const response of responses) assert.equal(response.statusCode, 200, response.body);
+    const receipt = responses[0]!.json();
+    assert.deepEqual(responses[1]!.json(), receipt);
+    assert.equal(receipt.amountFils, 4750);
+    assert.equal((await submit(link.token, randomUUID())).statusCode, 409);
+    assert.deepEqual((await getPublicLink(link.token)).json().receipt, receipt);
+    const rows = await pool.query(`SELECT status, amount_fils, captured_fils, acquirer_reference FROM transactions WHERE id = $1`, [receipt.transactionId]);
+    assert.equal(rows.rows[0].status, "captured");
+    assert.equal(Number(rows.rows[0].amount_fils), 4750);
+    assert.equal(Number(rows.rows[0].captured_fils), 4750);
+    assert.match(rows.rows[0].acquirer_reference, /^demo_[a-f0-9]{32}$/);
+    const ledger = await pool.query(`SELECT count(DISTINCT entry_group_id)::int AS groups,
+      sum(CASE direction WHEN 'debit' THEN amount_fils ELSE -amount_fils END)::text AS balance
+      FROM ledger_entries WHERE transaction_id = $1`, [receipt.transactionId]);
+    assert.equal(ledger.rows[0].groups, 1);
+    assert.equal(Number(ledger.rows[0].balance), 0);
+    const dashboard = await app.inject({ method: "GET", url: "/v1/transactions?limit=25", headers: authHeader(rawKey) });
+    assert.equal(dashboard.statusCode, 200, dashboard.body);
+    assert.ok(dashboard.body.includes(receipt.transactionId));
+    const volumes = await app.inject({ method: "GET", url: "/v1/analytics/volumes", headers: authHeader(rawKey) });
+    assert.equal(volumes.statusCode, 200, volumes.body);
+    const expired = await createLink(rawKey, merchantId);
+    await pool.query(`UPDATE payment_links SET expires_at = now() - interval '1 second' WHERE token = $1`, [expired.token]);
+    assert.equal((await submit(expired.token)).statusCode, 410);
+    assert.equal((await submit("nonexistent-demo-link")).statusCode, 404);
+    const disabled = await createLink(rawKey, merchantId);
+    assert.equal((await pay(disabled.token, DECLINE_CARD)).statusCode, 402);
+    await pool.query(`UPDATE merchants SET test_mode = false WHERE id = $1`, [merchantId]);
+    const live = await createLink(rawKey, merchantId);
+    assert.equal((await submit(live.token)).statusCode, 402);
+    await pool.query(`UPDATE merchants SET test_mode = true, onboarding_status = 'submitted' WHERE id = $1`, [merchantId]);
+    const unapproved = await createLink(rawKey, merchantId);
+    assert.equal((await submit(unapproved.token)).statusCode, 403);
+    assert.equal((await demoApp.inject({ method: "GET", url: "/healthz" })).statusCode, 200);
+    // app.inject does not run index.ts's boot readiness probe; verify DB here.
+    assert.equal((await pool.query(`SELECT 1 AS healthy`)).rows[0].healthy, 1);
+  } finally { await demoApp.close(); }
+});
+
 async function createApprovedMerchantWithApiKey(label: string) {
   const merchantResult = await pool.query<{ id: string }>(
     `INSERT INTO merchants (display_name, mdr_bps) VALUES ($1, $2) RETURNING id`,

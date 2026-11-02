@@ -124,18 +124,20 @@ function CheckoutSession({ token }: { token: string | undefined }) {
 
   const { link } = loadState;
 
-  if (payState.kind === "success") {
+  const receipt = payState.kind === "success" ? payState.result : link.status === "paid" ? link.receipt : undefined;
+  if (receipt) {
     return (
       <CheckoutFrame result="success" summary={<CheckoutSummary link={link} />}>
         <h1>Payment successful</h1>
-        <p>Thank you — your payment has been received.</p>
+        <p>Your payment has been processed successfully.</p>
         <CheckoutMerchant name={link.merchantDisplayName} />
-        <p className="checkout-amount">{formatBhd(toFils(payState.result.amountFils))} <span>BHD</span></p>
+        <p className="checkout-amount">{formatBhd(toFils(receipt.amountFils))} <span>BHD</span></p>
         <dl className="checkout-receipt">
           <dt>Transaction ID</dt>
-          <dd>{payState.result.transactionId}</dd>
+          <dd>{receipt.transactionId}</dd>
+          <dt>Status</dt><dd>Paid</dd>
           <dt>Paid at</dt>
-          <dd>{payState.result.paidAt}</dd>
+          <dd>{new Date(receipt.paidAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</dd>
         </dl>
       </CheckoutFrame>
     );

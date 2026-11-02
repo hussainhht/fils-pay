@@ -1,5 +1,11 @@
 # Testing Strategy & Verification Guidelines — FilsPay
 
+## README documentation verification (2026-11-02)
+
+- Root `Readme.md`: all 31 relative links resolve; a single document title, balanced code fences, and valid UTF-8 were checked with an inline Node script. Markdown was reviewed as source; browser rendering was not checked.
+- `npm.cmd run typecheck` passed across all workspaces, db, and scripts against the current working tree, including pre-existing changes. No application source was changed in this task.
+- Application/Go tests, UI builds, Docker/Postgres checks, and end-to-end journeys were not run for this documentation-only change. Historical results below retain their original scope and baseline; this adds no runtime or capacity claim. See `Evidence/agent-1-readme-polish.md`.
+
 ## Password and authenticator login (2026-10-30)
 
 `apps/api/src/routes/passwordAuthenticator.new.test.ts` uses in-memory DB responses and real HTTP handlers/crypto: six tests pass covering each plane's password bootstrap, enrollment, recovery sign-in, rejection of old email challenges and fail-closed disabled authenticator. Postgres concurrency and real browser sign-in remain unverified. Older email OTP tests require revision to reflect the requested policy; see `Evidence/agent-1-remove-email-otp.md`.

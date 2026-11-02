@@ -5,6 +5,7 @@ import { describeError, WEB_BASE_URL } from "../api/client.js";
 import { ImpersonationBanner } from "./ImpersonationBanner.js";
 import { Brand } from "../../../ui/Brand.js";
 import { Icon } from "../../../ui/Icon.js";
+import { ThemeSelect } from "../../../ui/Theme.js";
 
 /** Nav shell for every admin-plane screen: who you are signed in as, the
  *  section links, a logout, and — above all of it — the impersonation
@@ -56,7 +57,7 @@ export function AdminLayout() {
         <div className="fp-workspace-content">
           <div className="fp-workspace-bar">
             <span className="fp-workspace-name">Operations console</span>
-            <span className="fp-workspace-label">Administration</span>
+            <ThemeSelect />
           </div>
           {error ? <p className="admin-error" role="alert">{error}</p> : null}
           {impersonation ? (

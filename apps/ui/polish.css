@@ -11,7 +11,7 @@
   border-radius: 8px;
   box-shadow: var(--fp-shadow-xs);
 }
-:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(input, textarea)::placeholder { color: #7a8c84; }
+:is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) :is(input, textarea)::placeholder { color: var(--fp-placeholder); }
 :is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) input:is([type="checkbox"], [type="radio"]) { box-shadow: none; }
 :is(.dash-main, .admin-main, .dash-centered, .admin-centered) :is(input, select, textarea):focus {
   border-color: var(--fp-primary);
@@ -40,8 +40,8 @@
 }
 :is(.dash-shell, .admin-shell, .dash-centered, .admin-centered) button[type="submit"]:hover:not(:disabled),
 .dash-shell a.dash-button-link:hover:not(:disabled) {
-  background: var(--fp-primary-hover);
-  border-color: var(--fp-primary-hover);
+  background: var(--fp-action-hover);
+  border-color: var(--fp-action-hover);
   color: #fff;
 }
 :is(.dash-shell, .admin-shell) button.fp-button-danger {
@@ -102,7 +102,7 @@
 }
 :is(.dash-status, .dash-badge)::before { content: ""; width: 6px; height: 6px; flex: none; border-radius: 50%; background: currentColor; }
 :is(.dash-status-captured, .dash-status-paid, .dash-status-succeeded, .dash-status-active, .dash-badge-live, .dash-badge-ok) {
-  background: var(--fp-success-soft); border-color: var(--fp-success-border); color: #0b6b4d;
+  background: var(--fp-success-soft); border-color: var(--fp-success-border); color: var(--fp-success);
 }
 :is(.dash-status-authorized, .dash-status-partially_captured, .dash-status-pending, .dash-status-reserved, .dash-status-open, .dash-badge-stale, .dash-badge-gap) {
   background: var(--fp-warning-soft); border-color: var(--fp-warning-border); color: var(--fp-warning);

@@ -56,7 +56,7 @@
 
 :is(.dash-filters, .admin-filters) label:has(input[type="checkbox"]:checked) {
   background: var(--fp-soft);
-  border-color: #c5e2d3;
+  border-color: var(--fp-success-border);
   color: var(--fp-primary-hover);
 }
 
@@ -92,7 +92,7 @@
   margin: 8px 0 12px;
   border: 1px solid var(--fp-border);
   border-radius: 8px;
-  background: #edf2ef;
+  background: var(--fp-subtle);
 }
 
 .admin-shell .fp-segmented button {
@@ -105,7 +105,7 @@
 
 .admin-shell .fp-segmented button[aria-current="true"] {
   border-color: var(--fp-border);
-  background: #fff;
+  background: var(--fp-surface);
   color: var(--fp-primary-hover);
   box-shadow: 0 1px 3px rgb(19 46 34 / 5%);
   opacity: 1;

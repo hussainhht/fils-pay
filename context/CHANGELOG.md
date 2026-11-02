@@ -1,5 +1,12 @@
 # Context System Changelog — FilsPay
 
+## 2026-11-02 — Hackathon README polish
+
+- Baseline `ffcd8860e8fcd3339cc9bb20ddb02d9f762d6832`, with existing application and operations changes preserved. Filled the empty root `Readme.md` from the owner's supplied write-up, tightened repetition, retained Team Cherry Pickers and the AI/evidence methodology, and added an evidence index and local quick start.
+- Distinguished historical capacity figures and email-OTP reports from current verification and login-policy documentation. No application behavior, dependency, schema, or bug-registry status changed; architecture and dependency context required no changes.
+- Added the README to `REPOSITORY_MAP.md` and recorded documentation verification in `TESTING.md`. All 31 README local links resolve; UTF-8/title/code-fence checks and full repository typecheck pass. Application suites, builds, and runtime/database journeys were not run for this documentation-only task.
+- Evidence: `Evidence/agent-1-readme-polish.md`.
+
 ## 2026-10-30 ? Remove email OTP from login
 
 - Baseline `18ab7ca37a99aac28b4ebd1f4d9c1a2960dda970`: both planes now allow password-only login before authenticator enrollment and require authenticator or recovery codes once enrolled. Email resend and verification are removed; migration 0085 is mandatory. Updated auth, API, frontend, dependencies, testing and known-issues context. See `Evidence/agent-1-remove-email-otp.md` for results and limits.

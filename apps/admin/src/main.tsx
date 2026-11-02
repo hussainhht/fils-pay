@@ -4,6 +4,9 @@ import { RouterProvider } from "react-router-dom";
 import { AdminAuthProvider } from "./auth/AdminAuthContext.js";
 import { router } from "./router.js";
 import "./admin.css";
+import { initializeTheme, ThemeProvider } from "../../ui/Theme.js";
+
+initializeTheme();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -12,8 +15,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <AdminAuthProvider>
+    <ThemeProvider><AdminAuthProvider>
       <RouterProvider router={router} />
-    </AdminAuthProvider>
+    </AdminAuthProvider></ThemeProvider>
   </React.StrictMode>,
 );

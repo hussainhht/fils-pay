@@ -40,6 +40,9 @@ export interface BuildAppOptions {
  */
 export function buildApp(config: Config, pool: Pool, options: BuildAppOptions = {}): FastifyInstance {
   const app = Fastify({ logger: true });
+  if (config.demoPaymentMode) {
+    app.log.warn("Demo payment mode ENABLED — external payments are simulated for test-merchant checkout only.");
+  }
 
   app.decorate("db", pool);
   app.decorate("config", config);

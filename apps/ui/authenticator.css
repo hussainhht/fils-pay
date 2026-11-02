@@ -12,4 +12,7 @@
 .fp-recovery-codes li { padding: 12px; overflow-wrap: anywhere; background: var(--fp-background); border: 1px solid var(--fp-border); border-radius: 6px; }
 .fp-recovery-saved { display: flex; align-items: center; gap: 10px; margin: 24px 0; }
 .fp-authenticator-note { border-top: 1px solid var(--fp-border); margin-top: 24px; padding-top: 18px; color: var(--fp-muted); }
+.fp-demo-steps { display: flex; flex-wrap: wrap; gap: 12px; padding: 0; margin: 24px 0; list-style: none; color: var(--fp-muted); font-size: 13px; }
+.fp-demo-steps li { padding: 8px 12px; border: 1px solid var(--fp-border); border-radius: 8px; }
+.fp-demo-steps [aria-current="step"] { background: var(--fp-soft); color: var(--fp-primary-hover); border-color: var(--fp-success-border); font-weight: 600; }
 @media (max-width: 720px) { .fp-authenticator-grid, .fp-recovery-codes { grid-template-columns: 1fr; } .fp-authenticator-card { padding: 20px; } }

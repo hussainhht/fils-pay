@@ -10,6 +10,7 @@ import {
 import type { DashboardLoginResponse } from "../../types.js";
 import "../../dashboard.css";
 import { Brand } from "../../../../ui/Brand.js";
+import { ThemeSelect } from "../../../../ui/Theme.js";
 
 type Step = { kind: "credentials" } | { kind: "otp"; challenge: DashboardLoginResponse };
 
@@ -96,6 +97,7 @@ export function LoginPage() {
   return (
     <main className="dash-centered">
       <Brand />
+      <ThemeSelect />
       <p className="fp-auth-eyebrow">Merchant dashboard</p>
       <h1>{step.kind === "credentials" ? "Sign in to FilsPay" : "Verify your sign-in"}</h1>
       <p className="dash-muted">{step.kind === "credentials" ? "Enter your merchant account details to continue." : "Enter the one-time code for your account."}</p>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import "./authenticator.css";
 
 interface Status { enabled: boolean; recoveryCodesRemaining: number }
@@ -8,10 +8,11 @@ interface Props {
   request: <T>(path: string, init?: RequestInit) => Promise<T>;
   describeError: (error: unknown) => string;
   plane: "merchant" | "admin";
+  unavailableDemo?: ReactNode;
 }
 
 /** Secrets exist only in component memory, never storage, URLs or external QR services. */
-export function AuthenticatorSetup({ prefix, request, describeError, plane }: Props) {
+export function AuthenticatorSetup({ prefix, request, describeError, plane, unavailableDemo }: Props) {
   const [status, setStatus] = useState<Status | null>(null);
   const [setup, setSetup] = useState<Setup | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
@@ -21,12 +22,18 @@ export function AuthenticatorSetup({ prefix, request, describeError, plane }: Pr
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
   const formClass = plane === "merchant" ? "dash-form" : "admin-form";
 
   useEffect(() => {
     let active = true;
     void request<Status>(`${prefix}/totp`).then((value) => { if (active) setStatus(value); })
-      .catch((err: unknown) => { if (active) setError(describeError(err)); });
+      .catch((err: unknown) => {
+        if (!active) return;
+        if (err && typeof err === "object" && "code" in err && err.code === "authenticator_unavailable"
+          && "statusCode" in err && err.statusCode === 503) setUnavailable(true);
+        setError(describeError(err));
+      });
     return () => { active = false; };
   }, [prefix, request, describeError]);
 
@@ -51,6 +58,8 @@ export function AuthenticatorSetup({ prefix, request, describeError, plane }: Pr
     } catch (err) { setError(describeError(err)); }
     finally { setCode(""); setBusy(false); }
   }
+
+  if (unavailable && unavailableDemo) return <>{unavailableDemo}</>;
 
   return <section className="fp-authenticator" aria-labelledby="authenticator-title">
     <div className="fp-authenticator-heading"><div><p className="fp-auth-eyebrow">Account security</p>

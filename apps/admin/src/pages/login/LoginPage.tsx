@@ -5,6 +5,7 @@ import { describeError } from "../../api/client.js";
 import { useAdminAuth } from "../../auth/AdminAuthContext.js";
 import type { AdminLoginResponse } from "../../types.js";
 import { Brand } from "../../../../ui/Brand.js";
+import { ThemeSelect } from "../../../../ui/Theme.js";
 
 type Step =
   | { kind: "credentials" }
@@ -76,6 +77,7 @@ export function LoginPage() {
   return (
     <main className="admin-centered">
       <Brand />
+      <ThemeSelect />
       <p className="fp-auth-eyebrow">Administration</p>
       <h1>{step.kind === "credentials" ? "Sign in to the console" : "Verify your sign-in"}</h1>
       <p className="admin-muted">Internal operations console.</p>

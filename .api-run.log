@@ -4630,3 +4630,5 @@
 {"level":30,"time":1793400832052,"pid":29636,"hostname":"hht","reqId":"req-at","res":{"statusCode":200},"responseTime":37.56370000168681,"msg":"request completed"}
 {"level":30,"time":1793400832084,"pid":29636,"hostname":"hht","reqId":"req-au","req":{"method":"GET","url":"/v1/admin/merchants?limit=25","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":57210},"msg":"incoming request"}
 {"level":30,"time":1793400832095,"pid":29636,"hostname":"hht","reqId":"req-au","res":{"statusCode":200},"responseTime":9.909200001507998,"msg":"request completed"}
+{"level":30,"time":1793439363478,"pid":29636,"hostname":"hht","reqId":"req-av","req":{"method":"GET","url":"/v1/payment-links/plink_K0sR1YgGc-p_dXyd3vMY4S","host":"127.0.0.1:3000","remoteAddress":"127.0.0.1","remotePort":55429},"msg":"incoming request"}
+{"level":30,"time":1793439363517,"pid":29636,"hostname":"hht","reqId":"req-av","res":{"statusCode":200},"responseTime":33.92620000243187,"msg":"request completed"}

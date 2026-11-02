@@ -5,6 +5,7 @@ import { RequireRole } from "../auth/RequireRole.js";
 import { describeError } from "../api/client.js";
 import { Brand } from "../../../ui/Brand.js";
 import { Icon } from "../../../ui/Icon.js";
+import { ThemeSelect } from "../../../ui/Theme.js";
 import "../dashboard.css";
 
 /** Nav shell for every merchant dashboard screen. No impersonation banner
@@ -65,7 +66,7 @@ export function DashboardLayout() {
         <div className="fp-workspace-content">
           <div className="fp-workspace-bar">
             <span className="fp-workspace-name">{me?.merchant.displayName}</span>
-            <span className="fp-workspace-label">Merchant dashboard</span>
+            <ThemeSelect />
           </div>
           <main className="dash-main" id="main-content" tabIndex={-1}>
             {error ? <p className="dash-error" role="alert">{error}</p> : null}

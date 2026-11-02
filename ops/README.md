@@ -100,6 +100,20 @@ tables and cascading dependents; fixture data is not safe for shared databases.
 
 ## Images and environment
 
+### Hackathon checkout simulation
+
+`DEMO_PAYMENT_MODE=true` enables deterministic authorization/capture only for
+public payment-link checkout belonging to a `test_mode=true` merchant. Merchants
+must still be active and approved through the existing review service. The
+default is false; live merchants and other payment endpoints keep the original
+acquirer. Startup logs a warning when enabled. No configuration is sent to the
+browser. Demo references start with `demo_`; normal transaction, hold, ledger,
+fee, outbox and dashboard paths are used, with existing idempotency claims.
+Test merchants remain excluded from settlement by its existing test-mode rule.
+Use test cards only. Set the flag to false and recreate only the API service to
+end the demo. This repository's original acquirer is itself a simulator, not a
+real provider integration; disabling this flag restores that original behavior.
+
 ### Login and authenticator configuration
 
 Merchant and admin accounts sign in with a password until an authenticator is

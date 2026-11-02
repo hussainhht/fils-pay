@@ -1,12 +1,15 @@
 # Checkout capacity: source review and pending benchmark
 
-Latest retry, 2026-10-30, HEAD `616d29be71202b88fac03e44ed9e04213caa4f7b`:
-Docker remains unavailable (`docker compose version`: command not found).
-Runner HTTP-fixture tests passed again, 4/4, in approximately 2.46 seconds.
-No actual checkout benchmark, DB access or resource-limit verification occurred.
-`capacity_checkout_load_test.md` now prominently distinguishes historical
-measurements from the pending current build. This retry changed documentation
-only; the original baseline and earlier verification below remain historical.
+Latest retry, 2026-10-31 (Asia/Bahrain), HEAD
+`ffcd8860e8fcd3339cc9bb20ddb02d9f762d6832` with pre-existing uncommitted changes:
+`docker compose version` still fails because Docker is not recognized. Standard
+Docker CLI/Desktop paths and the private capacity configuration are absent;
+Podman is not on PATH. Runner HTTP-fixture tests passed 4/4, zero failures/skips,
+in 2610 ms on Node 22.19.0. No actual checkout benchmark, DB access or
+resource-limit verification occurred. No current-build capacity can be claimed.
+This retry changed the two capacity evidence reports only; existing application
+changes were preserved. The original baseline and earlier verification below
+remain historical.
 
 Date: 2026-10-30 (Asia/Bahrain). Baseline HEAD:
 `1f88a47ee619e87728219ad531df4dc4e4cbad56`.

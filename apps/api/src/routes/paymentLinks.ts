@@ -168,7 +168,8 @@ export async function paymentLinkPublicRoutes(app: FastifyInstance): Promise<voi
     const result = await payPaymentLink(
       app.db,
       app.acquirer,
-      { paymentLinkReservationTimeoutSeconds: app.config.paymentLinkReservationTimeoutSeconds },
+      { paymentLinkReservationTimeoutSeconds: app.config.paymentLinkReservationTimeoutSeconds,
+        demoPaymentMode: app.config.demoPaymentMode },
       { token: request.params.token, card, idempotencyKey, submittedAt },
     );
     reply.code(result.statusCode).send(result.body);

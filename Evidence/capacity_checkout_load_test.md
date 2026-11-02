@@ -1,29 +1,32 @@
 # Capacity: fixed hosted-checkout load test
 
-## Latest execution attempt — 30 October 2026
+## Latest execution attempt — 31 October 2026
 
-Current HEAD: `616d29be71202b88fac03e44ed9e04213caa4f7b`.
-**Current-build capacity remains unmeasured.** `docker compose version` failed
-because Docker is unavailable in this environment; the standard Docker Desktop
-executable and private capacity configuration are also absent. The isolated
-capped stack could not be started. No checkout load or SQL was sent to the
-existing localhost service/database, and no public service was tested.
+HEAD: `ffcd8860e8fcd3339cc9bb20ddb02d9f762d6832`, with pre-existing
+uncommitted API, checkout UI and configuration changes. Those changes were
+preserved; no serving-build identity was established.
 
-`node --test scripts/checkout-capacity.test.mjs` ran successfully: **4 passed,
-0 failed, 0 skipped**, approximately 2.46 seconds. These exercise the load runner
-against HTTP fixtures; they do not measure FilsPay throughput or financial
-correctness. No new latency, goodput, capacity or improvement number is available.
+**Current-build capacity remains unmeasured.** Retrying `docker compose version`
+failed because `docker` is not recognized. Neither the standard Docker CLI nor
+Docker Desktop executable exists at its usual installation path; Podman is not
+on PATH either. `ops/capacity/.env` is absent. The isolated capped stack could
+not be started. No checkout load, fixture writes or SQL was sent to any existing
+localhost service/database or public service.
+
+`node --test scripts/checkout-capacity.test.mjs` passed on Node **22.19.0**:
+**4 passed, 0 failed, 0 skipped**, total duration **2610 ms**. These tests exercise
+the load runner against HTTP fixtures; they do not measure FilsPay throughput or
+financial correctness. No new latency, goodput, capacity or improvement number
+is available.
 
 The **8 users / approximately 9 checkouts per second below apply only to the
-historical serving image**, not the current build. Current source already moves
-authorize/capture provider waits outside database transactions; its effect still
-requires a fresh runtime measurement.
+historical serving image**, not the current build. A fresh runtime measurement
+still requires an available Docker runtime and the dedicated isolated stack.
 
-The isolated stack, exact startup/stage commands, resource limits, repeat matrix,
-metrics and pending checks are documented in
-[the capacity preparation report](agent-1-capacity-optimization.md).
-Application code was unchanged in this retry; typecheck and DB integration suites
-were not rerun for this documentation-only update.
+The startup/stage commands, resource limits, repeat matrix, metrics and pending
+checks are documented in [the capacity preparation report](agent-1-capacity-optimization.md).
+This retry changed evidence documentation only. Application typecheck and
+DB integration suites were not rerun.
 
 ## Historical measurement
 
@@ -57,27 +60,27 @@ k6 is not installed. The runner was a Node.js 22.23.2 `fetch` script (client tim
 
 `ops/docker-compose.yml` sets neither CPU nor memory, and `restart` is `no`. For the run only, `docker update` set:
 
-| Container | CPU | Memory |
-|---|---|---|
-| api | 0.50 | 512 MiB |
-| postgres | 0.30 | 768 MiB |
+| Container  | CPU  | Memory  |
+| ---------- | ---- | ------- |
+| api        | 0.50 | 512 MiB |
+| postgres   | 0.30 | 768 MiB |
 | settlement | 0.10 | 256 MiB |
-| reporting | 0.10 | 256 MiB |
+| reporting  | 0.10 | 256 MiB |
 
 That is 1.00 vCPU and 1792 MiB for the whole stack, with the API at the judged 0.5 vCPU / 512 MiB. Docker Desktop itself had 8 CPUs and about 7.6 GiB; the caps are what made the box match the brief. Acquirer latency and failure rate were the process defaults (100–400 ms, 2%), because those env vars are unset.
 
 ## Results
 
 | Users | Checkouts | Paid | Simulator 402/502 | Capacity errors | e2e p50 | e2e p95 | Checkouts/s | Inside the bar |
-|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| 1 | 14 | 13 | 1 | 0 | 577 ms | 751 ms | 1.7 | yes |
-| 2 | 31 | 30 | 1 | 0 | 557 ms | 737 ms | 3.8 | yes |
-| 4 | 62 | 59 | 3 | 0 | 542 ms | 742 ms | 7.3 | yes |
-| 8 | 79 | 74 | 5 | 0 | 850 ms | 1063 ms | 9.2 | yes |
-| 12 | 77 | 72 | 5 | 0 | 1238 ms | 1868 ms | 8.7 | no, too slow |
-| 20 | 125 | 123 | 2 | 0 | 2000 ms | 2708 ms | 9.3 | no |
-| 36 | 104 | 98 | 6 | 0 | 3606 ms | 4400 ms | 9.3 | no |
-| 80 | 155 | 151 | 4 | 0 | 8550 ms | 8743 ms | 8.9 | no |
+| ----: | --------: | ---: | ----------------: | --------------: | ------: | ------: | ----------: | -------------- |
+|     1 |        14 |   13 |                 1 |               0 |  577 ms |  751 ms |         1.7 | yes            |
+|     2 |        31 |   30 |                 1 |               0 |  557 ms |  737 ms |         3.8 | yes            |
+|     4 |        62 |   59 |                 3 |               0 |  542 ms |  742 ms |         7.3 | yes            |
+|     8 |        79 |   74 |                 5 |               0 |  850 ms | 1063 ms |         9.2 | yes            |
+|    12 |        77 |   72 |                 5 |               0 | 1238 ms | 1868 ms |         8.7 | no, too slow   |
+|    20 |       125 |  123 |                 2 |               0 | 2000 ms | 2708 ms |         9.3 | no             |
+|    36 |       104 |   98 |                 6 |               0 | 3606 ms | 4400 ms |         9.3 | no             |
+|    80 |       155 |  151 |                 4 |               0 | 8550 ms | 8743 ms |         8.9 | no             |
 
 12 users is the first step that misses the latency bar. From 8 users upward the rate stays on a plateau of about 9 checkouts/s, so the extra concurrency is queueing. At 80 users every response was still a normal paid, decline, or acquirer error. None were HTTP 500, and none hit the client timeout.
 
@@ -85,7 +88,7 @@ After the 36-user wave, 4 users on the same process: 53/53 paid, p95 **686 ms**,
 
 ## Where the time goes
 
-The limiter is the API’s Postgres pool of **5** connections, held open across the acquirer sleep.
+The limiter is the API’s Postgadd dark pen across the acquirer sleep.
 
 The image that was serving (it is not the copy of these files in the working tree) does both of these inside `withTransaction`:
 
@@ -112,15 +115,15 @@ Recovery is the same process draining the queue. Dropping from 36 users to 4 bro
 
 Run id `capload-1793375189959` (420 links, all attempted):
 
-| Check | Result |
-|---|---|
-| Links `paid` | 399 |
-| Links `active` again | 21 |
-| Paid links with one linked transaction | 399 |
-| Those transactions `captured` at 1000 fils | 399 |
-| Captured sum | 399000 fils |
-| Duplicate `transaction_id` | 0 |
-| Same reference on two transactions | 0 |
+| Check                                        | Result      |
+| -------------------------------------------- | ----------- |
+| Links `paid`                               | 399         |
+| Links `active` again                       | 21          |
+| Paid links with one linked transaction       | 399         |
+| Those transactions `captured` at 1000 fils | 399         |
+| Captured sum                                 | 399000 fils |
+| Duplicate `transaction_id`                 | 0           |
+| Same reference on two transactions           | 0           |
 
 The 21 active links are the simulator declines and acquirer errors (21/420 ≈ 5%, in line with a 2% failure chance on each of two acquirer calls).
 
